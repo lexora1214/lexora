@@ -4,8 +4,9 @@ import React from "react";
 import { User, Customer } from "@/types";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { DollarSign, Users, Briefcase, Network as NetworkIcon, LoaderCircle } from "lucide-react";
+import { DollarSign, Users, Briefcase, Network as NetworkIcon, LoaderCircle, ShieldCheck } from "lucide-react";
 import UserManagementTable from "@/components/user-management-table";
+import CustomerManagementTable from "@/components/customer-management-table";
 import NetworkView from "@/components/network-view";
 import ActionableInsights from "@/components/actionable-insights";
 import CommissionSettings from "@/components/commission-settings";
@@ -69,22 +70,22 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Sales</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Customers</CardTitle>
             <Briefcase className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">+{customers.length}</div>
-            <p className="text-xs text-muted-foreground">Tokens sold</p>
+            <p className="text-xs text-muted-foreground">Customers registered</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Network Depth</CardTitle>
-            <NetworkIcon className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Admin Role</CardTitle>
+            <ShieldCheck className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">5 Levels</div>
-            <p className="text-xs text-muted-foreground">From Admin to Salesman</p>
+            <div className="text-2xl font-bold">Full Control</div>
+            <p className="text-xs text-muted-foreground">Manage users & settings</p>
           </CardContent>
         </Card>
       </div>
@@ -92,8 +93,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
             <Tabs defaultValue="user-management">
-                <TabsList className="grid w-full grid-cols-3">
+                <TabsList className="grid w-full grid-cols-4">
                     <TabsTrigger value="user-management">User Management</TabsTrigger>
+                    <TabsTrigger value="customer-management">Customer Management</TabsTrigger>
                     <TabsTrigger value="network-view">Network View</TabsTrigger>
                     <TabsTrigger value="commission-settings">Commission Settings</TabsTrigger>
                 </TabsList>
@@ -105,6 +107,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
                         </CardHeader>
                         <CardContent>
                             <UserManagementTable data={users} />
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+                <TabsContent value="customer-management">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Customers</CardTitle>
+                            <CardDescription>View all registered customers in the system.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <CustomerManagementTable data={customers} users={users} />
                         </CardContent>
                     </Card>
                 </TabsContent>
