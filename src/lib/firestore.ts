@@ -1,45 +1,30 @@
-import { doc, getDoc, setDoc, collection, getDocs, query, where, writeBatch, updateDoc, increment } from "firebase/firestore";
+import { doc, getDoc, setDoc, collection, getDocs, query, where, writeBatch, increment } from "firebase/firestore";
 import { db } from "./firebase";
 import { User, Role, Customer } from "@/types";
 import type { User as FirebaseUser } from 'firebase/auth';
 
-const ROLES_HIERARCHY: Role[] = [
-  "Salesman",
-  "Team Operation Manager",
-  "Group Operation Manager",
-  "Head Group Manager",
-  "Regional Director",
-  "Admin",
-];
+export async function createUserProfile(firebaseUser: FirebaseUser, name: string, role: Role, referralCode: string): Promise<User> {
+  let referrerId: string | null = null;
 
-function getNextRoleDown(currentRole: Role): Role {
-  const currentIndex = ROLES_HIERARCHY.indexOf(currentRole);
-  if (currentRole === "Admin") {
-    return "Regional Director";
-  }
-  if (currentIndex > 0) {
-    return ROLES_HIERARCHY[currentIndex - 1];
-  }
-  // If Salesman refers, new user is also a Salesman.
-  return "Salesman";
-}
+  if (role !== "Regional Director") {
+    if (!referralCode) {
+      throw new Error("A referral code is required for this role.");
+    }
+    const referrerDocRef = doc(db, "users", referralCode);
+    const referrerDocSnap = await getDoc(referrerDocRef);
 
-export async function createUserProfile(firebaseUser: FirebaseUser, name: string, referrerId: string): Promise<User> {
-  const referrerDocRef = doc(db, "users", referrerId);
-  const referrerDocSnap = await getDoc(referrerDocRef);
-
-  if (!referrerDocSnap.exists()) {
-    throw new Error("Invalid referrer ID. Please check the code and try again.");
+    if (!referrerDocSnap.exists()) {
+      throw new Error("Invalid referrer ID. Please check the code and try again.");
+    }
+    referrerId = referralCode;
   }
 
-  const referrerData = referrerDocSnap.data() as User;
-  const newUserRole = getNextRoleDown(referrerData.role);
 
   const newUser: User = {
     id: firebaseUser.uid,
     name,
     email: firebaseUser.email!,
-    role: newUserRole,
+    role: role,
     referrerId: referrerId,
     totalIncome: 0,
     avatar: `https://placehold.co/100x100.png`,

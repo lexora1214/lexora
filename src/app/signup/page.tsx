@@ -12,6 +12,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { DollarSign, LoaderCircle } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Role } from "@/types";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -19,6 +27,7 @@ export default function SignupPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [role, setRole] = useState<Role | "">("");
   const [referralCode, setReferralCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -32,10 +41,26 @@ export default function SignupPage() {
         });
         return;
     }
+     if (!role) {
+      toast({
+        variant: "destructive",
+        title: "Sign Up Failed",
+        description: "Please select a role.",
+      });
+      return;
+    }
+    if (role !== "Regional Director" && !referralCode) {
+      toast({
+        variant: "destructive",
+        title: "Sign Up Failed",
+        description: "A referral code is required for this role.",
+      });
+      return;
+    }
     setIsLoading(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      await createUserProfile(userCredential.user, name, referralCode);
+      await createUserProfile(userCredential.user, name, role, referralCode);
       toast({
         title: "Account Created",
         description: "You have been successfully signed up.",
@@ -78,8 +103,36 @@ export default function SignupPage() {
                     <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
                 </div>
                 <div className="grid gap-2">
+                  <Label htmlFor="role">Role</Label>
+                   <Select value={role} onValueChange={(value) => {
+                       const newRole = value as Role;
+                       setRole(newRole);
+                       if (newRole === 'Regional Director') {
+                           setReferralCode('');
+                       }
+                   }}>
+                    <SelectTrigger id="role">
+                      <SelectValue placeholder="Select a role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Regional Director">Regional Director</SelectItem>
+                      <SelectItem value="Head Group Manager">Head Group Manager</SelectItem>
+                      <SelectItem value="Group Operation Manager">Group Operation Manager</SelectItem>
+                      <SelectItem value="Team Operation Manager">Team Operation Manager</SelectItem>
+                      <SelectItem value="Salesman">Salesman</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
                     <Label htmlFor="referral-code">Referral Code</Label>
-                    <Input id="referral-code" placeholder="Your referrer's user ID" required value={referralCode} onChange={(e) => setReferralCode(e.target.value)} />
+                    <Input 
+                      id="referral-code" 
+                      placeholder="Referrer's ID (if applicable)" 
+                      value={referralCode} 
+                      onChange={(e) => setReferralCode(e.target.value)}
+                      disabled={role === 'Regional Director'}
+                      required={role !== 'Regional Director'}
+                    />
                 </div>
                 <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
