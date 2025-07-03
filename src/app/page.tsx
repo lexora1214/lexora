@@ -1,53 +1,60 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
+import { useAuthState } from "react-firebase-hooks/auth";
+import { auth } from "@/lib/firebase";
+import { getUser } from "@/lib/firestore";
 import AppLayout from "@/components/app-layout";
-import { User, Role } from "@/types";
-import { users } from "@/lib/mock-data";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
+import { User } from "@/types";
+import { LoaderCircle } from "lucide-react";
 
 export default function Home() {
-  const [currentUser, setCurrentUser] = React.useState<User>(users[0]);
+  const [firebaseUser, loadingAuth, errorAuth] = useAuthState(auth);
+  const [appUser, setAppUser] = React.useState<User | null>(null);
+  const [loadingUser, setLoadingUser] = React.useState(true);
+  const router = useRouter();
 
-  const handleUserChange = (userId: string) => {
-    const user = users.find((u) => u.id === userId);
-    if (user) {
-      setCurrentUser(user);
+  React.useEffect(() => {
+    if (loadingAuth) {
+      return; // Wait for auth state to be determined
     }
-  };
+    if (!firebaseUser) {
+      router.replace("/login");
+      return;
+    }
 
-  return (
-    <>
-      <div className="fixed bottom-4 right-4 z-50 rounded-lg border bg-card p-4 shadow-lg">
-        <div className="flex items-center gap-4">
-          <Label htmlFor="user-selector" className="text-sm font-medium">
-            Simulate User:
-          </Label>
-          <Select value={currentUser.id} onValueChange={handleUserChange}>
-            <SelectTrigger className="w-[220px]">
-              <SelectValue placeholder="Select user" />
-            </SelectTrigger>
-            <SelectContent>
-              {users.map((user) => (
-                <SelectItem key={user.id} value={user.id}>
-                  {user.name} ({user.role})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <p className="mt-2 text-xs text-muted-foreground">
-          Use this to switch between different user roles and test the UI.
-        </p>
+    const fetchUser = async () => {
+      setLoadingUser(true);
+      const userProfile = await getUser(firebaseUser.uid);
+      if (userProfile) {
+        setAppUser(userProfile);
+      } else {
+        // This case might happen if the Firestore doc isn't created yet
+        // or if there's an issue. For now, we'll treat it as an error.
+        console.error("Could not find user profile in Firestore.");
+        router.replace("/login");
+      }
+      setLoadingUser(false);
+    };
+
+    fetchUser();
+  }, [firebaseUser, loadingAuth, router]);
+
+  if (loadingAuth || loadingUser || !appUser) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <LoaderCircle className="h-12 w-12 animate-spin text-primary" />
       </div>
-      <AppLayout user={currentUser} />
-    </>
-  );
+    );
+  }
+
+  if (errorAuth) {
+      // Handle auth error, e.g., redirect to an error page or login
+      console.error("Authentication error:", errorAuth);
+      router.replace("/login");
+      return null;
+  }
+
+  return <AppLayout user={appUser} />;
 }

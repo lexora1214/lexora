@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import { users as allUsers } from "@/lib/mock-data";
 import { User } from "@/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
@@ -10,10 +9,11 @@ import { Edit2 } from "lucide-react";
 
 interface TreeNodeProps {
   user: User;
+  allUsers: User[];
   level: number;
 }
 
-const TreeNode: React.FC<TreeNodeProps> = ({ user, level }) => {
+const TreeNode: React.FC<TreeNodeProps> = ({ user, allUsers, level }) => {
   const children = allUsers.filter((u) => u.referrerId === user.id);
 
   return (
@@ -39,7 +39,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({ user, level }) => {
       {children.length > 0 && (
         <div className="border-l-2 border-primary/20 pl-4">
           {children.map((child) => (
-            <TreeNode key={child.id} user={child} level={level + 1} />
+            <TreeNode key={child.id} user={child} allUsers={allUsers} level={level + 1} />
           ))}
         </div>
       )}
@@ -47,13 +47,17 @@ const TreeNode: React.FC<TreeNodeProps> = ({ user, level }) => {
   );
 };
 
-const NetworkView = () => {
+interface NetworkViewProps {
+    allUsers: User[];
+}
+
+const NetworkView: React.FC<NetworkViewProps> = ({ allUsers }) => {
   const rootUsers = allUsers.filter((user) => !user.referrerId);
 
   return (
     <div className="space-y-4">
       {rootUsers.map((user) => (
-        <TreeNode key={user.id} user={user} level={0} />
+        <TreeNode key={user.id} user={user} allUsers={allUsers} level={0} />
       ))}
     </div>
   );

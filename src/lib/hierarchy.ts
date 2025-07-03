@@ -1,7 +1,6 @@
 import { User } from "@/types";
-import { users as allUsers } from "@/lib/mock-data";
 
-export function getDownlineIdsAndUsers(userId: string): { ids: string[], users: User[] } {
+export function getDownlineIdsAndUsers(userId: string, allUsers: User[]): { ids: string[], users: User[] } {
   const downlineUsers: User[] = [];
   const queue: string[] = [userId];
   const visited: Set<string> = new Set();

@@ -3,22 +3,52 @@
 import React from "react";
 import { User } from "@/types";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
-import { DollarSign, Users, Activity } from "lucide-react";
+import { DollarSign, Users, Activity, LoaderCircle } from "lucide-react";
 import { getDownlineIdsAndUsers } from "@/lib/hierarchy";
 import TeamView from "@/components/team-view";
 import ActionableInsights from "@/components/actionable-insights";
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { getAllUsers, getAllCustomers } from "@/lib/firestore";
 
 interface ManagerDashboardProps {
   user: User;
 }
 
 const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ user }) => {
-  const { users: downlineUsers } = getDownlineIdsAndUsers(user.id);
+  const [allUsers, setAllUsers] = React.useState<User[]>([]);
+  const [allCustomers, setAllCustomers] = React.useState<User[]>([]);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      const [usersData, customersData] = await Promise.all([
+        getAllUsers(),
+        getAllCustomers(),
+      ]);
+      setAllUsers(usersData);
+      setAllCustomers(customersData);
+      setLoading(false);
+    };
+    fetchData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex h-full w-full items-center justify-center">
+        <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+  
+  const { users: downlineUsers } = getDownlineIdsAndUsers(user.id, allUsers);
   const teamIncome = downlineUsers.reduce((acc, u) => acc + u.totalIncome, 0);
 
-  const chartData = downlineUsers.slice(0, 5).map(u => ({
+  const chartData = downlineUsers
+    .sort((a,b) => b.totalIncome - a.totalIncome)
+    .slice(0, 5)
+    .map(u => ({
     name: u.name.split(' ')[0],
     income: u.totalIncome,
     fill: "var(--color-income)"
@@ -103,7 +133,7 @@ const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ user }) => {
           </Card>
         </div>
         <div className="lg:col-span-1">
-          <ActionableInsights user={user} />
+          <ActionableInsights user={user} allUsers={allUsers} allCustomers={allCustomers} />
         </div>
       </div>
       

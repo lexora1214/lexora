@@ -1,20 +1,46 @@
 "use client";
 
 import React from "react";
-import { User } from "@/types";
-import { users, customers } from "@/lib/mock-data";
+import { User, Customer } from "@/types";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { DollarSign, Users, Briefcase, Network as NetworkIcon } from "lucide-react";
+import { DollarSign, Users, Briefcase, Network as NetworkIcon, LoaderCircle } from "lucide-react";
 import UserManagementTable from "@/components/user-management-table";
 import NetworkView from "@/components/network-view";
 import ActionableInsights from "@/components/actionable-insights";
+import { getAllUsers, getAllCustomers } from "@/lib/firestore";
 
 interface AdminDashboardProps {
   user: User;
 }
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
+  const [users, setUsers] = React.useState<User[]>([]);
+  const [customers, setCustomers] = React.useState<Customer[]>([]);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      const [usersData, customersData] = await Promise.all([
+        getAllUsers(),
+        getAllCustomers(),
+      ]);
+      setUsers(usersData);
+      setCustomers(customersData);
+      setLoading(false);
+    };
+    fetchData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex h-full w-full items-center justify-center">
+        <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   const totalIncomeAllUsers = users.reduce((acc, user) => acc + user.totalIncome, 0);
 
   return (
@@ -76,7 +102,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
                             <CardDescription>Manage all employees and system users.</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <UserManagementTable/>
+                            <UserManagementTable data={users} />
                         </CardContent>
                     </Card>
                 </TabsContent>
@@ -87,14 +113,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
                             <CardDescription>View the hierarchical structure of employees.</CardDescription>
                         </CardHeader>
                         <CardContent className="pl-2">
-                            <NetworkView />
+                            <NetworkView allUsers={users} />
                         </CardContent>
                     </Card>
                 </TabsContent>
             </Tabs>
         </div>
         <div className="lg:col-span-1">
-            <ActionableInsights user={user} />
+            <ActionableInsights user={user} allUsers={users} allCustomers={customers} />
         </div>
       </div>
     </div>

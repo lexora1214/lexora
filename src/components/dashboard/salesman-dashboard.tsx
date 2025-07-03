@@ -2,7 +2,6 @@
 
 import React from "react";
 import { User, Customer as CustomerType } from "@/types";
-import { customers } from "@/lib/mock-data";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import {
   Table,
@@ -13,17 +12,38 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { DollarSign, Users, UserPlus } from "lucide-react";
+import { DollarSign, Users, UserPlus, LoaderCircle } from "lucide-react";
 import CustomerRegistrationDialog from "@/components/customer-registration-dialog";
 import { Badge } from "@/components/ui/badge";
+import { getCustomersForSalesman } from "@/lib/firestore";
 
 interface SalesmanDashboardProps {
   user: User;
 }
 
 const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ user }) => {
-  const myCustomers = customers.filter(c => c.salesmanId === user.id);
+  const [myCustomers, setMyCustomers] = React.useState<CustomerType[]>([]);
+  const [loading, setLoading] = React.useState(true);
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+
+  const fetchMyData = React.useCallback(async () => {
+    setLoading(true);
+    const customersData = await getCustomersForSalesman(user.id);
+    setMyCustomers(customersData);
+    setLoading(false);
+  }, [user.id]);
+  
+  React.useEffect(() => {
+    fetchMyData();
+  }, [fetchMyData]);
+
+  if (loading) {
+    return (
+      <div className="flex h-full w-full items-center justify-center">
+        <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -94,7 +114,12 @@ const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ user }) => {
           </Table>
         </CardContent>
       </Card>
-      <CustomerRegistrationDialog isOpen={isDialogOpen} onOpenChange={setIsDialogOpen} />
+      <CustomerRegistrationDialog 
+        isOpen={isDialogOpen} 
+        onOpenChange={setIsDialogOpen} 
+        salesman={user}
+        onRegistrationSuccess={fetchMyData} 
+      />
     </div>
   );
 };

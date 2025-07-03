@@ -5,15 +5,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Lightbulb, LoaderCircle } from "lucide-react";
 import { getActionableInsights } from "@/app/actions";
-import { User } from "@/types";
-import { customers } from "@/lib/mock-data";
+import { User, Customer } from "@/types";
 import { getDownlineIdsAndUsers } from "@/lib/hierarchy";
 
 interface ActionableInsightsProps {
     user: User;
+    allUsers: User[];
+    allCustomers: Customer[];
 }
 
-const ActionableInsights: React.FC<ActionableInsightsProps> = ({ user }) => {
+const ActionableInsights: React.FC<ActionableInsightsProps> = ({ user, allUsers, allCustomers }) => {
     const [isPending, startTransition] = useTransition();
     const [insights, setInsights] = useState<string[]>([]);
     const [error, setError] = useState<string | null>(null);
@@ -23,12 +24,11 @@ const ActionableInsights: React.FC<ActionableInsightsProps> = ({ user }) => {
             setError(null);
             setInsights([]);
 
-            // Mock data for the AI prompt
-            const { users: downlineUsers } = getDownlineIdsAndUsers(user.id);
+            const { users: downlineUsers } = getDownlineIdsAndUsers(user.id, allUsers);
             const teamIncome = downlineUsers.reduce((acc, u) => acc + u.totalIncome, 0);
-            const commissionsDue = customers.filter(c => !c.commissionDistributed).length * 400; // Assuming 400 is the manager part
+            const commissionsDue = allCustomers.filter(c => !c.commissionDistributed).length * 400; // Assuming 400 is the manager part
             
-            const recentTeamSalesActivities = `Team of ${downlineUsers.length} members generated LKR ${teamIncome}. Recent sales from team members have been steady. ${customers.filter(c => !c.commissionDistributed).length} commissions are pending payout.`;
+            const recentTeamSalesActivities = `Team of ${downlineUsers.length} members generated LKR ${teamIncome}. Recent sales from team members have been steady. ${allCustomers.filter(c => !c.commissionDistributed).length} commissions are pending payout.`;
 
             const result = await getActionableInsights({
                 hierarchicalPosition: user.role,

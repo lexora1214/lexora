@@ -16,6 +16,9 @@ import { useForm, SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useToast } from "@/hooks/use-toast";
+import { createCustomer } from "@/lib/firestore";
+import { User } from "@/types";
+import { LoaderCircle } from "lucide-react";
 
 const formSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -31,13 +34,18 @@ type FormValues = z.infer<typeof formSchema>;
 interface CustomerRegistrationDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
+  salesman: User;
+  onRegistrationSuccess: () => void;
 }
 
 const CustomerRegistrationDialog: React.FC<CustomerRegistrationDialogProps> = ({
   isOpen,
   onOpenChange,
+  salesman,
+  onRegistrationSuccess,
 }) => {
   const { toast } = useToast();
+  const [isLoading, setIsLoading] = React.useState(false);
   const {
     register,
     handleSubmit,
@@ -47,14 +55,28 @@ const CustomerRegistrationDialog: React.FC<CustomerRegistrationDialogProps> = ({
     resolver: zodResolver(formSchema),
   });
 
-  const onSubmit: SubmitHandler<FormValues> = (data) => {
-    console.log("New customer data:", data);
-    toast({
-      title: "Customer Registered",
-      description: `${data.name} has been successfully registered.`,
-    });
-    reset();
-    onOpenChange(false);
+  const onSubmit: SubmitHandler<FormValues> = async (data) => {
+    setIsLoading(true);
+    try {
+      await createCustomer(data, salesman);
+      toast({
+        title: "Customer Registered",
+        description: `${data.name} has been successfully registered. Commissions distributed.`,
+        variant: 'default',
+        className: 'bg-success text-success-foreground'
+      });
+      onRegistrationSuccess();
+      reset();
+      onOpenChange(false);
+    } catch (error: any) {
+        toast({
+            variant: "destructive",
+            title: "Registration Failed",
+            description: error.message,
+        });
+    } finally {
+        setIsLoading(false);
+    }
   };
 
   return (
@@ -98,7 +120,10 @@ const CustomerRegistrationDialog: React.FC<CustomerRegistrationDialogProps> = ({
             </div>
           </div>
           <DialogFooter>
-            <Button type="submit">Save customer</Button>
+            <Button type="submit" disabled={isLoading}>
+                {isLoading && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
+                Save customer
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

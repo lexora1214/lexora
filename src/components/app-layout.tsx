@@ -2,11 +2,11 @@
 
 import React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Bell,
   Building,
   DollarSign,
-  Home,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -15,16 +15,11 @@ import {
   Users,
   Lightbulb,
 } from "lucide-react";
+import { signOut } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -77,6 +72,13 @@ const SidebarNav = ({ user }: { user: User }) => (
 );
 
 const AppLayout = ({ user }: { user: User }) => {
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    await signOut(auth);
+    router.push("/login");
+  };
+
   const renderDashboard = () => {
     switch (user.role) {
       case "Admin":
@@ -142,10 +144,10 @@ const AppLayout = ({ user }: { user: User }) => {
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>{user.name}</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>Settings</DropdownMenuItem>
-              <DropdownMenuItem>Support</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => alert("Settings clicked!")}>Settings</DropdownMenuItem>
+              <DropdownMenuItem>Your referral code: {user.id}</DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={handleLogout}>
                 <LogOut className="mr-2 h-4 w-4" />
                 Logout
               </DropdownMenuItem>

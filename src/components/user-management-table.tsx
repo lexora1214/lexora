@@ -34,7 +34,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { users as data } from "@/lib/mock-data";
 import { User } from "@/types";
 import { Badge } from "./ui/badge";
 
@@ -104,7 +103,11 @@ export const columns: ColumnDef<User>[] = [
   },
 ];
 
-export default function UserManagementTable() {
+interface UserManagementTableProps {
+    data: User[];
+}
+
+export default function UserManagementTable({ data }: UserManagementTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
