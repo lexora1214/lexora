@@ -1,6 +1,6 @@
 import { doc, getDoc, setDoc, collection, getDocs, query, where, writeBatch, increment } from "firebase/firestore";
 import { db } from "./firebase";
-import { User, Role, Customer } from "@/types";
+import { User, Role, Customer, CommissionSettings } from "@/types";
 import type { User as FirebaseUser } from 'firebase/auth';
 
 function generateReferralCode(): string {
@@ -15,12 +15,11 @@ function generateReferralCode(): string {
 export async function createUserProfile(firebaseUser: FirebaseUser, name: string, role: Role, referralCodeInput: string): Promise<User> {
   let referrerId: string | null = null;
 
-  if (role !== "Regional Director") {
+  if (role !== "Regional Director" && role !== "Admin") {
     if (!referralCodeInput || referralCodeInput.length !== 6) {
       throw new Error("A valid 6-character referral code is required for this role.");
     }
     const usersRef = collection(db, "users");
-    // Note: Firestore queries are case-sensitive. We query for the uppercase code.
     const q = query(usersRef, where("referralCode", "==", referralCodeInput));
     const querySnapshot = await getDocs(q);
 
@@ -32,17 +31,18 @@ export async function createUserProfile(firebaseUser: FirebaseUser, name: string
     referrerId = referrerDoc.id;
   }
   
-  // Generate a unique referral code for the new user
   let newReferralCode = '';
   let isCodeUnique = false;
   const usersCollection = collection(db, "users");
 
-  while (!isCodeUnique) {
-    newReferralCode = generateReferralCode();
-    const codeQuery = query(usersCollection, where("referralCode", "==", newReferralCode));
-    const codeSnapshot = await getDocs(codeQuery);
-    if (codeSnapshot.empty) {
-      isCodeUnique = true;
+  if (role !== "Salesman") {
+    while (!isCodeUnique) {
+      newReferralCode = generateReferralCode();
+      const codeQuery = query(usersCollection, where("referralCode", "==", newReferralCode));
+      const codeSnapshot = await getDocs(codeQuery);
+      if (codeSnapshot.empty) {
+        isCodeUnique = true;
+      }
     }
   }
 
@@ -90,10 +90,33 @@ export async function getAllCustomers(): Promise<Customer[]> {
     return customersSnap.docs.map(doc => doc.data() as Customer);
 }
 
+const DEFAULT_COMMISSIONS: CommissionSettings = {
+  salesman: 600,
+  teamOperationManager: 400,
+  groupOperationManager: 250,
+  headGroupManager: 150,
+  regionalDirector: 100,
+};
+
+export async function getCommissionSettings(): Promise<CommissionSettings> {
+  const settingsDocRef = doc(db, "settings", "commissions");
+  const settingsDocSnap = await getDoc(settingsDocRef);
+  if (settingsDocSnap.exists()) {
+    return settingsDocSnap.data() as CommissionSettings;
+  }
+  await setDoc(settingsDocRef, DEFAULT_COMMISSIONS);
+  return DEFAULT_COMMISSIONS;
+}
+
+export async function updateCommissionSettings(data: CommissionSettings): Promise<void> {
+  const settingsDocRef = doc(db, "settings", "commissions");
+  await setDoc(settingsDocRef, data, { merge: true });
+}
 
 export async function createCustomer(customerData: Omit<Customer, 'id' | 'saleDate' | 'commissionDistributed' | 'salesmanId'>, salesman: User): Promise<void> {
     const batch = writeBatch(db);
     const allUsers = await getAllUsers();
+    const settings = await getCommissionSettings();
     
     const newCustomerRef = doc(collection(db, "customers"));
     const newCustomer: Customer = {
@@ -106,11 +129,11 @@ export async function createCustomer(customerData: Omit<Customer, 'id' | 'saleDa
     batch.set(newCustomerRef, newCustomer);
 
     const commissionAmounts: Record<Role, number> = {
-        "Salesman": 600,
-        "Team Operation Manager": 400,
-        "Group Operation Manager": 250,
-        "Head Group Manager": 150,
-        "Regional Director": 100,
+        "Salesman": settings.salesman,
+        "Team Operation Manager": settings.teamOperationManager,
+        "Group Operation Manager": settings.groupOperationManager,
+        "Head Group Manager": settings.headGroupManager,
+        "Regional Director": settings.regionalDirector,
         "Admin": 0,
     };
 

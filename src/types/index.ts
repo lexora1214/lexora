@@ -19,7 +19,7 @@ export interface User {
 }
 
 export interface Customer {
-  id: string;
+  id:string;
   name: string;
   contactInfo: string;
   address: string;
@@ -27,4 +27,12 @@ export interface Customer {
   salesmanId: string;
   saleDate: string;
   commissionDistributed: boolean;
+}
+
+export interface CommissionSettings {
+  salesman: number;
+  teamOperationManager: number;
+  groupOperationManager: number;
+  headGroupManager: number;
+  regionalDirector: number;
 }

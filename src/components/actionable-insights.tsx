@@ -7,6 +7,9 @@ import { Lightbulb, LoaderCircle } from "lucide-react";
 import { getActionableInsights } from "@/app/actions";
 import { User, Customer } from "@/types";
 import { getDownlineIdsAndUsers } from "@/lib/hierarchy";
+import { getCommissionSettings } from "@/lib/firestore";
+import { useToast } from "@/hooks/use-toast";
+
 
 interface ActionableInsightsProps {
     user: User;
@@ -18,28 +21,41 @@ const ActionableInsights: React.FC<ActionableInsightsProps> = ({ user, allUsers,
     const [isPending, startTransition] = useTransition();
     const [insights, setInsights] = useState<string[]>([]);
     const [error, setError] = useState<string | null>(null);
+    const { toast } = useToast();
 
     const handleGenerateInsights = () => {
         startTransition(async () => {
             setError(null);
             setInsights([]);
 
-            const { users: downlineUsers } = getDownlineIdsAndUsers(user.id, allUsers);
-            const teamIncome = downlineUsers.reduce((acc, u) => acc + u.totalIncome, 0);
-            const commissionsDue = allCustomers.filter(c => !c.commissionDistributed).length * 400; // Assuming 400 is the manager part
-            
-            const recentTeamSalesActivities = `Team of ${downlineUsers.length} members generated LKR ${teamIncome}. Recent sales from team members have been steady. ${allCustomers.filter(c => !c.commissionDistributed).length} commissions are pending payout.`;
+            try {
+                const settings = await getCommissionSettings();
+                const totalCommissionPerSale = Object.values(settings).reduce((sum, val) => sum + val, 0);
 
-            const result = await getActionableInsights({
-                hierarchicalPosition: user.role,
-                commissionsDue: commissionsDue,
-                recentTeamSalesActivities: recentTeamSalesActivities,
-            });
+                const { users: downlineUsers } = getDownlineIdsAndUsers(user.id, allUsers);
+                const teamIncome = downlineUsers.reduce((acc, u) => acc + u.totalIncome, 0);
+                const commissionsDue = allCustomers.filter(c => !c.commissionDistributed).length * totalCommissionPerSale;
+                
+                const recentTeamSalesActivities = `Team of ${downlineUsers.length} members generated LKR ${teamIncome}. Recent sales from team members have been steady. ${allCustomers.filter(c => !c.commissionDistributed).length} commissions are pending payout, totaling LKR ${commissionsDue.toLocaleString()}.`;
 
-            if (result.success) {
-                setInsights(result.data.insights);
-            } else {
-                setError(result.error);
+                const result = await getActionableInsights({
+                    hierarchicalPosition: user.role,
+                    commissionsDue: commissionsDue,
+                    recentTeamSalesActivities: recentTeamSalesActivities,
+                });
+
+                if (result.success) {
+                    setInsights(result.data.insights);
+                } else {
+                    setError(result.error);
+                }
+            } catch (err: any) {
+                 toast({
+                    variant: "destructive",
+                    title: "Could not generate insights",
+                    description: "Failed to load commission settings for calculation.",
+                });
+                setError("Failed to load commission settings.");
             }
         });
     };

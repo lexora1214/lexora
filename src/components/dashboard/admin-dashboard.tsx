@@ -8,6 +8,7 @@ import { DollarSign, Users, Briefcase, Network as NetworkIcon, LoaderCircle } fr
 import UserManagementTable from "@/components/user-management-table";
 import NetworkView from "@/components/network-view";
 import ActionableInsights from "@/components/actionable-insights";
+import CommissionSettings from "@/components/commission-settings";
 import { getAllUsers, getAllCustomers } from "@/lib/firestore";
 
 interface AdminDashboardProps {
@@ -91,9 +92,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
             <Tabs defaultValue="user-management">
-                <TabsList>
+                <TabsList className="grid w-full grid-cols-3">
                     <TabsTrigger value="user-management">User Management</TabsTrigger>
                     <TabsTrigger value="network-view">Network View</TabsTrigger>
+                    <TabsTrigger value="commission-settings">Commission Settings</TabsTrigger>
                 </TabsList>
                 <TabsContent value="user-management">
                     <Card>
@@ -115,6 +117,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
                         <CardContent className="pl-2">
                             <NetworkView allUsers={users} />
                         </CardContent>
+                    </Card>
+                </TabsContent>
+                 <TabsContent value="commission-settings">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Commission Settings</CardTitle>
+                            <CardDescription>Adjust commission amounts for each role.</CardDescription>
+                        </CardHeader>
+                        <CommissionSettings />
                     </Card>
                 </TabsContent>
             </Tabs>

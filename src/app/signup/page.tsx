@@ -49,7 +49,7 @@ export default function SignupPage() {
       });
       return;
     }
-    if (role !== "Regional Director") {
+    if (role !== "Regional Director" && role !== "Admin") {
       if (!referralCode) {
         toast({
           variant: "destructive",
@@ -117,7 +117,7 @@ export default function SignupPage() {
                    <Select value={role} onValueChange={(value) => {
                        const newRole = value as Role;
                        setRole(newRole);
-                       if (newRole === 'Regional Director') {
+                       if (newRole === 'Regional Director' || newRole === 'Admin') {
                            setReferralCode('');
                        }
                    }}>
@@ -125,6 +125,7 @@ export default function SignupPage() {
                       <SelectValue placeholder="Select a role" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="Admin">Admin</SelectItem>
                       <SelectItem value="Regional Director">Regional Director</SelectItem>
                       <SelectItem value="Head Group Manager">Head Group Manager</SelectItem>
                       <SelectItem value="Group Operation Manager">Group Operation Manager</SelectItem>
@@ -141,8 +142,8 @@ export default function SignupPage() {
                       value={referralCode} 
                       onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
                       maxLength={6}
-                      disabled={role === 'Regional Director'}
-                      required={role !== 'Regional Director'}
+                      disabled={role === 'Regional Director' || role === 'Admin'}
+                      required={role !== 'Regional Director' && role !== 'Admin'}
                     />
                 </div>
                 <Button type="submit" className="w-full" disabled={isLoading}>
