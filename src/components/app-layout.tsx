@@ -5,18 +5,21 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Bell,
+  Briefcase,
   Building,
   DollarSign,
   LayoutDashboard,
+  Lightbulb,
+  LoaderCircle,
   LogOut,
   Menu,
   Network,
-  User as UserIcon,
+  Settings,
   Users,
-  Lightbulb,
 } from "lucide-react";
 import { signOut } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
+import { collection, onSnapshot } from "firebase/firestore";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -30,14 +33,22 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import type { User, Role } from "@/types";
+import type { User, Role, Customer } from "@/types";
+import { getDownlineIdsAndUsers } from "@/lib/hierarchy";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 import AdminDashboard from "@/components/dashboard/admin-dashboard";
 import ManagerDashboard from "@/components/dashboard/manager-dashboard";
 import SalesmanDashboard from "@/components/dashboard/salesman-dashboard";
+import UserManagementTable from "@/components/user-management-table";
+import CustomerManagementTable from "@/components/customer-management-table";
+import NetworkView from "@/components/network-view";
+import CommissionSettings from "@/components/commission-settings";
+import ActionableInsights from "@/components/actionable-insights";
+import TeamView from "@/components/team-view";
+import MyCustomersView from "./my-customers-view";
 
 type NavItem = {
-  href: string;
   icon: React.ElementType;
   label: string;
   roles: Role[];
@@ -48,45 +59,152 @@ const navItems: NavItem[] = [
   { href: "#", icon: Users, label: "My Customers", roles: ["Salesman"] },
   { href: "#", icon: Network, label: "Team Performance", roles: ["Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager"] },
   { href: "#", icon: Building, label: "User Management", roles: ["Admin"] },
+  { href: "#", icon: Briefcase, label: "Customer Management", roles: ["Admin"]},
+  { href: "#", icon: Network, label: "Network View", roles: ["Admin"] },
+  { href: "#", icon: Settings, label: "Commission Settings", roles: ["Admin"] },
   { href: "#", icon: Lightbulb, label: "Insights", roles: ["Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager"] },
 ];
 
-const SidebarNav = ({ user }: { user: User }) => (
+const SidebarNav = ({ user, activeView, setActiveView }: { user: User, activeView: string, setActiveView: (view: string) => void }) => (
   <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
     {navItems
       .filter(item => item.roles.includes(user.role))
-      .map((item, index) => (
-        <Link
-          key={index}
-          href={item.href}
+      .map((item) => (
+        <a
+          key={item.label}
+          href="#"
+          onClick={(e) => {
+            e.preventDefault();
+            setActiveView(item.label);
+          }}
           className={cn(
             "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
-            index === 0 && "bg-muted text-primary"
+            activeView === item.label && "bg-muted text-primary"
           )}
         >
           <item.icon className="h-4 w-4" />
           {item.label}
-        </Link>
+        </a>
       ))}
   </nav>
 );
 
 const AppLayout = ({ user }: { user: User }) => {
   const router = useRouter();
+  const [activeView, setActiveView] = React.useState("Dashboard");
+  const [allUsers, setAllUsers] = React.useState<User[]>([]);
+  const [allCustomers, setAllCustomers] = React.useState<Customer[]>([]);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const usersUnsub = onSnapshot(collection(db, "users"), (snapshot) => {
+      const usersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
+      setAllUsers(usersData);
+      if(loading) setLoading(false);
+    });
+
+    const customersUnsub = onSnapshot(collection(db, "customers"), (snapshot) => {
+      const customersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
+      setAllCustomers(customersData);
+    });
+
+    return () => {
+      usersUnsub();
+      customersUnsub();
+    };
+  }, [loading]);
+
 
   const handleLogout = async () => {
     await signOut(auth);
     router.push("/login");
   };
 
-  const renderDashboard = () => {
-    switch (user.role) {
-      case "Admin":
-        return <AdminDashboard user={user} />;
-      case "Salesman":
-        return <SalesmanDashboard user={user} />;
+  const renderContent = () => {
+    if (loading) {
+      return (
+        <div className="flex h-screen w-full items-center justify-center bg-background">
+          <LoaderCircle className="h-12 w-12 animate-spin text-primary" />
+        </div>
+      );
+    }
+    
+    switch (activeView) {
+      case "Dashboard":
+        switch (user.role) {
+          case "Admin":
+            return <AdminDashboard user={user} allUsers={allUsers} allCustomers={allCustomers} />;
+          case "Salesman":
+            return <SalesmanDashboard user={user} />;
+          default:
+            return <ManagerDashboard user={user} allUsers={allUsers} />;
+        }
+      case "My Customers":
+        return <MyCustomersView user={user} />;
+      case "Team Performance": {
+        const { users: downlineUsers } = getDownlineIdsAndUsers(user.id, allUsers);
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle>Team Details</CardTitle>
+              <CardDescription>Manage and view performance of your direct and indirect team members.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <TeamView downlineUsers={downlineUsers} allCustomers={allCustomers} />
+            </CardContent>
+          </Card>
+        );
+      }
+      case "User Management":
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle>Employees</CardTitle>
+              <CardDescription>Manage all employees and system users.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <UserManagementTable data={allUsers} />
+            </CardContent>
+          </Card>
+        );
+      case "Customer Management":
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle>Customers</CardTitle>
+              <CardDescription>View all registered customers in the system.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <CustomerManagementTable data={allCustomers} users={allUsers} />
+            </CardContent>
+          </Card>
+        );
+      case "Network View":
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle>Organizational Network</CardTitle>
+              <CardDescription>View the hierarchical structure of employees.</CardDescription>
+            </CardHeader>
+            <CardContent className="pl-2">
+              <NetworkView allUsers={allUsers} />
+            </CardContent>
+          </Card>
+        );
+      case "Commission Settings":
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle>Commission Settings</CardTitle>
+              <CardDescription>Adjust commission amounts for each role.</CardDescription>
+            </CardHeader>
+            <CommissionSettings />
+          </Card>
+        );
+      case "Insights":
+        return <ActionableInsights user={user} allUsers={allUsers} allCustomers={allCustomers} />;
       default:
-        return <ManagerDashboard user={user} />;
+        return <div>View not found</div>;
     }
   };
   
@@ -104,8 +222,8 @@ const AppLayout = ({ user }: { user: User }) => {
               <span className="sr-only">Toggle notifications</span>
             </Button>
           </div>
-          <div className="flex-1">
-            <SidebarNav user={user} />
+          <div className="flex-1 overflow-y-auto">
+            <SidebarNav user={user} activeView={activeView} setActiveView={setActiveView} />
           </div>
         </div>
       </div>
@@ -118,18 +236,18 @@ const AppLayout = ({ user }: { user: User }) => {
                 <span className="sr-only">Toggle navigation menu</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="flex flex-col">
-              <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
-                <Link href="/" className="flex items-center gap-2 font-headline font-semibold">
-                  <DollarSign className="h-6 w-6 text-primary" />
-                  <span className="">LexoraNet</span>
-                </Link>
-              </div>
-              <SidebarNav user={user} />
+            <SheetContent side="left" className="flex flex-col p-0">
+               <div className="flex h-14 items-center border-b px-4">
+                 <Link href="/" className="flex items-center gap-2 font-headline font-semibold">
+                   <DollarSign className="h-6 w-6 text-primary" />
+                   <span className="">LexoraNet</span>
+                 </Link>
+               </div>
+              <SidebarNav user={user} activeView={activeView} setActiveView={setActiveView} />
             </SheetContent>
           </Sheet>
           <div className="w-full flex-1">
-            <h1 className="font-headline text-xl">Dashboard</h1>
+            <h1 className="font-headline text-xl">{activeView}</h1>
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -154,8 +272,8 @@ const AppLayout = ({ user }: { user: User }) => {
             </DropdownMenuContent>
           </DropdownMenu>
         </header>
-        <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 bg-background">
-          {renderDashboard()}
+        <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 bg-background overflow-y-auto">
+          {renderContent()}
         </main>
       </div>
     </div>
