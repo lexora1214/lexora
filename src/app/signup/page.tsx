@@ -49,18 +49,28 @@ export default function SignupPage() {
       });
       return;
     }
-    if (role !== "Regional Director" && !referralCode) {
-      toast({
-        variant: "destructive",
-        title: "Sign Up Failed",
-        description: "A referral code is required for this role.",
-      });
-      return;
+    if (role !== "Regional Director") {
+      if (!referralCode) {
+        toast({
+          variant: "destructive",
+          title: "Sign Up Failed",
+          description: "A referral code is required for this role.",
+        });
+        return;
+      }
+      if (referralCode.length !== 6) {
+        toast({
+          variant: "destructive",
+          title: "Sign Up Failed",
+          description: "Referral code must be 6 characters long.",
+        });
+        return;
+      }
     }
     setIsLoading(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      await createUserProfile(userCredential.user, name, role, referralCode);
+      await createUserProfile(userCredential.user, name, role, referralCode.toUpperCase());
       toast({
         title: "Account Created",
         description: "You have been successfully signed up.",
@@ -127,9 +137,10 @@ export default function SignupPage() {
                     <Label htmlFor="referral-code">Referral Code</Label>
                     <Input 
                       id="referral-code" 
-                      placeholder="Referrer's ID (if applicable)" 
+                      placeholder="6-character code" 
                       value={referralCode} 
-                      onChange={(e) => setReferralCode(e.target.value)}
+                      onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                      maxLength={6}
                       disabled={role === 'Regional Director'}
                       required={role !== 'Regional Director'}
                     />

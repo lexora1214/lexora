@@ -3,28 +3,55 @@ import { db } from "./firebase";
 import { User, Role, Customer } from "@/types";
 import type { User as FirebaseUser } from 'firebase/auth';
 
-export async function createUserProfile(firebaseUser: FirebaseUser, name: string, role: Role, referralCode: string): Promise<User> {
+function generateReferralCode(): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let result = '';
+  for (let i = 0; i < 6; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
+
+export async function createUserProfile(firebaseUser: FirebaseUser, name: string, role: Role, referralCodeInput: string): Promise<User> {
   let referrerId: string | null = null;
 
   if (role !== "Regional Director") {
-    if (!referralCode) {
-      throw new Error("A referral code is required for this role.");
+    if (!referralCodeInput || referralCodeInput.length !== 6) {
+      throw new Error("A valid 6-character referral code is required for this role.");
     }
-    const referrerDocRef = doc(db, "users", referralCode);
-    const referrerDocSnap = await getDoc(referrerDocRef);
+    const usersRef = collection(db, "users");
+    // Note: Firestore queries are case-sensitive. We query for the uppercase code.
+    const q = query(usersRef, where("referralCode", "==", referralCodeInput));
+    const querySnapshot = await getDocs(q);
 
-    if (!referrerDocSnap.exists()) {
-      throw new Error("Invalid referrer ID. Please check the code and try again.");
+    if (querySnapshot.empty) {
+      throw new Error("Invalid referrer code. Please check the code and try again.");
     }
-    referrerId = referralCode;
+    
+    const referrerDoc = querySnapshot.docs[0];
+    referrerId = referrerDoc.id;
   }
+  
+  // Generate a unique referral code for the new user
+  let newReferralCode = '';
+  let isCodeUnique = false;
+  const usersCollection = collection(db, "users");
 
+  while (!isCodeUnique) {
+    newReferralCode = generateReferralCode();
+    const codeQuery = query(usersCollection, where("referralCode", "==", newReferralCode));
+    const codeSnapshot = await getDocs(codeQuery);
+    if (codeSnapshot.empty) {
+      isCodeUnique = true;
+    }
+  }
 
   const newUser: User = {
     id: firebaseUser.uid,
     name,
     email: firebaseUser.email!,
     role: role,
+    referralCode: newReferralCode,
     referrerId: referrerId,
     totalIncome: 0,
     avatar: `https://placehold.co/100x100.png`,

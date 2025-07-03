@@ -145,7 +145,7 @@ const AppLayout = ({ user }: { user: User }) => {
               <DropdownMenuLabel>{user.name}</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => alert("Settings clicked!")}>Settings</DropdownMenuItem>
-              {user.role !== 'Salesman' && <DropdownMenuItem>Your referral code: {user.id}</DropdownMenuItem>}
+              {user.role !== 'Salesman' && <DropdownMenuItem>Your referral code: {user.referralCode}</DropdownMenuItem>}
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout}>
                 <LogOut className="mr-2 h-4 w-4" />

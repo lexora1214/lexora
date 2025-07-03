@@ -12,6 +12,7 @@ export interface User {
   email: string;
   role: Role;
   referrerId: string | null;
+  referralCode: string;
   totalIncome: number;
   avatar: string;
   createdAt: string;
