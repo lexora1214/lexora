@@ -3,7 +3,7 @@
 import React from "react";
 import { User, Customer } from "@/types";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
-import { DollarSign, Users, Briefcase, ShieldCheck, LoaderCircle } from "lucide-react";
+import { DollarSign, Users, Briefcase, ShieldCheck, LoaderCircle, PiggyBank } from "lucide-react";
 import { getCommissionSettings } from "@/lib/firestore";
 import { Line, LineChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
@@ -16,6 +16,7 @@ interface AdminDashboardProps {
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCustomers }) => {
   const totalIncomeAllUsers = allUsers.reduce((acc, user) => acc + user.totalIncome, 0);
+  const adminTeamCommission = allCustomers.length * 400;
   const [chartData, setChartData] = React.useState<any[]>([]);
   const [loadingChart, setLoadingChart] = React.useState(true);
 
@@ -104,6 +105,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
           <CardContent>
             <div className="text-2xl font-bold">+{allCustomers.length}</div>
             <p className="text-xs text-muted-foreground">Customers registered</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Admin Team Commission</CardTitle>
+            <PiggyBank className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">LKR {adminTeamCommission.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">From all sales (LKR 400 per sale)</p>
           </CardContent>
         </Card>
         <Card>
