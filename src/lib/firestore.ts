@@ -103,7 +103,9 @@ export async function getCommissionSettings(): Promise<CommissionSettings> {
   const settingsDocRef = doc(db, "settings", "commissions");
   const settingsDocSnap = await getDoc(settingsDocRef);
   if (settingsDocSnap.exists()) {
-    return settingsDocSnap.data() as CommissionSettings;
+    const data = settingsDocSnap.data();
+    // Ensure all default fields are present by merging with defaults
+    return { ...DEFAULT_COMMISSIONS, ...data };
   }
   await setDoc(settingsDocRef, DEFAULT_COMMISSIONS);
   return DEFAULT_COMMISSIONS;
