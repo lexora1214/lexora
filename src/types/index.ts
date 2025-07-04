@@ -35,4 +35,5 @@ export interface CommissionSettings {
   groupOperationManager: number;
   headGroupManager: number;
   regionalDirector: number;
+  admin: number;
 }

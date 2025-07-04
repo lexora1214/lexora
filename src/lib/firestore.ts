@@ -96,6 +96,7 @@ const DEFAULT_COMMISSIONS: CommissionSettings = {
   groupOperationManager: 250,
   headGroupManager: 150,
   regionalDirector: 100,
+  admin: 400,
 };
 
 export async function getCommissionSettings(): Promise<CommissionSettings> {

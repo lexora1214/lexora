@@ -20,6 +20,7 @@ const formSchema = z.object({
   groupOperationManager: z.coerce.number().min(0, "Commission must be a positive number."),
   headGroupManager: z.coerce.number().min(0, "Commission must be a positive number."),
   regionalDirector: z.coerce.number().min(0, "Commission must be a positive number."),
+  admin: z.coerce.number().min(0, "Commission must be a positive number."),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -115,6 +116,11 @@ const CommissionSettingsForm: React.FC = () => {
                     <Label htmlFor="regionalDirector">Regional Director Commission</Label>
                     <Input id="regionalDirector" type="number" {...register("regionalDirector")} />
                     {errors.regionalDirector && <p className="text-xs text-destructive mt-1">{errors.regionalDirector.message}</p>}
+                </div>
+                <div className="grid gap-3">
+                    <Label htmlFor="admin">Admin Team Commission</Label>
+                    <Input id="admin" type="number" {...register("admin")} />
+                    {errors.admin && <p className="text-xs text-destructive mt-1">{errors.admin.message}</p>}
                 </div>
             </CardContent>
             <CardFooter className="border-t px-6 py-4">

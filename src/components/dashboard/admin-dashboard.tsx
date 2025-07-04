@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { User, Customer } from "@/types";
+import { User, Customer, CommissionSettings } from "@/types";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { DollarSign, Users, Briefcase, ShieldCheck, LoaderCircle, Landmark } from "lucide-react";
 import { getCommissionSettings } from "@/lib/firestore";
@@ -16,16 +16,21 @@ interface AdminDashboardProps {
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCustomers }) => {
   const totalIncomeAllUsers = allUsers.reduce((acc, user) => acc + user.totalIncome, 0);
-  const adminTeamCommission = allCustomers.length * 400;
   const [chartData, setChartData] = React.useState<any[]>([]);
   const [loadingChart, setLoadingChart] = React.useState(true);
+  const [commissionSettings, setCommissionSettings] = React.useState<CommissionSettings | null>(null);
 
   React.useEffect(() => {
     const processDataForChart = async () => {
       setLoadingChart(true);
       try {
         const settings = await getCommissionSettings();
-        const totalCommissionPerSale = Object.values(settings).reduce((sum, val) => sum + val, 0);
+        setCommissionSettings(settings);
+
+        // Exclude admin commission from per-sale calculation for the chart
+        const { admin, ...distributedCommissions } = settings;
+        const totalCommissionPerSale = Object.values(distributedCommissions).reduce((sum, val) => sum + val, 0);
+
 
         if (allCustomers.length === 0) {
           setChartData([]);
@@ -74,6 +79,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
     },
   };
 
+  const adminTeamCommission = commissionSettings ? allCustomers.length * commissionSettings.admin : 0;
+  const adminCommissionPerSale = commissionSettings ? commissionSettings.admin : '...';
+
   return (
     <div className="flex flex-col gap-4">
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -114,7 +122,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">LKR {adminTeamCommission.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">From all sales (LKR 400 per sale)</p>
+            <p className="text-xs text-muted-foreground">From all sales (LKR {adminCommissionPerSale.toLocaleString()} per sale)</p>
           </CardContent>
         </Card>
         <Card>
