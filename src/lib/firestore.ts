@@ -1,6 +1,6 @@
 import { doc, getDoc, setDoc, collection, getDocs, query, where, writeBatch, increment, updateDoc } from "firebase/firestore";
 import { db } from "./firebase";
-import { User, Role, Customer, CommissionSettings } from "@/types";
+import { User, Role, Customer, CommissionSettings, IncomeRecord } from "@/types";
 import type { User as FirebaseUser } from 'firebase/auth';
 
 function generateReferralCode(): string {
@@ -123,11 +123,12 @@ export async function createCustomer(customerData: Omit<Customer, 'id' | 'saleDa
     const settings = await getCommissionSettings();
     
     const newCustomerRef = doc(collection(db, "customers"));
+    const saleDate = new Date().toISOString();
     const newCustomer: Customer = {
         ...customerData,
         id: newCustomerRef.id,
         salesmanId: salesman.id,
-        saleDate: new Date().toISOString(),
+        saleDate: saleDate,
         commissionDistributed: true,
     };
     batch.set(newCustomerRef, newCustomer);
@@ -148,6 +149,20 @@ export async function createCustomer(customerData: Omit<Customer, 'id' | 'saleDa
         if (commission > 0) {
             const userRef = doc(db, "users", currentUser.id);
             batch.update(userRef, { totalIncome: increment(commission) });
+
+            const incomeRecordRef = doc(collection(db, "incomeRecords"));
+            const newIncomeRecord: IncomeRecord = {
+                id: incomeRecordRef.id,
+                userId: currentUser.id,
+                amount: commission,
+                customerId: newCustomer.id,
+                customerName: newCustomer.name,
+                saleDate: saleDate,
+                grantedForRole: currentUser.role,
+                salesmanId: salesman.id,
+                salesmanName: salesman.name,
+            };
+            batch.set(incomeRecordRef, newIncomeRecord);
         }
         
         if (currentUser.referrerId) {
@@ -163,4 +178,11 @@ export async function createCustomer(customerData: Omit<Customer, 'id' | 'saleDa
 export async function updateUser(userId: string, data: { name: string; role: Role }): Promise<void> {
   const userDocRef = doc(db, "users", userId);
   await updateDoc(userDocRef, data);
+}
+
+export async function getIncomeRecordsForUser(userId: string): Promise<IncomeRecord[]> {
+    const recordsCol = collection(db, "incomeRecords");
+    const q = query(recordsCol, where("userId", "==", userId));
+    const recordsSnap = await getDocs(q);
+    return recordsSnap.docs.map(doc => doc.data() as IncomeRecord).sort((a, b) => new Date(b.saleDate).getTime() - new Date(a.saleDate).getTime());
 }

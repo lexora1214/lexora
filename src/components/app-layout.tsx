@@ -16,6 +16,7 @@ import {
   Network,
   Settings,
   Users,
+  Wallet,
 } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
@@ -47,6 +48,7 @@ import CommissionSettings from "@/components/commission-settings";
 import ActionableInsights from "@/components/actionable-insights";
 import TeamView from "@/components/team-view";
 import MyCustomersView from "./my-customers-view";
+import IncomeRecordsView from "./income-records-view";
 
 type NavItem = {
   icon: React.ElementType;
@@ -56,6 +58,7 @@ type NavItem = {
 
 const navItems: NavItem[] = [
   { href: "#", icon: LayoutDashboard, label: "Dashboard", roles: ["Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Salesman"] },
+  { href: "#", icon: Wallet, label: "Income Records", roles: ["Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Salesman"] },
   { href: "#", icon: Users, label: "My Customers", roles: ["Salesman"] },
   { href: "#", icon: Network, label: "Team Performance", roles: ["Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager"] },
   { href: "#", icon: Building, label: "User Management", roles: ["Admin"] },
@@ -139,6 +142,8 @@ const AppLayout = ({ user }: { user: User }) => {
           default:
             return <ManagerDashboard user={user} allUsers={allUsers} />;
         }
+      case "Income Records":
+        return <IncomeRecordsView user={user} />;
       case "My Customers":
         return <MyCustomersView user={user} />;
       case "Team Performance": {

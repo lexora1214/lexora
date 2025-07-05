@@ -38,3 +38,15 @@ export interface CommissionSettings {
   regionalDirector: number;
   admin: number;
 }
+
+export interface IncomeRecord {
+  id: string;
+  userId: string;
+  amount: number;
+  customerId: string;
+  customerName: string;
+  saleDate: string;
+  grantedForRole: Role;
+  salesmanId: string;
+  salesmanName: string;
+}
