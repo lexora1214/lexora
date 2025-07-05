@@ -36,8 +36,9 @@ import {
 } from "@/components/ui/table";
 import { User } from "@/types";
 import { Badge } from "./ui/badge";
+import EditUserDialog from "./edit-user-dialog";
 
-export const columns: ColumnDef<User>[] = [
+export const getColumns = (onEdit: (user: User) => void): ColumnDef<User>[] => [
   {
     accessorKey: "name",
     header: ({ column }) => {
@@ -94,7 +95,7 @@ export const columns: ColumnDef<User>[] = [
               Copy user ID
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Edit user</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onEdit(user)}>Edit user</DropdownMenuItem>
             <DropdownMenuItem className="text-destructive focus:bg-destructive/80 focus:text-destructive-foreground">Delete user</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -111,6 +112,15 @@ export default function UserManagementTable({ data }: UserManagementTableProps) 
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
+  const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
+  const [selectedUser, setSelectedUser] = React.useState<User | null>(null);
+
+  const handleEditClick = (user: User) => {
+    setSelectedUser(user);
+    setIsEditDialogOpen(true);
+  };
+
+  const columns = React.useMemo(() => getColumns(handleEditClick), []);
 
   const table = useReactTable({
     data,
@@ -226,6 +236,14 @@ export default function UserManagementTable({ data }: UserManagementTableProps) 
           </Button>
         </div>
       </div>
+       <EditUserDialog
+        user={selectedUser}
+        isOpen={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+        onUserUpdate={() => {
+          // No action needed here, onSnapshot in AppLayout will handle the update
+        }}
+      />
     </div>
   );
 }

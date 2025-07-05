@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc, collection, getDocs, query, where, writeBatch, increment } from "firebase/firestore";
+import { doc, getDoc, setDoc, collection, getDocs, query, where, writeBatch, increment, updateDoc } from "firebase/firestore";
 import { db } from "./firebase";
 import { User, Role, Customer, CommissionSettings } from "@/types";
 import type { User as FirebaseUser } from 'firebase/auth';
@@ -158,4 +158,9 @@ export async function createCustomer(customerData: Omit<Customer, 'id' | 'saleDa
     }
 
     await batch.commit();
+}
+
+export async function updateUser(userId: string, data: { name: string; role: Role }): Promise<void> {
+  const userDocRef = doc(db, "users", userId);
+  await updateDoc(userDocRef, data);
 }

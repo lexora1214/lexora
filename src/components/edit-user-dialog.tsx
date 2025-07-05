@@ -1,0 +1,161 @@
+"use client";
+
+import React, { useEffect, useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Controller, useForm, SubmitHandler } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { useToast } from "@/hooks/use-toast";
+import { updateUser } from "@/lib/firestore";
+import { User, Role } from "@/types";
+import { LoaderCircle } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+
+const formSchema = z.object({
+  name: z.string().min(2, { message: "Name must be at least 2 characters." }),
+  role: z.enum(["Salesman", "Team Operation Manager", "Group Operation Manager", "Head Group Manager", "Regional Director", "Admin"]),
+});
+
+type FormValues = z.infer<typeof formSchema>;
+
+interface EditUserDialogProps {
+  user: User | null;
+  isOpen: boolean;
+  onOpenChange: (isOpen: boolean) => void;
+  onUserUpdate: () => void;
+}
+
+const EditUserDialog: React.FC<EditUserDialogProps> = ({
+  user,
+  isOpen,
+  onOpenChange,
+  onUserUpdate,
+}) => {
+  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    reset,
+    control,
+  } = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+  });
+
+  useEffect(() => {
+    if (user) {
+      reset({
+        name: user.name,
+        role: user.role,
+      });
+    }
+  }, [user, reset]);
+
+  const onSubmit: SubmitHandler<FormValues> = async (data) => {
+    if (!user) return;
+
+    setIsLoading(true);
+    try {
+      await updateUser(user.id, data);
+      toast({
+        title: "User Updated",
+        description: `${data.name}'s profile has been successfully updated.`,
+        variant: 'default',
+        className: 'bg-success text-success-foreground'
+      });
+      onUserUpdate();
+      onOpenChange(false);
+    } catch (error: any) {
+        toast({
+            variant: "destructive",
+            title: "Update Failed",
+            description: error.message,
+        });
+    } finally {
+        setIsLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[425px]">
+        <form onSubmit={handleSubmit(onSubmit)}>
+          <DialogHeader>
+            <DialogTitle>Edit User Profile</DialogTitle>
+            <DialogDescription>
+              Make changes to the user's profile. Click save when you're done.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="name" className="text-right">Name</Label>
+              <div className="col-span-3">
+                <Input id="name" {...register("name")} />
+                {errors.name && <p className="text-xs text-destructive mt-1">{errors.name.message}</p>}
+              </div>
+            </div>
+             <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="email" className="text-right">Email</Label>
+              <Input id="email" type="email" value={user?.email || ''} disabled className="col-span-3" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="role" className="text-right">Role</Label>
+                <div className="col-span-3">
+                    <Controller
+                        control={control}
+                        name="role"
+                        render={({ field }) => (
+                            <Select onValueChange={field.onChange} value={field.value}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select a role" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="Admin">Admin</SelectItem>
+                                    <SelectItem value="Regional Director">Regional Director</SelectItem>
+                                    <SelectItem value="Head Group Manager">Head Group Manager</SelectItem>
+                                    <SelectItem value="Group Operation Manager">Group Operation Manager</SelectItem>
+                                    <SelectItem value="Team Operation Manager">Team Operation Manager</SelectItem>
+                                    <SelectItem value="Salesman">Salesman</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        )}
+                    />
+                    {errors.role && <p className="text-xs text-destructive mt-1">{errors.role.message}</p>}
+                </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+                <Button type="button" variant="secondary">Cancel</Button>
+            </DialogClose>
+            <Button type="submit" disabled={isLoading}>
+                {isLoading && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
+                Save changes
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+export default EditUserDialog;
