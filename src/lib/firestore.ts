@@ -133,13 +133,14 @@ export async function createCustomer(customerData: Omit<Customer, 'id' | 'saleDa
     };
     batch.set(newCustomerRef, newCustomer);
 
+    // Hierarchical commissions
     const commissionAmounts: Record<Role, number> = {
         "Salesman": settings.salesman,
         "Team Operation Manager": settings.teamOperationManager,
         "Group Operation Manager": settings.groupOperationManager,
         "Head Group Manager": settings.headGroupManager,
         "Regional Director": settings.regionalDirector,
-        "Admin": 0,
+        "Admin": 0, // Admins don't get commission from the direct sales hierarchy
     };
 
     let currentUser: User | undefined = salesman;
@@ -169,6 +170,30 @@ export async function createCustomer(customerData: Omit<Customer, 'id' | 'saleDa
             currentUser = allUsers.find(u => u.id === currentUser!.referrerId);
         } else {
             currentUser = undefined;
+        }
+    }
+
+    // Admin team commission
+    const adminCommission = settings.admin;
+    if (adminCommission > 0) {
+        const adminUsers = allUsers.filter(u => u.role === 'Admin');
+        for (const adminUser of adminUsers) {
+            const userRef = doc(db, "users", adminUser.id);
+            batch.update(userRef, { totalIncome: increment(adminCommission) });
+
+            const incomeRecordRef = doc(collection(db, "incomeRecords"));
+            const newIncomeRecord: IncomeRecord = {
+                id: incomeRecordRef.id,
+                userId: adminUser.id,
+                amount: adminCommission,
+                customerId: newCustomer.id,
+                customerName: newCustomer.name,
+                saleDate: saleDate,
+                grantedForRole: 'Admin',
+                salesmanId: salesman.id,
+                salesmanName: salesman.name,
+            };
+            batch.set(incomeRecordRef, newIncomeRecord);
         }
     }
 
