@@ -5,14 +5,26 @@ import React, { useEffect, useState } from "react";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { getCommissionSettings, updateCommissionSettings } from "@/lib/firestore";
-import { Button } from "@/components/ui/button";
+import { getCommissionSettings, updateCommissionSettings, resetAllIncomes } from "@/lib/firestore";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { CardContent, CardFooter } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { LoaderCircle } from "lucide-react";
+import { LoaderCircle, AlertTriangle } from "lucide-react";
 import { CommissionSettings } from "@/types";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { cn } from "@/lib/utils";
 
 const formSchema = z.object({
   tokenPrice: z.coerce.number().min(0, "Price must be a positive number."),
@@ -30,6 +42,7 @@ const CommissionSettingsForm: React.FC = () => {
     const { toast } = useToast();
     const [isLoading, setIsLoading] = useState(false);
     const [isFetching, setIsFetching] = useState(true);
+    const [isResetting, setIsResetting] = useState(false);
 
     const {
         register,
@@ -82,6 +95,27 @@ const CommissionSettingsForm: React.FC = () => {
         }
     };
 
+    const handleReset = async () => {
+        setIsResetting(true);
+        try {
+            await resetAllIncomes();
+            toast({
+                title: "Income Records Cleared",
+                description: "All income history and user totals have been reset to zero.",
+                variant: 'default',
+                className: 'bg-success text-success-foreground'
+            });
+        } catch (error: any) {
+            toast({
+                variant: "destructive",
+                title: "Reset Failed",
+                description: "There was an error resetting the data. Please try again.",
+            });
+        } finally {
+            setIsResetting(false);
+        }
+    };
+
     if (isFetching) {
         return (
             <div className="flex items-center justify-center p-8">
@@ -129,11 +163,43 @@ const CommissionSettingsForm: React.FC = () => {
                     {errors.admin && <p className="text-xs text-destructive mt-1">{errors.admin.message}</p>}
                 </div>
             </CardContent>
-            <CardFooter className="border-t px-6 py-4">
+            <CardFooter className="border-t px-6 py-4 justify-between items-center">
                  <Button type="submit" disabled={isLoading}>
                     {isLoading && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
                     Save Changes
                 </Button>
+
+                <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button variant="destructive" type="button" disabled={isResetting}>
+                             {isResetting ? (
+                                <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                                <AlertTriangle className="mr-2 h-4 w-4" />
+                            )}
+                            Reset All Income
+                        </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                This action cannot be undone. This will permanently delete all income records and reset every user's total income to LKR 0.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                                disabled={isResetting}
+                                onClick={handleReset}
+                                className={cn(buttonVariants({ variant: "destructive" }))}
+                            >
+                                {isResetting && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
+                                Yes, reset data
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
             </CardFooter>
         </form>
     );

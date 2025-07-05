@@ -211,3 +211,23 @@ export async function getIncomeRecordsForUser(userId: string): Promise<IncomeRec
     const recordsSnap = await getDocs(q);
     return recordsSnap.docs.map(doc => doc.data() as IncomeRecord).sort((a, b) => new Date(b.saleDate).getTime() - new Date(a.saleDate).getTime());
 }
+
+export async function resetAllIncomes(): Promise<void> {
+  const batch = writeBatch(db);
+
+  // 1. Delete all income records
+  const incomeRecordsCol = collection(db, "incomeRecords");
+  const incomeRecordsSnap = await getDocs(incomeRecordsCol);
+  incomeRecordsSnap.docs.forEach(docSnapshot => {
+      batch.delete(docSnapshot.ref);
+  });
+
+  // 2. Reset totalIncome for all users
+  const usersCol = collection(db, "users");
+  const usersSnap = await getDocs(usersCol);
+  usersSnap.docs.forEach(userDoc => {
+      batch.update(userDoc.ref, { totalIncome: 0 });
+  });
+
+  await batch.commit();
+}
