@@ -91,6 +91,7 @@ export async function getAllCustomers(): Promise<Customer[]> {
 }
 
 const DEFAULT_COMMISSIONS: CommissionSettings = {
+  tokenPrice: 2000,
   salesman: 600,
   teamOperationManager: 400,
   groupOperationManager: 250,

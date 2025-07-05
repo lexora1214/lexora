@@ -15,7 +15,6 @@ interface AdminDashboardProps {
 }
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCustomers }) => {
-  const totalIncomeAllUsers = allUsers.reduce((acc, user) => acc + user.totalIncome, 0);
   const [chartData, setChartData] = React.useState<any[]>([]);
   const [loadingChart, setLoadingChart] = React.useState(true);
   const [commissionSettings, setCommissionSettings] = React.useState<CommissionSettings | null>(null);
@@ -28,7 +27,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
         setCommissionSettings(settings);
 
         // Exclude admin commission from per-sale calculation for the chart
-        const { admin, ...distributedCommissions } = settings;
+        const { admin, tokenPrice, ...distributedCommissions } = settings;
         const totalCommissionPerSale = Object.values(distributedCommissions).reduce((sum, val) => sum + val, 0);
 
 
@@ -79,6 +78,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
     },
   };
 
+  const totalRevenue = commissionSettings ? commissionSettings.tokenPrice * allCustomers.length : 0;
   const adminTeamCommission = commissionSettings ? allCustomers.length * commissionSettings.admin : 0;
   const adminCommissionPerSale = commissionSettings ? commissionSettings.admin : '...';
 
@@ -91,8 +91,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">LKR {totalIncomeAllUsers.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">Across all users</p>
+            <div className="text-2xl font-bold">LKR {totalRevenue.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">Based on {allCustomers.length} token sales</p>
           </CardContent>
         </Card>
         <Card>

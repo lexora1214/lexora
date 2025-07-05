@@ -15,6 +15,7 @@ import { LoaderCircle } from "lucide-react";
 import { CommissionSettings } from "@/types";
 
 const formSchema = z.object({
+  tokenPrice: z.coerce.number().min(0, "Price must be a positive number."),
   salesman: z.coerce.number().min(0, "Commission must be a positive number."),
   teamOperationManager: z.coerce.number().min(0, "Commission must be a positive number."),
   groupOperationManager: z.coerce.number().min(0, "Commission must be a positive number."),
@@ -92,6 +93,11 @@ const CommissionSettingsForm: React.FC = () => {
     return (
         <form onSubmit={handleSubmit(onSubmit)}>
             <CardContent className="grid gap-6 pt-6">
+                 <div className="grid gap-3">
+                    <Label htmlFor="tokenPrice">Token Price (LKR)</Label>
+                    <Input id="tokenPrice" type="number" {...register("tokenPrice")} />
+                    {errors.tokenPrice && <p className="text-xs text-destructive mt-1">{errors.tokenPrice.message}</p>}
+                </div>
                  <div className="grid gap-3">
                     <Label htmlFor="salesman">Salesman Commission</Label>
                     <Input id="salesman" type="number" {...register("salesman")} />

@@ -30,6 +30,7 @@ export interface Customer {
 }
 
 export interface CommissionSettings {
+  tokenPrice: number;
   salesman: number;
   teamOperationManager: number;
   groupOperationManager: number;
