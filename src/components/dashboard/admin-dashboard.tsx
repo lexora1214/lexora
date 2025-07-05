@@ -26,36 +26,31 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
         const settings = await getCommissionSettings();
         setCommissionSettings(settings);
 
-        // Exclude admin commission from per-sale calculation for the chart
-        const { admin, tokenPrice, ...distributedCommissions } = settings;
-        const totalCommissionPerSale = Object.values(distributedCommissions).reduce((sum, val) => sum + val, 0);
-
-
-        if (allCustomers.length === 0) {
+        if (!settings || allCustomers.length === 0) {
           setChartData([]);
           setLoadingChart(false);
           return;
         }
 
-        const salesByMonth = allCustomers.reduce((acc, customer) => {
+        const revenueByMonth = allCustomers.reduce((acc, customer) => {
           const saleDate = new Date(customer.saleDate);
           const month = saleDate.toISOString().slice(0, 7); // YYYY-MM
           if (!acc[month]) {
             acc[month] = 0;
           }
-          acc[month] += totalCommissionPerSale;
+          acc[month] += settings.tokenPrice;
           return acc;
         }, {} as Record<string, number>);
 
-        const sortedMonths = Object.keys(salesByMonth).sort();
+        const sortedMonths = Object.keys(revenueByMonth).sort();
 
-        let cumulativeIncome = 0;
+        let cumulativeRevenue = 0;
         const formattedChartData = sortedMonths.map(monthStr => {
-          cumulativeIncome += salesByMonth[monthStr];
+          cumulativeRevenue += revenueByMonth[monthStr];
           const date = new Date(monthStr + '-02T00:00:00Z'); // Use a specific day to avoid timezone issues
           return {
             month: date.toLocaleString('default', { month: 'short', year: '2-digit' }),
-            income: cumulativeIncome,
+            revenue: cumulativeRevenue,
           };
         });
 
@@ -72,8 +67,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
   }, [allCustomers]);
   
   const chartConfig = {
-    income: {
-      label: "Cumulative Income",
+    revenue: {
+      label: "Cumulative Revenue",
       color: "hsl(var(--primary))",
     },
   };
@@ -139,8 +134,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
       
       <Card>
         <CardHeader>
-          <CardTitle>Income Growth</CardTitle>
-          <CardDescription>Cumulative income generated from all sales over time.</CardDescription>
+          <CardTitle>Revenue Growth</CardTitle>
+          <CardDescription>Cumulative revenue generated from all token sales over time.</CardDescription>
         </CardHeader>
         <CardContent className="pl-2">
           {loadingChart ? (
@@ -172,7 +167,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
                     content={<ChartTooltipContent indicator="line" />}
                   />
                   <Line
-                    dataKey="income"
+                    dataKey="revenue"
                     type="monotone"
                     stroke="hsl(var(--primary))"
                     strokeWidth={2}
