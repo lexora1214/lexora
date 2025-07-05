@@ -60,17 +60,39 @@ const columns: ColumnDef<IncomeRecord>[] = [
         },
     },
     {
-        accessorKey: "customerName",
-        header: "From Customer",
+        accessorKey: 'sourceType',
+        header: 'Source',
+        cell: ({row}) => {
+            const sourceType = row.original.sourceType;
+            return <Badge variant={sourceType === 'product_sale' ? 'default' : 'secondary'}>{sourceType === 'product_sale' ? 'Product Sale' : 'Token Sale'}</Badge>
+        }
+    },
+    {
+        id: "details",
+        header: "Details",
+        cell: ({ row }) => {
+            const record = row.original;
+            if (record.sourceType === 'product_sale') {
+                return (
+                    <div>
+                        <p className="font-medium">{record.productName}</p>
+                        <p className="text-sm text-muted-foreground">
+                            LKR {record.productPrice?.toLocaleString()} ({record.paymentMethod}) for {record.customerName}
+                        </p>
+                    </div>
+                );
+            }
+            return (
+                 <div>
+                    <p className="font-medium">Token Sale</p>
+                    <p className="text-sm text-muted-foreground">For customer: {record.customerName}</p>
+                </div>
+            )
+        },
     },
     {
         accessorKey: "salesmanName",
-        header: "Sale By",
-    },
-    {
-        accessorKey: "grantedForRole",
-        header: "Reason (Your Role)",
-        cell: ({ row }) => <Badge variant="outline">{row.getValue("grantedForRole")}</Badge>,
+        header: "Original Sale By",
     },
 ];
 

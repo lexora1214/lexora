@@ -15,6 +15,7 @@ import {
   Menu,
   Network,
   Settings,
+  ShoppingCart,
   Users,
   Wallet,
 } from "lucide-react";
@@ -41,6 +42,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import AdminDashboard from "@/components/dashboard/admin-dashboard";
 import ManagerDashboard from "@/components/dashboard/manager-dashboard";
 import SalesmanDashboard from "@/components/dashboard/salesman-dashboard";
+import ShopManagerDashboard from "@/components/dashboard/shop-manager-dashboard";
 import UserManagementTable from "@/components/user-management-table";
 import CustomerManagementTable from "@/components/customer-management-table";
 import NetworkView from "@/components/network-view";
@@ -51,13 +53,15 @@ import MyCustomersView from "./my-customers-view";
 import IncomeRecordsView from "./income-records-view";
 
 type NavItem = {
+  href: string;
   icon: React.ElementType;
   label: string;
   roles: Role[];
 };
 
 const navItems: NavItem[] = [
-  { href: "#", icon: LayoutDashboard, label: "Dashboard", roles: ["Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Salesman"] },
+  { href: "#", icon: LayoutDashboard, label: "Dashboard", roles: ["Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Salesman", "Shop Manager"] },
+  { href: "#", icon: ShoppingCart, label: "Record Product Sale", roles: ["Shop Manager"] },
   { href: "#", icon: Wallet, label: "Income Records", roles: ["Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Salesman"] },
   { href: "#", icon: Users, label: "My Customers", roles: ["Salesman"] },
   { href: "#", icon: Network, label: "Team Performance", roles: ["Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager"] },
@@ -139,9 +143,13 @@ const AppLayout = ({ user }: { user: User }) => {
             return <AdminDashboard user={user} allUsers={allUsers} allCustomers={allCustomers} />;
           case "Salesman":
             return <SalesmanDashboard user={user} />;
+          case "Shop Manager":
+            return <ShopManagerDashboard user={user} onAddNewSale={() => setActiveView("Record Product Sale")} />;
           default:
             return <ManagerDashboard user={user} allUsers={allUsers} />;
         }
+      case "Record Product Sale":
+        return <ShopManagerDashboard user={user} onAddNewSale={() => setActiveView("Record Product Sale")} openDialogOnLoad />;
       case "Income Records":
         return <IncomeRecordsView user={user} />;
       case "My Customers":
@@ -268,7 +276,7 @@ const AppLayout = ({ user }: { user: User }) => {
               <DropdownMenuLabel>{user.name}</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => alert("Settings clicked!")}>Settings</DropdownMenuItem>
-              {user.role !== 'Salesman' && <DropdownMenuItem>Your referral code: {user.referralCode}</DropdownMenuItem>}
+              {user.role !== 'Salesman' && user.role !== 'Shop Manager' && <DropdownMenuItem>Your referral code: {user.referralCode}</DropdownMenuItem>}
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout}>
                 <LogOut className="mr-2 h-4 w-4" />

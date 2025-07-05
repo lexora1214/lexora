@@ -4,7 +4,8 @@ export type Role =
   | "Group Operation Manager"
   | "Head Group Manager"
   | "Regional Director"
-  | "Admin";
+  | "Admin"
+  | "Shop Manager";
 
 export interface User {
   id: string;
@@ -29,6 +30,20 @@ export interface Customer {
   commissionDistributed: boolean;
 }
 
+export interface ProductSale {
+  id: string;
+  productName: string;
+  productCode?: string;
+  price: number;
+  paymentMethod: 'cash' | 'installments';
+  customerId: string;
+  customerName: string;
+  tokenSerial: string;
+  saleDate: string;
+  shopManagerId: string;
+  shopManagerName: string;
+}
+
 export interface CommissionSettings {
   tokenPrice: number;
   salesman: number;
@@ -43,10 +58,16 @@ export interface IncomeRecord {
   id: string;
   userId: string;
   amount: number;
-  customerId: string;
-  customerName: string;
   saleDate: string;
   grantedForRole: Role;
-  salesmanId: string;
+  salesmanId: string; // The salesman who made the original token sale
   salesmanName: string;
+  // Source details
+  sourceType: 'token_sale' | 'product_sale';
+  customerId: string;
+  customerName: string;
+  // Optional product details
+  productName?: string;
+  productPrice?: number;
+  paymentMethod?: 'cash' | 'installments';
 }

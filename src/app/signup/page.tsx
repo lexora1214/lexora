@@ -30,6 +30,7 @@ export default function SignupPage() {
   const [role, setRole] = useState<Role | "">("");
   const [referralCode, setReferralCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const isReferralRequired = role && !['Regional Director', 'Admin', 'Shop Manager'].includes(role);
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,7 +50,7 @@ export default function SignupPage() {
       });
       return;
     }
-    if (role !== "Regional Director" && role !== "Admin") {
+    if (isReferralRequired) {
       if (!referralCode) {
         toast({
           variant: "destructive",
@@ -117,7 +118,7 @@ export default function SignupPage() {
                    <Select value={role} onValueChange={(value) => {
                        const newRole = value as Role;
                        setRole(newRole);
-                       if (newRole === 'Regional Director' || newRole === 'Admin') {
+                       if (['Regional Director', 'Admin', 'Shop Manager'].includes(newRole)) {
                            setReferralCode('');
                        }
                    }}>
@@ -126,6 +127,7 @@ export default function SignupPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Admin">Admin</SelectItem>
+                      <SelectItem value="Shop Manager">Shop Manager</SelectItem>
                       <SelectItem value="Regional Director">Regional Director</SelectItem>
                       <SelectItem value="Head Group Manager">Head Group Manager</SelectItem>
                       <SelectItem value="Group Operation Manager">Group Operation Manager</SelectItem>
@@ -134,7 +136,7 @@ export default function SignupPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="grid gap-2">
+                 <div className="grid gap-2">
                     <Label htmlFor="referral-code">Referral Code</Label>
                     <Input 
                       id="referral-code" 
@@ -142,8 +144,8 @@ export default function SignupPage() {
                       value={referralCode} 
                       onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
                       maxLength={6}
-                      disabled={role === 'Regional Director' || role === 'Admin'}
-                      required={role !== 'Regional Director' && role !== 'Admin'}
+                      disabled={!isReferralRequired}
+                      required={isReferralRequired}
                     />
                 </div>
                 <Button type="submit" className="w-full" disabled={isLoading}>
