@@ -75,7 +75,7 @@ const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ user, allUsers }) =
         <CardContent className="pl-2">
           <ChartContainer config={chartConfig} className="h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} accessibilityLayer>
+              <BarChart data={chartData} accessibilityLayer margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                 <XAxis
                   dataKey="name"
                   stroke="#888888"
