@@ -365,7 +365,7 @@ export async function createProductSaleAndDistributeCommissions(
 }
 
 
-export async function updateUser(userId: string, data: { name: string; role: Role; mobileNumber: string }): Promise<void> {
+export async function updateUser(userId: string, data: Partial<{ name: string; role: Role; mobileNumber: string }>): Promise<void> {
   const userDocRef = doc(db, "users", userId);
   await updateDoc(userDocRef, data);
 }

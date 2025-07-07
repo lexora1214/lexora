@@ -56,6 +56,7 @@ import IncomeRecordsView from "./income-records-view";
 import ProductCommissionSettings from "./product-commission-settings";
 import SignupRoleSettingsForm from "./signup-role-settings";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import ProfileSettingsDialog from "./profile-settings-dialog";
 
 type NavItem = {
   href: string;
@@ -162,6 +163,7 @@ const AppLayout = ({ user }: { user: User }) => {
   const [allIncomeRecords, setAllIncomeRecords] = React.useState<IncomeRecord[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [isMobileSheetOpen, setIsMobileSheetOpen] = React.useState(false);
+  const [isProfileSettingsOpen, setIsProfileSettingsOpen] = React.useState(false);
 
   React.useEffect(() => {
     const usersUnsub = onSnapshot(collection(db, "users"), (snapshot) => {
@@ -292,77 +294,87 @@ const AppLayout = ({ user }: { user: User }) => {
   };
   
   return (
-    <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
-      <div className="hidden border-r bg-card md:block">
-        <div className="flex h-full max-h-screen flex-col gap-2">
-          <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
-            <Link href="/" className="flex items-center gap-2 font-headline font-semibold">
-              <DollarSign className="h-6 w-6 text-primary" />
-              <span className="">LEXORA</span>
-            </Link>
-            <Button variant="outline" size="icon" className="ml-auto h-8 w-8">
-              <Bell className="h-4 w-4" />
-              <span className="sr-only">Toggle notifications</span>
-            </Button>
-          </div>
-          <div className="flex-1 overflow-y-auto">
-            <SidebarNav user={user} activeView={activeView} setActiveView={setActiveView} />
+    <>
+      <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
+        <div className="hidden border-r bg-card md:block">
+          <div className="flex h-full max-h-screen flex-col gap-2">
+            <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
+              <Link href="/" className="flex items-center gap-2 font-headline font-semibold">
+                <DollarSign className="h-6 w-6 text-primary" />
+                <span className="">LEXORA</span>
+              </Link>
+              <Button variant="outline" size="icon" className="ml-auto h-8 w-8">
+                <Bell className="h-4 w-4" />
+                <span className="sr-only">Toggle notifications</span>
+              </Button>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              <SidebarNav user={user} activeView={activeView} setActiveView={setActiveView} />
+            </div>
           </div>
         </div>
+        <div className="flex flex-col">
+          <header className="flex h-14 items-center gap-4 border-b bg-card px-4 lg:h-[60px] lg:px-6">
+            <Sheet open={isMobileSheetOpen} onOpenChange={setIsMobileSheetOpen}>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="icon" className="shrink-0 md:hidden">
+                  <Menu className="h-5 w-5" />
+                  <span className="sr-only">Toggle navigation menu</span>
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="flex flex-col p-0">
+                <div className="flex h-14 items-center border-b px-4">
+                  <Link href="/" className="flex items-center gap-2 font-headline font-semibold">
+                    <DollarSign className="h-6 w-6 text-primary" />
+                    <span className="">LEXORA</span>
+                  </Link>
+                </div>
+                <SidebarNav user={user} activeView={activeView} setActiveView={setActiveView} onLinkClick={() => setIsMobileSheetOpen(false)} />
+              </SheetContent>
+            </Sheet>
+            <div className="w-full flex-1">
+              <h1 className="font-headline text-xl">{activeView}</h1>
+            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="secondary" size="icon" className="rounded-full">
+                  <Avatar>
+                    <AvatarImage src={user.avatar} alt={user.name} data-ai-hint="profile avatar" />
+                    <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                  <span className="sr-only">Toggle user menu</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel className="font-normal">
+                  <p className="font-semibold">{user.name}</p>
+                  <p className="text-xs text-muted-foreground">{user.role}</p>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setIsProfileSettingsOpen(true)}>
+                  <Settings className="mr-2 h-4 w-4" />
+                  Profile Settings
+                </DropdownMenuItem>
+                {user.role !== 'Salesman' && user.role !== 'Shop Manager' && <DropdownMenuItem>Your referral code: {user.referralCode}</DropdownMenuItem>}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Logout
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </header>
+          <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 bg-background overflow-y-auto">
+            {renderContent()}
+          </main>
+        </div>
       </div>
-      <div className="flex flex-col">
-        <header className="flex h-14 items-center gap-4 border-b bg-card px-4 lg:h-[60px] lg:px-6">
-          <Sheet open={isMobileSheetOpen} onOpenChange={setIsMobileSheetOpen}>
-            <SheetTrigger asChild>
-              <Button variant="outline" size="icon" className="shrink-0 md:hidden">
-                <Menu className="h-5 w-5" />
-                <span className="sr-only">Toggle navigation menu</span>
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="flex flex-col p-0">
-               <div className="flex h-14 items-center border-b px-4">
-                 <Link href="/" className="flex items-center gap-2 font-headline font-semibold">
-                   <DollarSign className="h-6 w-6 text-primary" />
-                   <span className="">LEXORA</span>
-                 </Link>
-               </div>
-              <SidebarNav user={user} activeView={activeView} setActiveView={setActiveView} onLinkClick={() => setIsMobileSheetOpen(false)} />
-            </SheetContent>
-          </Sheet>
-          <div className="w-full flex-1">
-            <h1 className="font-headline text-xl">{activeView}</h1>
-          </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="secondary" size="icon" className="rounded-full">
-                <Avatar>
-                  <AvatarImage src={user.avatar} alt={user.name} data-ai-hint="profile avatar" />
-                  <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-                </Avatar>
-                <span className="sr-only">Toggle user menu</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel className="font-normal">
-                <p className="font-semibold">{user.name}</p>
-                <p className="text-xs text-muted-foreground">{user.role}</p>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => alert("Settings clicked!")}>Settings</DropdownMenuItem>
-              {user.role !== 'Salesman' && user.role !== 'Shop Manager' && <DropdownMenuItem>Your referral code: {user.referralCode}</DropdownMenuItem>}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleLogout}>
-                <LogOut className="mr-2 h-4 w-4" />
-                Logout
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </header>
-        <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 bg-background overflow-y-auto">
-          {renderContent()}
-        </main>
-      </div>
-    </div>
+      <ProfileSettingsDialog 
+        user={user} 
+        isOpen={isProfileSettingsOpen} 
+        onOpenChange={setIsProfileSettingsOpen} 
+      />
+    </>
   );
 };
 

@@ -3,8 +3,8 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { useAuthState } from "react-firebase-hooks/auth";
-import { auth } from "@/lib/firebase";
-import { getUser } from "@/lib/firestore";
+import { auth, db } from "@/lib/firebase";
+import { doc, onSnapshot } from "firebase/firestore";
 import AppLayout from "@/components/app-layout";
 import { User } from "@/types";
 import { LoaderCircle } from "lucide-react";
@@ -24,21 +24,25 @@ export default function Home() {
       return;
     }
 
-    const fetchUser = async () => {
-      setLoadingUser(true);
-      const userProfile = await getUser(firebaseUser.uid);
-      if (userProfile) {
-        setAppUser(userProfile);
+    setLoadingUser(true);
+    const userDocRef = doc(db, "users", firebaseUser.uid);
+
+    const unsubscribe = onSnapshot(userDocRef, (docSnap) => {
+      if (docSnap.exists()) {
+        setAppUser({ id: docSnap.id, ...docSnap.data() } as User);
       } else {
-        // This case might happen if the Firestore doc isn't created yet
-        // or if there's an issue. For now, we'll treat it as an error.
         console.error("Could not find user profile in Firestore.");
         router.replace("/login");
       }
       setLoadingUser(false);
-    };
+    }, (error) => {
+      console.error("Error fetching user profile:", error);
+      router.replace("/login");
+      setLoadingUser(false);
+    });
 
-    fetchUser();
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
   }, [firebaseUser, loadingAuth, router]);
 
   if (loadingAuth || loadingUser || !appUser) {
