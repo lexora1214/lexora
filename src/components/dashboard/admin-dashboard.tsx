@@ -1,12 +1,21 @@
+
 "use client";
 
 import React from "react";
-import { User, Customer, CommissionSettings } from "@/types";
+import { User, Customer, CommissionSettings, IncomeRecord } from "@/types";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
-import { DollarSign, Users, Briefcase, ShieldCheck, LoaderCircle, Landmark } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { DollarSign, Users, Briefcase, ShieldCheck, LoaderCircle, Landmark, Calendar as CalendarIcon } from "lucide-react";
 import { getCommissionSettings } from "@/lib/firestore";
 import { Line, LineChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { DateRange } from "react-day-picker";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
+
 import {
     Dialog,
     DialogContent,
@@ -14,21 +23,46 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import { useIsMobile } from "@/hooks/use-mobile";
 
 interface AdminDashboardProps {
   user: User;
   allUsers: User[];
   allCustomers: Customer[];
+  allIncomeRecords: IncomeRecord[];
   setActiveView: (view: string) => void;
 }
 
-const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCustomers, setActiveView }) => {
+const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCustomers, allIncomeRecords, setActiveView }) => {
   const isMobile = useIsMobile();
   const [chartData, setChartData] = React.useState<any[]>([]);
   const [loadingChart, setLoadingChart] = React.useState(true);
   const [commissionSettings, setCommissionSettings] = React.useState<CommissionSettings | null>(null);
   const [isBreakdownOpen, setIsBreakdownOpen] = React.useState(false);
+  const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
+
+  const filteredData = React.useMemo(() => {
+    if (!dateRange || !dateRange.from) {
+        return { filteredCustomers: allCustomers, filteredIncomeRecords: allIncomeRecords };
+    }
+    const from = dateRange.from;
+    const to = dateRange.to ? new Date(dateRange.to) : new Date(from);
+    to.setHours(23, 59, 59, 999);
+
+    const filteredCustomers = allCustomers.filter(customer => {
+        const saleDate = new Date(customer.saleDate);
+        return saleDate >= from && saleDate <= to;
+    });
+
+    const filteredIncomeRecords = allIncomeRecords.filter(record => {
+        const saleDate = new Date(record.saleDate);
+        return saleDate >= from && saleDate <= to;
+    });
+
+    return { filteredCustomers, filteredIncomeRecords };
+  }, [allCustomers, allIncomeRecords, dateRange]);
+
+  const { filteredCustomers, filteredIncomeRecords } = filteredData;
+
 
   React.useEffect(() => {
     const processDataForChart = async () => {
@@ -37,13 +71,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
         const settings = await getCommissionSettings();
         setCommissionSettings(settings);
 
-        if (!settings || allCustomers.length === 0) {
+        if (!settings || filteredCustomers.length === 0) {
           setChartData([]);
           setLoadingChart(false);
           return;
         }
 
-        const revenueByMonth = allCustomers.reduce((acc, customer) => {
+        const revenueByMonth = filteredCustomers.reduce((acc, customer) => {
           const saleDate = new Date(customer.saleDate);
           const month = saleDate.toISOString().slice(0, 7); // YYYY-MM
           if (!acc[month]) {
@@ -58,7 +92,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
         let cumulativeRevenue = 0;
         const formattedChartData = sortedMonths.map(monthStr => {
           cumulativeRevenue += revenueByMonth[monthStr];
-          const date = new Date(monthStr + '-02T00:00:00Z'); // Use a specific day to avoid timezone issues
+          const date = new Date(monthStr + '-02T00:00:00Z');
           return {
             month: date.toLocaleString('default', { month: 'short', year: '2-digit' }),
             revenue: cumulativeRevenue,
@@ -75,7 +109,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
     };
 
     processDataForChart();
-  }, [allCustomers]);
+  }, [filteredCustomers]);
   
   const chartConfig = {
     revenue: {
@@ -84,15 +118,63 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
     },
   };
 
-  const totalRevenue = commissionSettings ? commissionSettings.tokenPrice * allCustomers.length : 0;
-  const adminTeamTokenCommission = commissionSettings ? allCustomers.length * commissionSettings.admin : 0;
-  const adminTeamTotalIncome = allUsers
-    .filter(u => u.role === 'Admin')
-    .reduce((acc, u) => acc + u.totalIncome, 0);
+  const totalRevenue = commissionSettings ? commissionSettings.tokenPrice * filteredCustomers.length : 0;
+  
+  const adminUserIds = allUsers.filter(u => u.role === 'Admin').map(u => u.id);
+  const adminTeamTotalIncome = filteredIncomeRecords
+    .filter(r => adminUserIds.includes(r.userId))
+    .reduce((acc, r) => acc + r.amount, 0);
+
+  const adminTeamTokenCommission = filteredIncomeRecords
+    .filter(r => adminUserIds.includes(r.userId) && r.sourceType === 'token_sale')
+    .reduce((acc, r) => acc + r.amount, 0);
+  
   const adminTeamProductCommission = adminTeamTotalIncome - adminTeamTokenCommission;
 
   return (
     <div className="flex flex-col gap-4">
+      <div className="flex justify-end">
+        <Popover>
+            <PopoverTrigger asChild>
+            <Button
+                id="date"
+                variant={"outline"}
+                className={cn(
+                "w-full justify-start text-left font-normal md:w-[300px]",
+                !dateRange && "text-muted-foreground"
+                )}
+            >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {dateRange?.from ? (
+                dateRange.to ? (
+                    <>
+                    {format(dateRange.from, "LLL dd, y")} -{" "}
+                    {format(dateRange.to, "LLL dd, y")}
+                    </>
+                ) : (
+                    format(dateRange.from, "LLL dd, y")
+                )
+                ) : (
+                <span>Filter by date (All time)</span>
+                )}
+            </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+            <Calendar
+                initialFocus
+                mode="range"
+                defaultMonth={dateRange?.from}
+                selected={dateRange}
+                onSelect={setDateRange}
+                numberOfMonths={2}
+            />
+            <div className="p-2 border-t">
+                <Button variant="ghost" className="w-full justify-center" onClick={() => setDateRange(undefined)}>Clear</Button>
+            </div>
+            </PopoverContent>
+        </Popover>
+      </div>
+
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -101,7 +183,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">LKR {totalRevenue.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">Based on {allCustomers.length} token sales</p>
+            <p className="text-xs text-muted-foreground">Based on {filteredCustomers.length} token sales</p>
           </CardContent>
         </Card>
         <Card onClick={() => setIsBreakdownOpen(true)} className="cursor-pointer hover:bg-muted/50 transition-colors">
@@ -121,7 +203,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{allUsers.length}</div>
-            <p className="text-xs text-muted-foreground">Employees in the system</p>
+            <p className="text-xs text-muted-foreground">Employees in the system (all time)</p>
           </CardContent>
         </Card>
         <Card>
@@ -130,7 +212,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
             <Briefcase className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">+{allCustomers.length}</div>
+            <div className="text-2xl font-bold">+{filteredCustomers.length}</div>
             <p className="text-xs text-muted-foreground">Customers registered</p>
           </CardContent>
         </Card>
@@ -193,7 +275,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
             </ChartContainer>
           ) : (
             <div className="flex h-[350px] items-center justify-center">
-              <p className="text-muted-foreground">No sales data available to display the chart.</p>
+              <p className="text-muted-foreground">No sales data available for the selected period.</p>
             </div>
           )}
         </CardContent>
@@ -204,7 +286,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
           <DialogHeader>
             <DialogTitle>Admin Team Income Breakdown</DialogTitle>
             <DialogDescription>
-              This is the total commission earned by all administrators.
+              This is the total commission earned by all administrators in the selected period.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">

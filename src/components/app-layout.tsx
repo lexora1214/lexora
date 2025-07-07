@@ -37,7 +37,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import type { User, Role, Customer } from "@/types";
+import type { User, Role, Customer, IncomeRecord } from "@/types";
 import { getDownlineIdsAndUsers } from "@/lib/hierarchy";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -159,6 +159,7 @@ const AppLayout = ({ user }: { user: User }) => {
   const [activeView, setActiveView] = React.useState("Dashboard");
   const [allUsers, setAllUsers] = React.useState<User[]>([]);
   const [allCustomers, setAllCustomers] = React.useState<Customer[]>([]);
+  const [allIncomeRecords, setAllIncomeRecords] = React.useState<IncomeRecord[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [isMobileSheetOpen, setIsMobileSheetOpen] = React.useState(false);
 
@@ -174,9 +175,15 @@ const AppLayout = ({ user }: { user: User }) => {
       setAllCustomers(customersData);
     });
 
+    const incomeRecordsUnsub = onSnapshot(collection(db, "incomeRecords"), (snapshot) => {
+        const incomeRecordsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as IncomeRecord));
+        setAllIncomeRecords(incomeRecordsData);
+    });
+
     return () => {
       usersUnsub();
       customersUnsub();
+      incomeRecordsUnsub();
     };
   }, []);
 
@@ -199,13 +206,13 @@ const AppLayout = ({ user }: { user: User }) => {
       case "Dashboard":
         switch (user.role) {
           case "Admin":
-            return <AdminDashboard user={user} allUsers={allUsers} allCustomers={allCustomers} setActiveView={setActiveView} />;
+            return <AdminDashboard user={user} allUsers={allUsers} allCustomers={allCustomers} allIncomeRecords={allIncomeRecords} setActiveView={setActiveView} />;
           case "Salesman":
-            return <SalesmanDashboard user={user} />;
+            return <SalesmanDashboard user={user} allCustomers={allCustomers} allIncomeRecords={allIncomeRecords} />;
           case "Shop Manager":
             return <ShopManagerDashboard user={user} onAddNewSale={() => setActiveView("Record Product Sale")} />;
           default:
-            return <ManagerDashboard user={user} allUsers={allUsers} />;
+            return <ManagerDashboard user={user} allUsers={allUsers} allIncomeRecords={allIncomeRecords} />;
         }
       case "Record Product Sale":
         return <ShopManagerDashboard user={user} onAddNewSale={() => setActiveView("Record Product Sale")} openDialogOnLoad />;
