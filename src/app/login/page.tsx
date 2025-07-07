@@ -43,7 +43,7 @@ export default function LoginPage() {
             <div className="mb-4 flex justify-center">
               <DollarSign className="h-12 w-12 text-primary" />
             </div>
-            <CardTitle className="text-3xl">LexoraNet</CardTitle>
+            <CardTitle className="text-3xl">LEXORA</CardTitle>
             <CardDescription>Welcome back! Please sign in to your account.</CardDescription>
         </CardHeader>
         <CardContent>

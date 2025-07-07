@@ -3,7 +3,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 
 export const metadata: Metadata = {
-  title: 'LexoraNet',
+  title: 'LEXORA',
   description: 'Commission Management and Customer Tracking System for LEXORA',
 };
 

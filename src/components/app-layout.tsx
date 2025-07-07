@@ -298,7 +298,7 @@ const AppLayout = ({ user }: { user: User }) => {
           <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
             <Link href="/" className="flex items-center gap-2 font-headline font-semibold">
               <DollarSign className="h-6 w-6 text-primary" />
-              <span className="">LexoraNet</span>
+              <span className="">LEXORA</span>
             </Link>
             <Button variant="outline" size="icon" className="ml-auto h-8 w-8">
               <Bell className="h-4 w-4" />
@@ -323,7 +323,7 @@ const AppLayout = ({ user }: { user: User }) => {
                <div className="flex h-14 items-center border-b px-4">
                  <Link href="/" className="flex items-center gap-2 font-headline font-semibold">
                    <DollarSign className="h-6 w-6 text-primary" />
-                   <span className="">LexoraNet</span>
+                   <span className="">LEXORA</span>
                  </Link>
                </div>
               <SidebarNav user={user} activeView={activeView} setActiveView={setActiveView} onLinkClick={() => setIsMobileSheetOpen(false)} />
