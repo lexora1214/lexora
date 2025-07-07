@@ -1,12 +1,11 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { User, ProductSale, Customer } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ShoppingCart, LoaderCircle } from "lucide-react";
 import ProductSaleDialog from "../product-sale-dialog";
-import { getAllCustomers } from "@/lib/firestore";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import {
@@ -31,31 +30,32 @@ const ShopManagerDashboard: React.FC<ShopManagerDashboardProps> = ({ user, onAdd
   const [sales, setSales] = useState<ProductSale[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchInitialData = useCallback(async () => {
-    try {
-      const customerData = await getAllCustomers();
-      setCustomers(customerData);
-    } catch (error) {
-      console.error("Failed to fetch customers:", error);
-    }
-  }, []);
-
   useEffect(() => {
-    fetchInitialData();
-    
-    const q = query(collection(db, "productSales"), where("shopManagerId", "==", user.id));
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+    // Listener for all customers to get real-time token availability
+    const customersUnsub = onSnapshot(collection(db, "customers"), (snapshot) => {
+      const customersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
+      setCustomers(customersData);
+    }, (error) => {
+        console.error("Failed to fetch customers:", error);
+    });
+
+    // Listener for sales recorded by this shop manager
+    const salesQuery = query(collection(db, "productSales"), where("shopManagerId", "==", user.id));
+    const salesUnsub = onSnapshot(salesQuery, (querySnapshot) => {
       const salesData = querySnapshot.docs.map(doc => doc.data() as ProductSale)
         .sort((a,b) => new Date(b.saleDate).getTime() - new Date(a.saleDate).getTime());
       setSales(salesData);
       setLoading(false);
     });
 
-    return () => unsubscribe();
-  }, [user.id, fetchInitialData]);
+    return () => {
+      customersUnsub();
+      salesUnsub();
+    };
+  }, [user.id]);
 
   const handleSuccess = () => {
-    // The onSnapshot will automatically update the sales list
+    // The onSnapshot listeners will automatically update the sales list and customer data
   };
 
   return (
