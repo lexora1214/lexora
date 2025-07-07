@@ -16,6 +16,7 @@ import {
   Network,
   Settings,
   ShoppingCart,
+  SlidersHorizontal,
   Users,
   Wallet,
 } from "lucide-react";
@@ -52,6 +53,7 @@ import TeamView from "@/components/team-view";
 import MyCustomersView from "./my-customers-view";
 import IncomeRecordsView from "./income-records-view";
 import ProductCommissionSettings from "./product-commission-settings";
+import SignupRoleSettingsForm from "./signup-role-settings";
 
 type NavItem = {
   href: string;
@@ -71,6 +73,7 @@ const navItems: NavItem[] = [
   { href: "#", icon: Network, label: "Network View", roles: ["Admin"] },
   { href: "#", icon: Settings, label: "Token Commissions", roles: ["Admin"] },
   { href: "#", icon: Settings, label: "Product Commissions", roles: ["Admin"] },
+  { href: "#", icon: SlidersHorizontal, label: "Signup Roles", roles: ["Admin"] },
   { href: "#", icon: Lightbulb, label: "Insights", roles: ["Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager"] },
 ];
 
@@ -218,6 +221,8 @@ const AppLayout = ({ user }: { user: User }) => {
         );
       case "Product Commissions":
         return <ProductCommissionSettings />;
+      case "Signup Roles":
+        return <SignupRoleSettingsForm />;
       case "Insights":
         return <ActionableInsights user={user} allUsers={allUsers} allCustomers={allCustomers} />;
       default:

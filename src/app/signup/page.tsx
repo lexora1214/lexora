@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { createUserProfile } from "@/lib/firestore";
+import { createUserProfile, getSignupRoleSettings } from "@/lib/firestore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -21,6 +21,8 @@ import {
 } from "@/components/ui/select";
 import { Role } from "@/types";
 
+const ALL_ROLES: Role[] = ["Admin", "Shop Manager", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Salesman"];
+
 export default function SignupPage() {
   const router = useRouter();
   const { toast } = useToast();
@@ -28,9 +30,30 @@ export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<Role | "">("");
+  const [visibleRoles, setVisibleRoles] = useState<Record<string, boolean> | null>(null);
+  const [loadingRoles, setLoadingRoles] = useState(true);
   const [referralCode, setReferralCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const isReferralRequired = role && !['Regional Director', 'Admin', 'Shop Manager'].includes(role);
+
+  useEffect(() => {
+    const fetchRoles = async () => {
+      setLoadingRoles(true);
+      try {
+        const settings = await getSignupRoleSettings();
+        setVisibleRoles(settings.visibleRoles);
+      } catch (error) {
+        console.error("Failed to fetch role settings:", error);
+        const fallbackRoles: Record<string, boolean> = {};
+        ALL_ROLES.forEach(r => fallbackRoles[r] = true);
+        setVisibleRoles(fallbackRoles);
+      } finally {
+        setLoadingRoles(false);
+      }
+    };
+    fetchRoles();
+  }, []);
+
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -126,13 +149,13 @@ export default function SignupPage() {
                       <SelectValue placeholder="Select a role" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Admin">Admin</SelectItem>
-                      <SelectItem value="Shop Manager">Shop Manager</SelectItem>
-                      <SelectItem value="Regional Director">Regional Director</SelectItem>
-                      <SelectItem value="Head Group Manager">Head Group Manager</SelectItem>
-                      <SelectItem value="Group Operation Manager">Group Operation Manager</SelectItem>
-                      <SelectItem value="Team Operation Manager">Team Operation Manager</SelectItem>
-                      <SelectItem value="Salesman">Salesman</SelectItem>
+                      {loadingRoles ? (
+                        <div className="flex items-center justify-center p-2"><LoaderCircle className="h-4 w-4 animate-spin" /></div>
+                      ) : (
+                        ALL_ROLES.map(r => (
+                          visibleRoles?.[r] && <SelectItem key={r} value={r}>{r}</SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                 </div>

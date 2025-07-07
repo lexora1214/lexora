@@ -94,3 +94,9 @@ export interface ProductCommissionTier {
 export interface ProductCommissionSettings {
   tiers: ProductCommissionTier[];
 }
+
+export interface SignupRoleSettings {
+  visibleRoles: {
+    [key in Role]?: boolean;
+  };
+}

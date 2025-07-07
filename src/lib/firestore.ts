@@ -1,6 +1,6 @@
 import { doc, getDoc, setDoc, collection, getDocs, query, where, writeBatch, increment, updateDoc } from "firebase/firestore";
 import { db } from "./firebase";
-import { User, Role, Customer, CommissionSettings, IncomeRecord, ProductSale, ProductCommissionSettings } from "@/types";
+import { User, Role, Customer, CommissionSettings, IncomeRecord, ProductSale, ProductCommissionSettings, SignupRoleSettings } from "@/types";
 import type { User as FirebaseUser } from 'firebase/auth';
 
 function generateReferralCode(): string {
@@ -384,4 +384,40 @@ export async function resetAllIncomes(): Promise<void> {
   });
 
   await batch.commit();
+}
+
+// --- Signup Role Settings ---
+
+const DEFAULT_SIGNUP_ROLE_SETTINGS: SignupRoleSettings = {
+  visibleRoles: {
+    "Admin": true,
+    "Shop Manager": true,
+    "Regional Director": true,
+    "Head Group Manager": true,
+    "Group Operation Manager": true,
+    "Team Operation Manager": true,
+    "Salesman": true,
+  }
+};
+
+export async function getSignupRoleSettings(): Promise<SignupRoleSettings> {
+  const settingsDocRef = doc(db, "settings", "signupRoles");
+  const settingsDocSnap = await getDoc(settingsDocRef);
+  if (settingsDocSnap.exists()) {
+    const savedSettings = settingsDocSnap.data() as SignupRoleSettings;
+    // Merge with defaults to ensure all roles are present, even if added later
+    return {
+        visibleRoles: {
+            ...DEFAULT_SIGNUP_ROLE_SETTINGS.visibleRoles,
+            ...savedSettings.visibleRoles
+        }
+    };
+  }
+  await setDoc(settingsDocRef, DEFAULT_SIGNUP_ROLE_SETTINGS);
+  return DEFAULT_SIGNUP_ROLE_SETTINGS;
+}
+
+export async function updateSignupRoleSettings(data: SignupRoleSettings): Promise<void> {
+  const settingsDocRef = doc(db, "settings", "signupRoles");
+  await setDoc(settingsDocRef, data);
 }
