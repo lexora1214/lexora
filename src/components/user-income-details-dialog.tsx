@@ -1,12 +1,15 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import jsPDF from "jspdf";
+import "jspdf-autotable";
 import { User, IncomeRecord } from "@/types";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { LoaderCircle } from "lucide-react";
+import { LoaderCircle, FileDown } from "lucide-react";
 import { getIncomeRecordsForUser } from "@/lib/firestore";
 import { Badge } from "./ui/badge";
+import { Button } from "./ui/button";
 
 interface UserIncomeDetailsDialogProps {
   user: User | null;
@@ -35,6 +38,59 @@ const UserIncomeDetailsDialog: React.FC<UserIncomeDetailsDialogProps> = ({ user,
       fetchRecords();
     }
   }, [isOpen, user]);
+
+  const handleGeneratePdf = () => {
+    if (!user || records.length === 0) return;
+
+    const doc = new jsPDF();
+    const tableRows: any[] = [];
+    const tableColumns = ["Date", "Source", "Details", "Amount (LKR)"];
+
+    records.forEach(record => {
+      let detailText = "";
+      if (record.sourceType === 'product_sale') {
+          detailText = `${record.productName || 'Product'} for ${record.customerName}. Sale by: ${record.shopManagerName || 'N/A'}`;
+      } else {
+          detailText = `Token Sale for ${record.customerName}. Sale by: ${record.salesmanName || 'N/A'}`;
+      }
+
+      const recordData = [
+        new Date(record.saleDate).toLocaleDateString(),
+        record.sourceType === 'product_sale' ? 'Product' : 'Token',
+        detailText,
+        record.amount.toLocaleString(),
+      ];
+      tableRows.push(recordData);
+    });
+
+    doc.setFontSize(18);
+    doc.setFont("helvetica", "bold");
+    doc.text(`Income Report for ${user.name}`, 14, 22);
+
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 30);
+
+    (doc as any).autoTable({
+      head: [tableColumns],
+      body: tableRows,
+      startY: 40,
+      styles: {
+        cellPadding: 2,
+        fontSize: 8,
+      },
+      headStyles: {
+        fillColor: [34, 139, 34], // Forest Green
+        fontSize: 9,
+      },
+      columnStyles: {
+        3: { halign: 'right' },
+      }
+    });
+
+    doc.save(`income_report_${user.name.replace(/\s+/g, '_')}.pdf`);
+  };
+
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -88,6 +144,12 @@ const UserIncomeDetailsDialog: React.FC<UserIncomeDetailsDialogProps> = ({ user,
             </div>
           )}
         </div>
+        <DialogFooter>
+          <Button onClick={handleGeneratePdf} disabled={loading || records.length === 0}>
+            <FileDown className="mr-2 h-4 w-4" />
+            Download PDF
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
