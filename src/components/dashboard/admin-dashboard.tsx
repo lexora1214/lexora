@@ -12,9 +12,10 @@ interface AdminDashboardProps {
   user: User;
   allUsers: User[];
   allCustomers: Customer[];
+  setActiveView: (view: string) => void;
 }
 
-const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCustomers }) => {
+const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCustomers, setActiveView }) => {
   const [chartData, setChartData] = React.useState<any[]>([]);
   const [loadingChart, setLoadingChart] = React.useState(true);
   const [commissionSettings, setCommissionSettings] = React.useState<CommissionSettings | null>(null);
@@ -123,14 +124,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
             <p className="text-xs text-muted-foreground">From all token sales (LKR {adminCommissionPerSale.toLocaleString()} per sale)</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card onClick={() => setActiveView('Income Records')} className="cursor-pointer hover:bg-muted/50 transition-colors">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Admin Team Total Income</CardTitle>
             <Landmark className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">LKR {adminTeamTotalIncome.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">Includes all token and product sale commissions.</p>
+            <p className="text-xs text-muted-foreground">Includes all token and product sale commissions. Click to view details.</p>
           </CardContent>
         </Card>
         <Card>

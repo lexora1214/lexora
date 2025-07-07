@@ -142,7 +142,7 @@ const AppLayout = ({ user }: { user: User }) => {
       case "Dashboard":
         switch (user.role) {
           case "Admin":
-            return <AdminDashboard user={user} allUsers={allUsers} allCustomers={allCustomers} />;
+            return <AdminDashboard user={user} allUsers={allUsers} allCustomers={allCustomers} setActiveView={setActiveView} />;
           case "Salesman":
             return <SalesmanDashboard user={user} />;
           case "Shop Manager":
