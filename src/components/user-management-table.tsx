@@ -1,7 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { ArrowUpDown, ChevronDown, MoreHorizontal, Calendar as CalendarIcon, FileDown } from "lucide-react";
+import jsPDF from "jspdf";
+import "jspdf-autotable";
+import { ArrowUpDown, ChevronDown, MoreHorizontal, Calendar as CalendarIcon, FileDown, FileSpreadsheet, FileText } from "lucide-react";
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -195,7 +197,7 @@ export default function UserManagementTable({ data, allIncomeRecords }: UserMana
     },
   });
 
-  const handleGenerateReport = () => {
+  const handleGenerateCsv = () => {
     const rows = table.getRowModel().rows;
     const reportData = rows.map(row => row.original);
 
@@ -222,6 +224,39 @@ export default function UserManagementTable({ data, allIncomeRecords }: UserMana
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+  };
+  
+  const handleGeneratePdf = () => {
+    const doc = new jsPDF();
+    const tableRows: any[] = [];
+    const tableColumns = ["Name", "Email", "Role", "Income (LKR)"];
+    
+    const reportData = table.getRowModel().rows.map(row => row.original);
+
+    reportData.forEach(user => {
+      const userData = [
+        user.name,
+        user.email,
+        user.role,
+        `LKR ${user.periodIncome.toLocaleString()}`,
+      ];
+      tableRows.push(userData);
+    });
+    
+    const dateSuffix = dateRange?.from ? `(${format(dateRange.from, "LLL dd, y")} - ${format(dateRange.to ?? dateRange.from, "LLL dd, y")})` : '(All Time)';
+    doc.text(`User Income Report`, 14, 15);
+    doc.setFontSize(10);
+    doc.text(dateSuffix, 14, 20);
+
+
+    (doc as any).autoTable({
+        head: [tableColumns],
+        body: tableRows,
+        startY: 25,
+    });
+    
+    const fileNameSuffix = dateRange?.from ? `_${format(dateRange.from, "yyyy-MM-dd")}_to_${format(dateRange.to ?? dateRange.from, "yyyy-MM-dd")}` : '_all-time';
+    doc.save(`user_income_report${fileNameSuffix}.pdf`);
   };
 
   return (
@@ -275,10 +310,26 @@ export default function UserManagementTable({ data, allIncomeRecords }: UserMana
           </PopoverContent>
         </Popover>
         <div className="ml-auto flex items-center gap-2">
-            <Button onClick={handleGenerateReport} variant="outline">
-              <FileDown className="mr-2 h-4 w-4" />
-              Generate Report
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">
+                  <FileDown className="mr-2 h-4 w-4" />
+                  Generate Report
+                  <ChevronDown className="ml-2 h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleGenerateCsv}>
+                  <FileSpreadsheet className="mr-2 h-4 w-4" />
+                  <span>Export as CSV</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleGeneratePdf}>
+                  <FileText className="mr-2 h-4 w-4" />
+                  <span>Export as PDF</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             <DropdownMenu>
             <DropdownMenuTrigger asChild>
                 <Button variant="outline">
