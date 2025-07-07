@@ -277,7 +277,10 @@ const AppLayout = ({ user }: { user: User }) => {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuLabel>{user.name}</DropdownMenuLabel>
+              <DropdownMenuLabel className="font-normal">
+                <p className="font-semibold">{user.name}</p>
+                <p className="text-xs text-muted-foreground">{user.role}</p>
+              </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => alert("Settings clicked!")}>Settings</DropdownMenuItem>
               {user.role !== 'Salesman' && user.role !== 'Shop Manager' && <DropdownMenuItem>Your referral code: {user.referralCode}</DropdownMenuItem>}
