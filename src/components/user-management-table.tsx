@@ -4,7 +4,7 @@
 import * as React from "react";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
-import { ArrowUpDown, ChevronDown, MoreHorizontal, Calendar as CalendarIcon, FileDown, FileSpreadsheet, FileText } from "lucide-react";
+import { ArrowUpDown, ChevronDown, MoreHorizontal, Calendar as CalendarIcon, FileDown, FileSpreadsheet, FileText, Wallet } from "lucide-react";
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -45,6 +45,7 @@ import EditUserDialog from "./edit-user-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Calendar } from "./ui/calendar";
 import { cn } from "@/lib/utils";
+import UserIncomeDetailsDialog from "./user-income-details-dialog";
 
 interface UserManagementTableProps {
   data: User[];
@@ -58,12 +59,18 @@ export default function UserManagementTable({ data, allIncomeRecords }: UserMana
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
+  const [isIncomeDialogOpen, setIsIncomeDialogOpen] = React.useState(false);
   const [selectedUser, setSelectedUser] = React.useState<User | null>(null);
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
 
   const handleEditClick = React.useCallback((user: User) => {
     setSelectedUser(user);
     setIsEditDialogOpen(true);
+  }, []);
+
+  const handleViewIncomesClick = React.useCallback((user: User) => {
+    setSelectedUser(user);
+    setIsIncomeDialogOpen(true);
   }, []);
 
   const tableData = React.useMemo(() => {
@@ -171,6 +178,10 @@ export default function UserManagementTable({ data, allIncomeRecords }: UserMana
               <DropdownMenuItem onClick={() => navigator.clipboard.writeText(user.id)}>
                 Copy user ID
               </DropdownMenuItem>
+               <DropdownMenuItem onClick={() => handleViewIncomesClick(user)}>
+                <Wallet className="mr-2 h-4 w-4" />
+                View Incomes
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => handleEditClick(user)}>Edit user</DropdownMenuItem>
               <DropdownMenuItem className="text-destructive focus:bg-destructive/80 focus:text-destructive-foreground">Delete user</DropdownMenuItem>
@@ -179,7 +190,7 @@ export default function UserManagementTable({ data, allIncomeRecords }: UserMana
         );
       },
     },
-  ], [handleEditClick]);
+  ], [handleEditClick, handleViewIncomesClick]);
 
   const table = useReactTable({
     data: tableData,
@@ -473,6 +484,11 @@ export default function UserManagementTable({ data, allIncomeRecords }: UserMana
         onUserUpdate={() => {
           // No action needed here, onSnapshot in AppLayout will handle the update
         }}
+      />
+      <UserIncomeDetailsDialog
+        user={selectedUser}
+        isOpen={isIncomeDialogOpen}
+        onOpenChange={setIsIncomeDialogOpen}
       />
     </div>
   );
