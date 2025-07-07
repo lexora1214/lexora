@@ -12,7 +12,7 @@ function generateReferralCode(): string {
   return result;
 }
 
-export async function createUserProfile(firebaseUser: FirebaseUser, name: string, role: Role, referralCodeInput: string): Promise<User> {
+export async function createUserProfile(firebaseUser: FirebaseUser, name: string, mobileNumber: string, role: Role, referralCodeInput: string): Promise<User> {
   let referrerId: string | null = null;
   const isReferralNeeded = role && !['Regional Director', 'Admin', 'Shop Manager'].includes(role);
 
@@ -52,6 +52,7 @@ export async function createUserProfile(firebaseUser: FirebaseUser, name: string
     id: firebaseUser.uid,
     name,
     email: firebaseUser.email!,
+    mobileNumber,
     role: role,
     referralCode: newReferralCode,
     referrerId: referrerId,
@@ -364,7 +365,7 @@ export async function createProductSaleAndDistributeCommissions(
 }
 
 
-export async function updateUser(userId: string, data: { name: string; role: Role }): Promise<void> {
+export async function updateUser(userId: string, data: { name: string; role: Role; mobileNumber: string }): Promise<void> {
   const userDocRef = doc(db, "users", userId);
   await updateDoc(userDocRef, data);
 }

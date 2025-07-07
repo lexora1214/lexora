@@ -31,6 +31,7 @@ import {
 
 const formSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
+  mobileNumber: z.string().regex(/^0\d{9}$/, { message: "Please enter a valid 10-digit mobile number." }),
   role: z.enum(["Salesman", "Team Operation Manager", "Group Operation Manager", "Head Group Manager", "Regional Director", "Admin"]),
 });
 
@@ -66,6 +67,7 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({
       reset({
         name: user.name,
         role: user.role,
+        mobileNumber: user.mobileNumber || "",
       });
     }
   }, [user, reset]);
@@ -116,6 +118,13 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({
              <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="email" className="text-right">Email</Label>
               <Input id="email" type="email" value={user?.email || ''} disabled className="col-span-3" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="mobileNumber" className="text-right">Mobile No.</Label>
+              <div className="col-span-3">
+                <Input id="mobileNumber" {...register("mobileNumber")} />
+                {errors.mobileNumber && <p className="text-xs text-destructive mt-1">{errors.mobileNumber.message}</p>}
+              </div>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="role" className="text-right">Role</Label>

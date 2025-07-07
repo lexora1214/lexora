@@ -29,6 +29,7 @@ export default function SignupPage() {
   const { toast } = useToast();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [mobileNumber, setMobileNumber] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<Role | "">("");
   const [visibleRoles, setVisibleRoles] = useState<Record<string, boolean> | null>(null);
@@ -67,6 +68,14 @@ export default function SignupPage() {
         });
         return;
     }
+    if (!/^(0\d{9})$/.test(mobileNumber)) {
+        toast({
+            variant: "destructive",
+            title: "Sign Up Failed",
+            description: "Please enter a valid 10-digit mobile number.",
+        });
+        return;
+    }
      if (!role) {
       toast({
         variant: "destructive",
@@ -96,7 +105,7 @@ export default function SignupPage() {
     setIsLoading(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      await createUserProfile(userCredential.user, name, role, referralCode.toUpperCase());
+      await createUserProfile(userCredential.user, name, mobileNumber, role, referralCode.toUpperCase());
       toast({
         title: "Account Created",
         description: "You have been successfully signed up.",
@@ -133,6 +142,10 @@ export default function SignupPage() {
                 <div className="grid gap-2">
                     <Label htmlFor="email">Email</Label>
                     <Input id="email" type="email" placeholder="m@example.com" required value={email} onChange={(e) => setEmail(e.target.value)} />
+                </div>
+                 <div className="grid gap-2">
+                    <Label htmlFor="mobileNumber">Mobile Number</Label>
+                    <Input id="mobileNumber" type="tel" placeholder="0712345678" required value={mobileNumber} onChange={(e) => setMobileNumber(e.target.value)} />
                 </div>
                 <div className="grid gap-2">
                     <Label htmlFor="password">Password</Label>

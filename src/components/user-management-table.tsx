@@ -129,6 +129,11 @@ export default function UserManagementTable({ data, allIncomeRecords }: UserMana
       cell: ({ row }) => <div className="lowercase">{row.getValue("email")}</div>,
     },
     {
+      accessorKey: "mobileNumber",
+      header: "Mobile Number",
+      cell: ({ row }) => row.original.mobileNumber || 'N/A',
+    },
+    {
       accessorKey: "role",
       header: ({ column }) => (
         <Button
@@ -412,6 +417,7 @@ export default function UserManagementTable({ data, allIncomeRecords }: UserMana
                     if (column.id === 'name') displayName = 'Name';
                     if (column.id === 'email') displayName = 'Email';
                     if (column.id === 'role') displayName = 'Role';
+                    if (column.id === 'mobileNumber') displayName = 'Mobile Number';
 
                     return (
                     <DropdownMenuCheckboxItem

@@ -11,6 +11,7 @@ export interface User {
   id: string;
   name: string;
   email: string;
+  mobileNumber: string;
   role: Role;
   referrerId: string | null;
   referralCode: string;
