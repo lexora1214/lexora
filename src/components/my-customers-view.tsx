@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { UserPlus, LoaderCircle, Calendar as CalendarIcon, Phone } from "lucide-react";
 import CustomerRegistrationDialog from "@/components/customer-registration-dialog";
+import CustomerDetailsDialog from "@/components/customer-details-dialog";
 import { Badge } from "@/components/ui/badge";
 import { getCustomersForSalesman } from "@/lib/firestore";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
@@ -30,7 +31,9 @@ interface MyCustomersViewProps {
 const MyCustomersView: React.FC<MyCustomersViewProps> = ({ user }) => {
   const [myCustomers, setMyCustomers] = React.useState<CustomerType[]>([]);
   const [loading, setLoading] = React.useState(true);
-  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+  const [isRegisterDialogOpen, setIsRegisterDialogOpen] = React.useState(false);
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = React.useState(false);
+  const [selectedCustomer, setSelectedCustomer] = React.useState<CustomerType | null>(null);
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
 
   const fetchMyData = React.useCallback(async () => {
@@ -58,6 +61,10 @@ const MyCustomersView: React.FC<MyCustomersViewProps> = ({ user }) => {
     });
   }, [myCustomers, dateRange]);
 
+  const handleViewDetails = (customer: CustomerType) => {
+    setSelectedCustomer(customer);
+    setIsDetailsDialogOpen(true);
+  };
 
   if (loading) {
     return (
@@ -73,7 +80,7 @@ const MyCustomersView: React.FC<MyCustomersViewProps> = ({ user }) => {
         <CardHeader className="flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
                 <CardTitle>My Customer Registrations</CardTitle>
-                <CardDescription>A list of customers you have registered.</CardDescription>
+                <CardDescription>A list of customers you have registered. Click on a record to see more details.</CardDescription>
             </div>
             <div className="flex flex-col-reverse sm:flex-row gap-2 w-full md:w-auto">
                 <Popover>
@@ -115,7 +122,7 @@ const MyCustomersView: React.FC<MyCustomersViewProps> = ({ user }) => {
                     </div>
                     </PopoverContent>
                 </Popover>
-                <Button onClick={() => setIsDialogOpen(true)} className="w-full md:w-auto">
+                <Button onClick={() => setIsRegisterDialogOpen(true)} className="w-full md:w-auto">
                     <UserPlus className="mr-2 h-4 w-4" />
                     Register New Customer
                 </Button>
@@ -137,7 +144,7 @@ const MyCustomersView: React.FC<MyCustomersViewProps> = ({ user }) => {
                 <TableBody>
                     {filteredCustomers.length > 0 ? (
                     filteredCustomers.map((customer) => (
-                        <TableRow key={customer.id}>
+                        <TableRow key={customer.id} onClick={() => handleViewDetails(customer)} className="cursor-pointer">
                         <TableCell className="font-medium">{customer.name}</TableCell>
                         <TableCell>{customer.contactInfo}</TableCell>
                         <TableCell>
@@ -166,7 +173,7 @@ const MyCustomersView: React.FC<MyCustomersViewProps> = ({ user }) => {
             <div className="grid gap-4 md:hidden">
                 {filteredCustomers.length > 0 ? (
                     filteredCustomers.map((customer) => (
-                        <Card key={customer.id} className="p-4 flex flex-col gap-3">
+                        <Card key={customer.id} className="p-4 flex flex-col gap-3 cursor-pointer" onClick={() => handleViewDetails(customer)}>
                             <div className="flex justify-between items-start">
                                 <div>
                                     <p className="font-semibold text-card-foreground">{customer.name}</p>
@@ -191,10 +198,15 @@ const MyCustomersView: React.FC<MyCustomersViewProps> = ({ user }) => {
         </CardContent>
       </Card>
       <CustomerRegistrationDialog 
-        isOpen={isDialogOpen} 
-        onOpenChange={setIsDialogOpen} 
+        isOpen={isRegisterDialogOpen} 
+        onOpenChange={setIsRegisterDialogOpen} 
         salesman={user}
         onRegistrationSuccess={fetchMyData} 
+      />
+      <CustomerDetailsDialog 
+        isOpen={isDetailsDialogOpen}
+        onOpenChange={setIsDetailsDialogOpen}
+        customer={selectedCustomer}
       />
     </>
   );
