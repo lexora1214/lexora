@@ -1,8 +1,7 @@
-
 "use client";
 
 import * as React from "react";
-import { ArrowUpDown, ChevronDown, MoreHorizontal, Calendar as CalendarIcon } from "lucide-react";
+import { ArrowUpDown, ChevronDown, MoreHorizontal, Calendar as CalendarIcon, FileDown } from "lucide-react";
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -196,6 +195,35 @@ export default function UserManagementTable({ data, allIncomeRecords }: UserMana
     },
   });
 
+  const handleGenerateReport = () => {
+    const rows = table.getRowModel().rows;
+    const reportData = rows.map(row => row.original);
+
+    const csvHeader = "Name,Email,Role,Income (LKR)\n";
+    const csvRows = reportData.map(user => {
+        const name = `"${user.name.replace(/"/g, '""')}"`;
+        const email = user.email;
+        const role = user.role;
+        const income = user.periodIncome;
+        return `${name},${email},${role},${income}`;
+    }).join("\n");
+
+    const csvContent = csvHeader + csvRows;
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    
+    const dateSuffix = dateRange?.from ? `_${format(dateRange.from, "yyyy-MM-dd")}_to_${format(dateRange.to ?? dateRange.from, "yyyy-MM-dd")}` : '_all-time';
+    link.setAttribute("download", `user_income_report${dateSuffix}.csv`);
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="w-full">
       <div className="flex flex-col md:flex-row items-center gap-4 py-4">
@@ -246,38 +274,44 @@ export default function UserManagementTable({ data, allIncomeRecords }: UserMana
             </div>
           </PopoverContent>
         </Popover>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="ml-auto">
-              Columns <ChevronDown className="ml-2 h-4 w-4" />
+        <div className="ml-auto flex items-center gap-2">
+            <Button onClick={handleGenerateReport} variant="outline">
+              <FileDown className="mr-2 h-4 w-4" />
+              Generate Report
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {table
-              .getAllColumns()
-              .filter((column) => column.getCanHide())
-              .map((column) => {
-                let displayName = column.id.replace(/([A-Z])/g, ' $1');
-                displayName = displayName.charAt(0).toUpperCase() + displayName.slice(1);
-                
-                if (column.id === 'createdAt') displayName = 'Joined Date';
-                if (column.id === 'periodIncome') displayName = 'Income (Period)';
-                if (column.id === 'name') displayName = 'Name';
-                if (column.id === 'email') displayName = 'Email';
-                if (column.id === 'role') displayName = 'Role';
+            <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button variant="outline">
+                Columns <ChevronDown className="ml-2 h-4 w-4" />
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+                {table
+                .getAllColumns()
+                .filter((column) => column.getCanHide())
+                .map((column) => {
+                    let displayName = column.id.replace(/([A-Z])/g, ' $1');
+                    displayName = displayName.charAt(0).toUpperCase() + displayName.slice(1);
+                    
+                    if (column.id === 'createdAt') displayName = 'Joined Date';
+                    if (column.id === 'periodIncome') displayName = 'Income (Period)';
+                    if (column.id === 'name') displayName = 'Name';
+                    if (column.id === 'email') displayName = 'Email';
+                    if (column.id === 'role') displayName = 'Role';
 
-                return (
-                  <DropdownMenuCheckboxItem
-                    key={column.id}
-                    checked={column.getIsVisible()}
-                    onCheckedChange={(value) => column.toggleVisibility(!!value)}
-                  >
-                    {displayName}
-                  </DropdownMenuCheckboxItem>
-                );
-              })}
-          </DropdownMenuContent>
-        </DropdownMenu>
+                    return (
+                    <DropdownMenuCheckboxItem
+                        key={column.id}
+                        checked={column.getIsVisible()}
+                        onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                    >
+                        {displayName}
+                    </DropdownMenuCheckboxItem>
+                    );
+                })}
+            </DropdownMenuContent>
+            </DropdownMenu>
+        </div>
       </div>
       <div className="rounded-md border">
         <Table>
