@@ -12,7 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { UserPlus, LoaderCircle, Calendar, Mail } from "lucide-react";
+import { UserPlus, LoaderCircle, Calendar, Phone } from "lucide-react";
 import CustomerRegistrationDialog from "@/components/customer-registration-dialog";
 import { Badge } from "@/components/ui/badge";
 import { getCustomersForSalesman } from "@/lib/firestore";
@@ -108,7 +108,7 @@ const MyCustomersView: React.FC<MyCustomersViewProps> = ({ user }) => {
                             <div className="flex justify-between items-start">
                                 <div>
                                     <p className="font-semibold text-card-foreground">{customer.name}</p>
-                                    <p className="text-sm text-muted-foreground flex items-center gap-1.5"><Mail className="w-3 h-3"/>{customer.contactInfo}</p>
+                                    <p className="text-sm text-muted-foreground flex items-center gap-1.5"><Phone className="w-3 h-3"/>{customer.contactInfo}</p>
                                 </div>
                                  <Badge variant={customer.tokenIsAvailable ? 'success' : 'destructive'}>
                                     {customer.tokenIsAvailable ? 'Available' : 'Used'}

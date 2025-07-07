@@ -22,11 +22,9 @@ import { LoaderCircle } from "lucide-react";
 
 const formSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
-  contactInfo: z.string().email({ message: "Please enter a valid email." }),
+  contactInfo: z.string().regex(/^0\d{9}$/, { message: "Please enter a valid 10-digit mobile number." }),
   address: z.string().min(5, { message: "Address must be at least 5 characters." }),
-  tokenSerial: z.string().regex(/^LX2000-[A-Z0-9]{4}$/, {
-    message: "Token serial must be in the format LX2000-XXXX.",
-  }),
+  tokenSerial: z.string().min(1, { message: "Token serial cannot be empty." }),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -98,9 +96,9 @@ const CustomerRegistrationDialog: React.FC<CustomerRegistrationDialogProps> = ({
               </div>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="contactInfo" className="text-right">Contact</Label>
+              <Label htmlFor="contactInfo" className="text-right">Mobile No.</Label>
               <div className="col-span-3">
-                <Input id="contactInfo" {...register("contactInfo")} />
+                <Input id="contactInfo" type="tel" placeholder="0712345678" {...register("contactInfo")} />
                 {errors.contactInfo && <p className="text-xs text-destructive mt-1">{errors.contactInfo.message}</p>}
               </div>
             </div>
