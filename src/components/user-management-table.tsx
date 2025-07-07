@@ -37,19 +37,64 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { User } from "@/types";
+import { User, IncomeRecord } from "@/types";
 import { Badge } from "./ui/badge";
 import EditUserDialog from "./edit-user-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Calendar } from "./ui/calendar";
 import { cn } from "@/lib/utils";
 
+interface UserManagementTableProps {
+  data: User[];
+  allIncomeRecords: IncomeRecord[];
+}
 
-export const getColumns = (onEdit: (user: User) => void): ColumnDef<User>[] => [
-  {
-    accessorKey: "name",
-    header: ({ column }) => {
-      return (
+type UserWithPeriodIncome = User & { periodIncome: number };
+
+export default function UserManagementTable({ data, allIncomeRecords }: UserManagementTableProps) {
+  const [sorting, setSorting] = React.useState<SortingState>([{ id: 'createdAt', desc: true }]);
+  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
+  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
+  const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
+  const [selectedUser, setSelectedUser] = React.useState<User | null>(null);
+  const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
+
+  const handleEditClick = React.useCallback((user: User) => {
+    setSelectedUser(user);
+    setIsEditDialogOpen(true);
+  }, []);
+
+  const tableData = React.useMemo(() => {
+    if (!dateRange || !dateRange.from) {
+      return data.map(user => ({
+        ...user,
+        periodIncome: user.totalIncome,
+      }));
+    }
+
+    const from = dateRange.from;
+    const to = dateRange.to ? new Date(dateRange.to) : new Date(from);
+    to.setHours(23, 59, 59, 999);
+
+    const incomeMap = new Map<string, number>();
+    allIncomeRecords.forEach(record => {
+      const recordDate = new Date(record.saleDate);
+      if (recordDate >= from && recordDate <= to) {
+        incomeMap.set(record.userId, (incomeMap.get(record.userId) || 0) + record.amount);
+      }
+    });
+
+    return data.map(user => ({
+      ...user,
+      periodIncome: incomeMap.get(user.id) || 0,
+    }));
+  }, [data, allIncomeRecords, dateRange]);
+
+
+  const columns = React.useMemo<ColumnDef<UserWithPeriodIncome>[]>(() => [
+    {
+      accessorKey: "name",
+      header: ({ column }) => (
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
@@ -57,24 +102,22 @@ export const getColumns = (onEdit: (user: User) => void): ColumnDef<User>[] => [
           Name
           <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
-      );
+      ),
+      cell: ({ row }) => <div className="capitalize">{row.getValue("name")}</div>,
     },
-    cell: ({ row }) => <div className="capitalize">{row.getValue("name")}</div>,
-  },
-  {
-    accessorKey: "email",
-    header: "Email",
-    cell: ({ row }) => <div className="lowercase">{row.getValue("email")}</div>,
-  },
-  {
-    accessorKey: "role",
-    header: "Role",
-    cell: ({ row }) => <Badge variant="secondary">{row.getValue("role")}</Badge>,
-  },
-   {
-    accessorKey: "createdAt",
-    header: ({ column }) => {
-      return (
+    {
+      accessorKey: "email",
+      header: "Email",
+      cell: ({ row }) => <div className="lowercase">{row.getValue("email")}</div>,
+    },
+    {
+      accessorKey: "role",
+      header: "Role",
+      cell: ({ row }) => <Badge variant="secondary">{row.getValue("role")}</Badge>,
+    },
+    {
+      accessorKey: "createdAt",
+      header: ({ column }) => (
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
@@ -82,87 +125,62 @@ export const getColumns = (onEdit: (user: User) => void): ColumnDef<User>[] => [
           Joined Date
           <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
-      );
+      ),
+      cell: ({ row }) => new Date(row.getValue("createdAt")).toLocaleDateString(),
     },
-    cell: ({ row }) => new Date(row.getValue("createdAt")).toLocaleDateString(),
-  },
-  {
-    accessorKey: "totalIncome",
-    header: () => <div className="text-right">Total Income</div>,
-    cell: ({ row }) => {
-      const amount = row.getValue("totalIncome") as number;
-      const formatted = new Intl.NumberFormat("en-LK", {
-        style: "currency",
-        currency: "LKR",
-      }).format(amount);
-      return <div className="text-right font-medium">{formatted}</div>;
-    },
-  },
-  {
-    id: "actions",
-    enableHiding: false,
-    cell: ({ row }) => {
-      const user = row.original;
-      return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">Open menu</span>
-              <MoreHorizontal className="h-4 w-4" />
+    {
+      accessorKey: "periodIncome",
+      header: ({ column }) => (
+         <div className="text-right w-full">
+            <Button
+                variant="ghost"
+                className="w-full justify-end"
+                onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+            >
+                Income (Period)
+                <ArrowUpDown className="ml-2 h-4 w-4" />
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => navigator.clipboard.writeText(user.id)}>
-              Copy user ID
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => onEdit(user)}>Edit user</DropdownMenuItem>
-            <DropdownMenuItem className="text-destructive focus:bg-destructive/80 focus:text-destructive-foreground">Delete user</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      );
+        </div>
+      ),
+      cell: ({ row }) => {
+        const amount = row.getValue("periodIncome") as number;
+        const formatted = new Intl.NumberFormat("en-LK", {
+          style: "currency",
+          currency: "LKR",
+        }).format(amount);
+        return <div className="text-right font-medium">{formatted}</div>;
+      },
     },
-  },
-];
-
-interface UserManagementTableProps {
-    data: User[];
-}
-
-export default function UserManagementTable({ data }: UserManagementTableProps) {
-  const [sorting, setSorting] = React.useState<SortingState>([ { id: 'createdAt', desc: true }]);
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
-  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
-  const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
-  const [selectedUser, setSelectedUser] = React.useState<User | null>(null);
-  const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
-
-  const handleEditClick = (user: User) => {
-    setSelectedUser(user);
-    setIsEditDialogOpen(true);
-  };
-
-  const columns = React.useMemo(() => getColumns(handleEditClick), []);
-  
-  const filteredData = React.useMemo(() => {
-    if (!dateRange || !dateRange.from) {
-      return data;
-    }
-    const from = dateRange.from;
-    const to = dateRange.to ? new Date(dateRange.to) : new Date(from);
-    to.setHours(23, 59, 59, 999);
-
-    return data.filter(user => {
-        if (!user.createdAt) return false;
-        const createdAtDate = new Date(user.createdAt);
-        return createdAtDate >= from && createdAtDate <= to;
-    });
-  }, [data, dateRange]);
-
+    {
+      id: "actions",
+      enableHiding: false,
+      cell: ({ row }) => {
+        const user = row.original;
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <span className="sr-only">Open menu</span>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => navigator.clipboard.writeText(user.id)}>
+                Copy user ID
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => handleEditClick(user)}>Edit user</DropdownMenuItem>
+              <DropdownMenuItem className="text-destructive focus:bg-destructive/80 focus:text-destructive-foreground">Delete user</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
+      },
+    },
+  ], [handleEditClick]);
 
   const table = useReactTable({
-    data: filteredData,
+    data: tableData,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -190,43 +208,43 @@ export default function UserManagementTable({ data }: UserManagementTableProps) 
           className="max-w-sm"
         />
         <Popover>
-            <PopoverTrigger asChild>
+          <PopoverTrigger asChild>
             <Button
-                id="date"
-                variant={"outline"}
-                className={cn(
+              id="date"
+              variant={"outline"}
+              className={cn(
                 "w-full justify-start text-left font-normal md:w-[300px]",
                 !dateRange && "text-muted-foreground"
-                )}
+              )}
             >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {dateRange?.from ? (
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              {dateRange?.from ? (
                 dateRange.to ? (
-                    <>
+                  <>
                     {format(dateRange.from, "LLL dd, y")} -{" "}
                     {format(dateRange.to, "LLL dd, y")}
-                    </>
+                  </>
                 ) : (
-                    format(dateRange.from, "LLL dd, y")
+                  format(dateRange.from, "LLL dd, y")
                 )
-                ) : (
-                <span>Filter by join date</span>
-                )}
+              ) : (
+                <span>Filter income by date</span>
+              )}
             </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="end">
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="end">
             <Calendar
-                initialFocus
-                mode="range"
-                defaultMonth={dateRange?.from}
-                selected={dateRange}
-                onSelect={setDateRange}
-                numberOfMonths={2}
+              initialFocus
+              mode="range"
+              defaultMonth={dateRange?.from}
+              selected={dateRange}
+              onSelect={setDateRange}
+              numberOfMonths={2}
             />
             <div className="p-2 border-t">
-                <Button variant="ghost" className="w-full justify-center" onClick={() => setDateRange(undefined)}>Clear</Button>
+              <Button variant="ghost" className="w-full justify-center" onClick={() => setDateRange(undefined)}>Clear</Button>
             </div>
-            </PopoverContent>
+          </PopoverContent>
         </Popover>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -243,8 +261,11 @@ export default function UserManagementTable({ data }: UserManagementTableProps) 
                 displayName = displayName.charAt(0).toUpperCase() + displayName.slice(1);
                 
                 if (column.id === 'createdAt') displayName = 'Joined Date';
-                if (column.id === 'totalIncome') displayName = 'Total Income';
-                
+                if (column.id === 'periodIncome') displayName = 'Income (Period)';
+                if (column.id === 'name') displayName = 'Name';
+                if (column.id === 'email') displayName = 'Email';
+                if (column.id === 'role') displayName = 'Role';
+
                 return (
                   <DropdownMenuCheckboxItem
                     key={column.id}
@@ -269,9 +290,9 @@ export default function UserManagementTable({ data }: UserManagementTableProps) 
                       {header.isPlaceholder
                         ? null
                         : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
                     </TableHead>
                   );
                 })}
@@ -319,7 +340,7 @@ export default function UserManagementTable({ data }: UserManagementTableProps) 
           </Button>
         </div>
       </div>
-       <EditUserDialog
+      <EditUserDialog
         user={selectedUser}
         isOpen={isEditDialogOpen}
         onOpenChange={setIsEditDialogOpen}

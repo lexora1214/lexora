@@ -242,7 +242,7 @@ const AppLayout = ({ user }: { user: User }) => {
               <CardDescription>Manage all employees and system users.</CardDescription>
             </CardHeader>
             <CardContent>
-              <UserManagementTable data={allUsers} />
+              <UserManagementTable data={allUsers} allIncomeRecords={allIncomeRecords} />
             </CardContent>
           </Card>
         );
