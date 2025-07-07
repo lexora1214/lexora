@@ -243,16 +243,25 @@ export default function UserManagementTable({ data, allIncomeRecords }: UserMana
       tableRows.push(userData);
     });
     
-    const dateSuffix = dateRange?.from ? `(${format(dateRange.from, "LLL dd, y")} - ${format(dateRange.to ?? dateRange.from, "LLL dd, y")})` : '(All Time)';
-    doc.text(`User Income Report`, 14, 15);
+    // Header
+    doc.setFontSize(18);
+    doc.setFont("helvetica", "bold");
+    doc.text("Lexora", 14, 22);
+
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "normal");
+    doc.text("User Income Report", 14, 30);
+
+    const dateSuffix = dateRange?.from ? `Period: ${format(dateRange.from, "LLL dd, y")} - ${format(dateRange.to ?? dateRange.from, "LLL dd, y")}` : 'Period: All Time';
     doc.setFontSize(10);
-    doc.text(dateSuffix, 14, 20);
+    doc.text(dateSuffix, 14, 36);
+    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 42);
 
 
     (doc as any).autoTable({
         head: [tableColumns],
         body: tableRows,
-        startY: 25,
+        startY: 50,
     });
     
     const fileNameSuffix = dateRange?.from ? `_${format(dateRange.from, "yyyy-MM-dd")}_to_${format(dateRange.to ?? dateRange.from, "yyyy-MM-dd")}` : '_all-time';
