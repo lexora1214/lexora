@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -38,7 +39,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { User, IncomeRecord } from "@/types";
+import { User, IncomeRecord, Role } from "@/types";
 import { Badge } from "./ui/badge";
 import EditUserDialog from "./edit-user-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
@@ -230,10 +231,26 @@ export default function UserManagementTable({ data, allIncomeRecords }: UserMana
     const doc = new jsPDF();
     const tableRows: any[] = [];
     const tableColumns = ["Name", "Email", "Role", "Income (LKR)"];
+
+    const roleOrderMap: Record<Role, number> = {
+      'Admin': 1,
+      'Regional Director': 2,
+      'Head Group Manager': 3,
+      'Group Operation Manager': 4,
+      'Team Operation Manager': 5,
+      'Shop Manager': 6,
+      'Salesman': 7,
+    };
     
     const reportData = table.getRowModel().rows.map(row => row.original);
+    
+    const sortedReportData = [...reportData].sort((a, b) => {
+      const roleA = roleOrderMap[a.role] || 99;
+      const roleB = roleOrderMap[b.role] || 99;
+      return roleA - roleB;
+    });
 
-    reportData.forEach(user => {
+    sortedReportData.forEach(user => {
       const userData = [
         user.name,
         user.email,
