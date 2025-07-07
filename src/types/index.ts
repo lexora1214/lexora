@@ -62,6 +62,7 @@ export interface IncomeRecord {
   grantedForRole: Role;
   salesmanId: string; // The salesman who made the original token sale
   salesmanName: string;
+  shopManagerName?: string; // The shop manager who made the product sale
   // Source details
   sourceType: 'token_sale' | 'product_sale';
   customerId: string;

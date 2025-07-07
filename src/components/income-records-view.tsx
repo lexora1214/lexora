@@ -93,8 +93,15 @@ const columns: ColumnDef<IncomeRecord>[] = [
         },
     },
     {
-        accessorKey: "salesmanName",
+        id: "originalSaleBy",
         header: "Original Sale By",
+        cell: ({ row }) => {
+            const record = row.original;
+            if (record.sourceType === 'product_sale') {
+                return record.shopManagerName || 'N/A';
+            }
+            return record.salesmanName;
+        },
     },
 ];
 
