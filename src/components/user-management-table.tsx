@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -54,8 +53,18 @@ interface UserManagementTableProps {
 
 type UserWithPeriodIncome = User & { periodIncome: number };
 
+const roleOrderMap: Record<Role, number> = {
+  'Admin': 1,
+  'Regional Director': 2,
+  'Head Group Manager': 3,
+  'Group Operation Manager': 4,
+  'Team Operation Manager': 5,
+  'Shop Manager': 6,
+  'Salesman': 7,
+};
+
 export default function UserManagementTable({ data, allIncomeRecords }: UserManagementTableProps) {
-  const [sorting, setSorting] = React.useState<SortingState>([{ id: 'createdAt', desc: true }]);
+  const [sorting, setSorting] = React.useState<SortingState>([{ id: 'role', desc: false }]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
@@ -121,8 +130,21 @@ export default function UserManagementTable({ data, allIncomeRecords }: UserMana
     },
     {
       accessorKey: "role",
-      header: "Role",
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Role
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
       cell: ({ row }) => <Badge variant="secondary">{row.getValue("role")}</Badge>,
+      sortingFn: (rowA, rowB, columnId) => {
+        const roleA = roleOrderMap[rowA.getValue(columnId) as Role] ?? 99;
+        const roleB = roleOrderMap[rowB.getValue(columnId) as Role] ?? 99;
+        return roleA - roleB;
+      },
     },
     {
       accessorKey: "createdAt",
@@ -212,16 +234,6 @@ export default function UserManagementTable({ data, allIncomeRecords }: UserMana
   const handleGenerateCsv = () => {
     const reportData = table.getRowModel().rows.map(row => row.original);
     
-    const roleOrderMap: Record<Role, number> = {
-      'Admin': 1,
-      'Regional Director': 2,
-      'Head Group Manager': 3,
-      'Group Operation Manager': 4,
-      'Team Operation Manager': 5,
-      'Shop Manager': 6,
-      'Salesman': 7,
-    };
-    
     const sortedReportData = [...reportData].sort((a, b) => {
       const roleA = roleOrderMap[a.role] || 99;
       const roleB = roleOrderMap[b.role] || 99;
@@ -257,16 +269,6 @@ export default function UserManagementTable({ data, allIncomeRecords }: UserMana
     const doc = new jsPDF();
     const tableRows: any[] = [];
     const tableColumns = ["Name", "Email", "Role", "Income (LKR)"];
-
-    const roleOrderMap: Record<Role, number> = {
-      'Admin': 1,
-      'Regional Director': 2,
-      'Head Group Manager': 3,
-      'Group Operation Manager': 4,
-      'Team Operation Manager': 5,
-      'Shop Manager': 6,
-      'Salesman': 7,
-    };
     
     const reportData = table.getRowModel().rows.map(row => row.original);
     
