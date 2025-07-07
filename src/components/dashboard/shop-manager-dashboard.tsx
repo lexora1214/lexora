@@ -1,11 +1,10 @@
-
 "use client";
 
 import React, { useState, useEffect } from "react";
 import { User, ProductSale, Customer } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ShoppingCart, LoaderCircle, Calendar, User as UserIcon } from "lucide-react";
+import { ShoppingCart, LoaderCircle, Calendar as CalendarIcon, User as UserIcon } from "lucide-react";
 import ProductSaleDialog from "../product-sale-dialog";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -18,6 +17,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "../ui/badge";
+import { DateRange } from "react-day-picker";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 
 interface ShopManagerDashboardProps {
   user: User;
@@ -30,6 +34,7 @@ const ShopManagerDashboard: React.FC<ShopManagerDashboardProps> = ({ user, onAdd
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [sales, setSales] = useState<ProductSale[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
 
   useEffect(() => {
     // Listener for all customers to get real-time token availability
@@ -59,6 +64,21 @@ const ShopManagerDashboard: React.FC<ShopManagerDashboardProps> = ({ user, onAdd
     // The onSnapshot listeners will automatically update the sales list and customer data
   };
 
+  const filteredSales = React.useMemo(() => {
+    if (!dateRange || !dateRange.from) {
+      return sales;
+    }
+    const from = dateRange.from;
+    const to = dateRange.to ? new Date(dateRange.to) : new Date(from);
+    to.setHours(23, 59, 59, 999); // Include the whole 'to' day
+
+    return sales.filter(sale => {
+        const saleDate = new Date(sale.saleDate);
+        return saleDate >= from && saleDate <= to;
+    });
+  }, [sales, dateRange]);
+
+
   return (
     <>
       <Card>
@@ -67,17 +87,58 @@ const ShopManagerDashboard: React.FC<ShopManagerDashboardProps> = ({ user, onAdd
             <CardTitle>Recent Product Sales</CardTitle>
             <CardDescription>A list of product sales you have recorded.</CardDescription>
           </div>
-          <Button onClick={() => setIsDialogOpen(true)} className="w-full md:w-auto">
-            <ShoppingCart className="mr-2 h-4 w-4" />
-            Record New Sale
-          </Button>
+          <div className="flex flex-col-reverse sm:flex-row gap-2 w-full md:w-auto">
+             <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  id="date"
+                  variant={"outline"}
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !dateRange && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {dateRange?.from ? (
+                    dateRange.to ? (
+                      <>
+                        {format(dateRange.from, "LLL dd, y")} -{" "}
+                        {format(dateRange.to, "LLL dd, y")}
+                      </>
+                    ) : (
+                      format(dateRange.from, "LLL dd, y")
+                    )
+                  ) : (
+                    <span>Pick a date range</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                  initialFocus
+                  mode="range"
+                  defaultMonth={dateRange?.from}
+                  selected={dateRange}
+                  onSelect={setDateRange}
+                  numberOfMonths={2}
+                />
+                <div className="p-2 border-t">
+                  <Button variant="ghost" className="w-full justify-center" onClick={() => setDateRange(undefined)}>Clear</Button>
+                </div>
+              </PopoverContent>
+            </Popover>
+            <Button onClick={() => setIsDialogOpen(true)} className="w-full md:w-auto">
+              <ShoppingCart className="mr-2 h-4 w-4" />
+              Record New Sale
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {loading ? (
              <div className="flex h-48 w-full items-center justify-center">
                 <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
              </div>
-          ) : sales.length > 0 ? (
+          ) : filteredSales.length > 0 ? (
             <>
               {/* Desktop Table View */}
               <div className="hidden rounded-md border md:block">
@@ -91,7 +152,7 @@ const ShopManagerDashboard: React.FC<ShopManagerDashboardProps> = ({ user, onAdd
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {sales.map((sale) => (
+                    {filteredSales.map((sale) => (
                       <TableRow key={sale.id}>
                         <TableCell>{new Date(sale.saleDate).toLocaleDateString()}</TableCell>
                         <TableCell className="font-medium">{sale.productName}</TableCell>
@@ -110,7 +171,7 @@ const ShopManagerDashboard: React.FC<ShopManagerDashboardProps> = ({ user, onAdd
 
               {/* Mobile Card View */}
               <div className="grid gap-4 md:hidden">
-                {sales.map((sale) => (
+                {filteredSales.map((sale) => (
                   <Card key={sale.id} className="p-4 flex flex-col gap-3">
                     <div className="flex justify-between items-start">
                         <div>
@@ -125,7 +186,7 @@ const ShopManagerDashboard: React.FC<ShopManagerDashboardProps> = ({ user, onAdd
                             <p>Customer: {sale.customerName}</p>
                         </div>
                         <div className="flex items-center gap-2">
-                            <Calendar className="w-4 h-4 text-primary/80"/>
+                            <CalendarIcon className="w-4 h-4 text-primary/80"/>
                             <p>Date: {new Date(sale.saleDate).toLocaleDateString()}</p>
                         </div>
                     </div>
@@ -135,7 +196,7 @@ const ShopManagerDashboard: React.FC<ShopManagerDashboardProps> = ({ user, onAdd
             </>
           ) : (
             <div className="flex items-center justify-center h-24 text-center text-muted-foreground">
-                <p>You have not recorded any sales yet.</p>
+                <p>No sales found for the selected period.</p>
             </div>
           )}
         </CardContent>
