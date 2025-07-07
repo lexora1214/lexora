@@ -44,7 +44,7 @@ const UserIncomeDetailsDialog: React.FC<UserIncomeDetailsDialogProps> = ({ user,
 
     const doc = new jsPDF();
     const tableRows: any[] = [];
-    const tableColumns = ["Date", "Source", "Details", "Amount (LKR)"];
+    const tableColumns = ["Date", "Source", "Details", "Role Granted", "Amount (LKR)"];
 
     records.forEach(record => {
       let detailText = "";
@@ -58,6 +58,7 @@ const UserIncomeDetailsDialog: React.FC<UserIncomeDetailsDialogProps> = ({ user,
         new Date(record.saleDate).toLocaleDateString(),
         record.sourceType === 'product_sale' ? 'Product' : 'Token',
         detailText,
+        record.grantedForRole,
         record.amount.toLocaleString(),
       ];
       tableRows.push(recordData);
@@ -65,7 +66,7 @@ const UserIncomeDetailsDialog: React.FC<UserIncomeDetailsDialogProps> = ({ user,
 
     doc.setFontSize(18);
     doc.setFont("helvetica", "bold");
-    doc.text(`Income Report for ${user.name}`, 14, 22);
+    doc.text(`Income Report for ${user.name} (${user.role})`, 14, 22);
 
     doc.setFontSize(12);
     doc.setFont("helvetica", "normal");
@@ -84,7 +85,7 @@ const UserIncomeDetailsDialog: React.FC<UserIncomeDetailsDialogProps> = ({ user,
         fontSize: 9,
       },
       columnStyles: {
-        3: { halign: 'right' },
+        4: { halign: 'right' },
       }
     });
 
@@ -94,11 +95,11 @@ const UserIncomeDetailsDialog: React.FC<UserIncomeDetailsDialogProps> = ({ user,
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-w-4xl">
         <DialogHeader>
           <DialogTitle>Income Records for {user?.name}</DialogTitle>
           <DialogDescription>
-            A detailed history of all commissions earned by this user.
+            Role: {user?.role}. A detailed history of all commissions earned by this user.
           </DialogDescription>
         </DialogHeader>
         <div className="max-h-[60vh] overflow-y-auto pr-4">
@@ -113,6 +114,7 @@ const UserIncomeDetailsDialog: React.FC<UserIncomeDetailsDialogProps> = ({ user,
                   <TableHead>Date</TableHead>
                   <TableHead>Source</TableHead>
                   <TableHead>Details</TableHead>
+                  <TableHead>Role Granted</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
                 </TableRow>
               </TableHeader>
@@ -130,6 +132,9 @@ const UserIncomeDetailsDialog: React.FC<UserIncomeDetailsDialogProps> = ({ user,
                             <p className="font-medium">{record.sourceType === 'product_sale' ? record.productName : `Token for ${record.customerName}`}</p>
                             <p className="text-muted-foreground">Sale by: {record.sourceType === 'product_sale' ? record.shopManagerName : record.salesmanName}</p>
                         </div>
+                    </TableCell>
+                    <TableCell>
+                        <Badge variant="outline">{record.grantedForRole}</Badge>
                     </TableCell>
                     <TableCell className="text-right font-medium">
                       LKR {record.amount.toLocaleString()}
