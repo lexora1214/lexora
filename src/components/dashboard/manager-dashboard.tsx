@@ -7,6 +7,7 @@ import { DollarSign, Users, Activity } from "lucide-react";
 import { getDownlineIdsAndUsers } from "@/lib/hierarchy";
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface ManagerDashboardProps {
   user: User;
@@ -14,6 +15,7 @@ interface ManagerDashboardProps {
 }
 
 const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ user, allUsers }) => {
+  const isMobile = useIsMobile();
   const { users: downlineUsers } = getDownlineIdsAndUsers(user.id, allUsers);
   const teamIncome = downlineUsers.reduce((acc, u) => acc + u.totalIncome, 0);
 
@@ -75,7 +77,7 @@ const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ user, allUsers }) =
         <CardContent className="pl-2">
           <ChartContainer config={chartConfig} className="h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} accessibilityLayer margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+              <BarChart data={chartData} accessibilityLayer margin={{ top: 5, right: 20, left: isMobile ? -10 : 10, bottom: 5 }}>
                 <XAxis
                   dataKey="name"
                   stroke="#888888"
@@ -94,7 +96,7 @@ const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ user, allUsers }) =
                   cursor={false}
                   content={<ChartTooltipContent indicator="dot" />}
                 />
-                <Bar dataKey="income" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="income" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} maxBarSize={isMobile ? 30 : undefined} />
               </BarChart>
             </ResponsiveContainer>
           </ChartContainer>

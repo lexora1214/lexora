@@ -14,6 +14,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface AdminDashboardProps {
   user: User;
@@ -23,6 +24,7 @@ interface AdminDashboardProps {
 }
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCustomers, setActiveView }) => {
+  const isMobile = useIsMobile();
   const [chartData, setChartData] = React.useState<any[]>([]);
   const [loadingChart, setLoadingChart] = React.useState(true);
   const [commissionSettings, setCommissionSettings] = React.useState<CommissionSettings | null>(null);
@@ -157,7 +159,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
           ) : chartData.length > 0 ? (
             <ChartContainer config={chartConfig} className="h-[350px] w-full">
               <ResponsiveContainer>
-                <LineChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                <LineChart data={chartData} margin={{ top: 5, right: 20, left: isMobile ? -10 : 10, bottom: 5 }}>
                   <CartesianGrid vertical={false} strokeDasharray="3 3" />
                   <XAxis
                     dataKey="month"
