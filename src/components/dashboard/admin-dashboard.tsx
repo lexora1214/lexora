@@ -146,7 +146,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
         </Card>
       </div>
       
-      <Card>
+      <Card className="hidden md:block">
         <CardHeader>
           <CardTitle>Revenue Growth</CardTitle>
           <CardDescription>Cumulative revenue generated from all token sales over time.</CardDescription>
