@@ -143,9 +143,11 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
                       <Command>
                         <CommandInput placeholder="Search customer or token..." />
                         <CommandList>
-                            <CommandEmpty>No customer found.</CommandEmpty>
+                            <CommandEmpty>No available tokens found.</CommandEmpty>
                             <CommandGroup>
-                            {customers.map((customer) => (
+                            {customers
+                                .filter((customer) => customer.tokenIsAvailable)
+                                .map((customer) => (
                                 <CommandItem
                                 key={customer.tokenSerial}
                                 value={`${customer.name} ${customer.tokenSerial}`}

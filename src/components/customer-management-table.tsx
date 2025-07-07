@@ -98,6 +98,18 @@ export const getColumns = (users: User[]): ColumnDef<Customer>[] => [
     },
   },
   {
+    accessorKey: "tokenIsAvailable",
+    header: "Token Status",
+    cell: ({ row }) => {
+        const isAvailable = row.getValue("tokenIsAvailable");
+        return (
+            <Badge variant={isAvailable ? 'success' : 'destructive'} className="whitespace-nowrap">
+                {isAvailable ? 'Available' : 'Used'}
+            </Badge>
+        )
+    },
+  },
+  {
     id: "actions",
     enableHiding: false,
     cell: ({ row }) => {
@@ -183,6 +195,7 @@ export default function CustomerManagementTable({ data, users }: CustomerManagem
                     saleDate: 'Sale Date',
                     salesmanId: 'Registered By',
                     commissionDistributed: 'Commission Status',
+                    tokenIsAvailable: 'Token Status',
                 };
                 return (
                   <DropdownMenuCheckboxItem

@@ -118,7 +118,7 @@ export async function updateCommissionSettings(data: CommissionSettings): Promis
   await setDoc(settingsDocRef, data, { merge: true });
 }
 
-export async function createCustomer(customerData: Omit<Customer, 'id' | 'saleDate' | 'commissionDistributed' | 'salesmanId'>, salesman: User): Promise<void> {
+export async function createCustomer(customerData: Omit<Customer, 'id' | 'saleDate' | 'commissionDistributed' | 'salesmanId' | 'tokenIsAvailable'>, salesman: User): Promise<void> {
     const batch = writeBatch(db);
     const allUsers = await getAllUsers();
     const settings = await getCommissionSettings();
@@ -130,7 +130,8 @@ export async function createCustomer(customerData: Omit<Customer, 'id' | 'saleDa
         id: newCustomerRef.id,
         salesmanId: salesman.id,
         saleDate: saleDate,
-        commissionDistributed: true, 
+        commissionDistributed: true,
+        tokenIsAvailable: true,
     };
     batch.set(newCustomerRef, newCustomer);
 
@@ -248,6 +249,10 @@ export async function createProductSaleAndDistributeCommissions(
     const customerDoc = customerSnap.docs[0];
     const customer = { ...customerDoc.data(), id: customerDoc.id } as Customer;
 
+    if (!customer.tokenIsAvailable) {
+        throw new Error(`Token ${saleData.tokenSerial} has already been used to purchase a product.`);
+    }
+
     const newSaleRef = doc(collection(db, "productSales"));
     const saleDate = new Date().toISOString();
     const newSale: ProductSale = {
@@ -257,6 +262,9 @@ export async function createProductSaleAndDistributeCommissions(
         shopManagerName: shopManager.name,
     };
     batch.set(newSaleRef, newSale);
+
+    const customerRef = doc(db, "customers", customer.id);
+    batch.update(customerRef, { tokenIsAvailable: false });
 
     const productSettings = await getProductCommissionSettings();
     const applicableTier = productSettings.tiers.find(tier => 

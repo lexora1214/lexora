@@ -28,6 +28,7 @@ export interface Customer {
   salesmanId: string;
   saleDate: string;
   commissionDistributed: boolean;
+  tokenIsAvailable: boolean;
 }
 
 export interface ProductSale {
