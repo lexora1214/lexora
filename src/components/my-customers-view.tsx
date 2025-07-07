@@ -12,7 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { UserPlus, LoaderCircle, Calendar, ShieldCheck, Mail } from "lucide-react";
+import { UserPlus, LoaderCircle, Calendar, Mail } from "lucide-react";
 import CustomerRegistrationDialog from "@/components/customer-registration-dialog";
 import { Badge } from "@/components/ui/badge";
 import { getCustomersForSalesman } from "@/lib/firestore";
@@ -69,7 +69,7 @@ const MyCustomersView: React.FC<MyCustomersViewProps> = ({ user }) => {
                     <TableHead>Contact Info</TableHead>
                     <TableHead>Token Serial</TableHead>
                     <TableHead>Sale Date</TableHead>
-                    <TableHead>Commission Status</TableHead>
+                    <TableHead>Token Status</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -83,10 +83,8 @@ const MyCustomersView: React.FC<MyCustomersViewProps> = ({ user }) => {
                         </TableCell>
                         <TableCell>{new Date(customer.saleDate).toLocaleDateString()}</TableCell>
                         <TableCell>
-                            <Badge className={customer.commissionDistributed
-                                ? "border-transparent bg-success text-success-foreground hover:bg-success/80"
-                                : "border-transparent bg-warning text-warning-foreground hover:bg-warning/80"}>
-                                {customer.commissionDistributed ? 'Paid' : 'Pending'}
+                            <Badge variant={customer.tokenIsAvailable ? 'success' : 'destructive'}>
+                                {customer.tokenIsAvailable ? 'Available' : 'Used'}
                             </Badge>
                         </TableCell>
                         </TableRow>
@@ -112,10 +110,8 @@ const MyCustomersView: React.FC<MyCustomersViewProps> = ({ user }) => {
                                     <p className="font-semibold text-card-foreground">{customer.name}</p>
                                     <p className="text-sm text-muted-foreground flex items-center gap-1.5"><Mail className="w-3 h-3"/>{customer.contactInfo}</p>
                                 </div>
-                                <Badge className={customer.commissionDistributed
-                                    ? "border-transparent bg-success text-success-foreground hover:bg-success/80"
-                                    : "border-transparent bg-warning text-warning-foreground hover:bg-warning/80"}>
-                                    {customer.commissionDistributed ? 'Paid' : 'Pending'}
+                                 <Badge variant={customer.tokenIsAvailable ? 'success' : 'destructive'}>
+                                    {customer.tokenIsAvailable ? 'Available' : 'Used'}
                                 </Badge>
                             </div>
                             <div className="border-t pt-3 flex justify-between items-center text-sm text-muted-foreground">

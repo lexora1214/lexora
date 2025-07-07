@@ -10,7 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { LoaderCircle, ArrowUpDown } from "lucide-react";
+import { ArrowUpDown, Calendar, CreditCard, LoaderCircle, ShoppingBag, User as UserIcon } from "lucide-react";
 import { getIncomeRecordsForUser } from "@/lib/firestore";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import {
@@ -151,7 +151,8 @@ const IncomeRecordsView: React.FC<IncomeRecordsViewProps> = ({ user }) => {
         <CardDescription>A detailed history of all commissions you have earned.</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="rounded-md border">
+        {/* Desktop Table View */}
+        <div className="hidden rounded-md border md:block">
           <Table>
             <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (
@@ -187,24 +188,73 @@ const IncomeRecordsView: React.FC<IncomeRecordsViewProps> = ({ user }) => {
             </TableBody>
           </Table>
         </div>
-        <div className="flex items-center justify-end space-x-2 py-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
-          >
-            Previous
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
-          >
-            Next
-          </Button>
+
+        {/* Mobile Card View */}
+        <div className="grid gap-4 md:hidden">
+            {table.getRowModel().rows?.length ? (
+                table.getRowModel().rows.map((row) => {
+                    const record = row.original;
+                    const isProductSale = record.sourceType === 'product_sale';
+                    return (
+                        <Card key={record.id} className="p-4 flex flex-col gap-3">
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <p className="font-bold text-lg text-primary">LKR {record.amount.toLocaleString()}</p>
+                                    <Badge variant={isProductSale ? 'default' : 'secondary'}>
+                                        {isProductSale ? 'Product Sale' : 'Token Sale'}
+                                    </Badge>
+                                </div>
+                                <div className="text-sm text-muted-foreground flex items-center gap-1.5">
+                                    <Calendar className="w-3.5 h-3.5" />
+                                    {new Date(record.saleDate).toLocaleDateString()}
+                                </div>
+                            </div>
+                            <div className="border-t pt-3 space-y-2 text-sm text-muted-foreground">
+                                <div className="flex items-center gap-2">
+                                    <ShoppingBag className="w-4 h-4 text-primary/80"/>
+                                    <p><span className="font-medium text-card-foreground">{isProductSale ? record.productName : 'Token Sale'}</span> for {record.customerName}</p>
+                                </div>
+                                {record.tokenSerial && (
+                                    <div className="flex items-center gap-2">
+                                        <CreditCard className="w-4 h-4 text-primary/80"/>
+                                        <Badge variant="outline" className="font-mono">{record.tokenSerial}</Badge>
+                                    </div>
+                                )}
+                                <div className="flex items-center gap-2">
+                                    <UserIcon className="w-4 h-4 text-primary/80"/>
+                                    <p>Sale by: {isProductSale ? record.shopManagerName : record.salesmanName}</p>
+                                </div>
+                            </div>
+                        </Card>
+                    )
+                })
+            ) : (
+                <div className="text-center text-muted-foreground py-10">
+                    You have not earned any income yet.
+                </div>
+            )}
         </div>
+        
+        {records.length > table.getState().pagination.pageSize && (
+            <div className="flex items-center justify-end space-x-2 py-4">
+            <Button
+                variant="outline"
+                size="sm"
+                onClick={() => table.previousPage()}
+                disabled={!table.getCanPreviousPage()}
+            >
+                Previous
+            </Button>
+            <Button
+                variant="outline"
+                size="sm"
+                onClick={() => table.nextPage()}
+                disabled={!table.getCanNextPage()}
+            >
+                Next
+            </Button>
+            </div>
+        )}
       </CardContent>
     </Card>
   );
