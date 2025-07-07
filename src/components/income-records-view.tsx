@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -208,7 +207,7 @@ const IncomeRecordsView: React.FC<IncomeRecordsViewProps> = ({ user }) => {
         4: { halign: 'right' },
       },
       foot: [
-        [{ content: 'Total Income', colSpan: 4, styles: { halign: 'right', fontStyle: 'bold' } }, { content: `LKR ${totalIncome.toLocaleString()}`, styles: { halign: 'right', fontStyle: 'bold' } }]
+        [{ content: 'Total Income', colSpan: 4, styles: { halign: 'right', fontStyle: 'bold', textColor: '#000' } }, { content: `LKR ${totalIncome.toLocaleString()}`, styles: { halign: 'right', fontStyle: 'bold', textColor: '#000' } }]
       ],
       footStyles: { fillColor: [239, 241, 245] }
     });
