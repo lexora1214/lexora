@@ -1,10 +1,11 @@
+
 "use client";
 
 import React, { useState, useEffect } from "react";
 import { User, ProductSale, Customer } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ShoppingCart, LoaderCircle } from "lucide-react";
+import { ShoppingCart, LoaderCircle, Calendar, User as UserIcon } from "lucide-react";
 import ProductSaleDialog from "../product-sale-dialog";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -76,20 +77,21 @@ const ShopManagerDashboard: React.FC<ShopManagerDashboardProps> = ({ user, onAdd
              <div className="flex h-48 w-full items-center justify-center">
                 <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
              </div>
-          ) : (
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Product</TableHead>
-                    <TableHead>Customer</TableHead>
-                    <TableHead className="text-right">Price</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {sales.length > 0 ? (
-                    sales.map((sale) => (
+          ) : sales.length > 0 ? (
+            <>
+              {/* Desktop Table View */}
+              <div className="hidden rounded-md border md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Product</TableHead>
+                      <TableHead>Customer</TableHead>
+                      <TableHead className="text-right">Price</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {sales.map((sale) => (
                       <TableRow key={sale.id}>
                         <TableCell>{new Date(sale.saleDate).toLocaleDateString()}</TableCell>
                         <TableCell className="font-medium">{sale.productName}</TableCell>
@@ -101,16 +103,39 @@ const ShopManagerDashboard: React.FC<ShopManagerDashboardProps> = ({ user, onAdd
                           </div>
                         </TableCell>
                       </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={4} className="h-24 text-center">
-                        You have not recorded any sales yet.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Mobile Card View */}
+              <div className="grid gap-4 md:hidden">
+                {sales.map((sale) => (
+                  <Card key={sale.id} className="p-4 flex flex-col gap-3">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <p className="font-semibold text-card-foreground leading-tight">{sale.productName}</p>
+                            <Badge variant="outline" className="mt-1.5 capitalize">{sale.paymentMethod}</Badge>
+                        </div>
+                        <p className="font-bold text-lg text-primary text-right">LKR {sale.price.toLocaleString()}</p>
+                    </div>
+                    <div className="border-t pt-3 space-y-2 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-2">
+                            <UserIcon className="w-4 h-4 text-primary/80"/>
+                            <p>Customer: {sale.customerName}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Calendar className="w-4 h-4 text-primary/80"/>
+                            <p>Date: {new Date(sale.saleDate).toLocaleDateString()}</p>
+                        </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="flex items-center justify-center h-24 text-center text-muted-foreground">
+                <p>You have not recorded any sales yet.</p>
             </div>
           )}
         </CardContent>
