@@ -77,7 +77,7 @@ const navItems: NavItem[] = [
   { href: "#", icon: Lightbulb, label: "Insights", roles: ["Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager"] },
 ];
 
-const SidebarNav = ({ user, activeView, setActiveView }: { user: User, activeView: string, setActiveView: (view: string) => void }) => (
+const SidebarNav = ({ user, activeView, setActiveView, onLinkClick }: { user: User, activeView: string, setActiveView: (view: string) => void, onLinkClick?: () => void }) => (
   <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
     {navItems
       .filter(item => item.roles.includes(user.role))
@@ -88,6 +88,7 @@ const SidebarNav = ({ user, activeView, setActiveView }: { user: User, activeVie
           onClick={(e) => {
             e.preventDefault();
             setActiveView(item.label);
+            onLinkClick?.();
           }}
           className={cn(
             "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
@@ -107,6 +108,7 @@ const AppLayout = ({ user }: { user: User }) => {
   const [allUsers, setAllUsers] = React.useState<User[]>([]);
   const [allCustomers, setAllCustomers] = React.useState<Customer[]>([]);
   const [loading, setLoading] = React.useState(true);
+  const [isMobileSheetOpen, setIsMobileSheetOpen] = React.useState(false);
 
   React.useEffect(() => {
     const usersUnsub = onSnapshot(collection(db, "users"), (snapshot) => {
@@ -251,7 +253,7 @@ const AppLayout = ({ user }: { user: User }) => {
       </div>
       <div className="flex flex-col">
         <header className="flex h-14 items-center gap-4 border-b bg-card px-4 lg:h-[60px] lg:px-6">
-          <Sheet>
+          <Sheet open={isMobileSheetOpen} onOpenChange={setIsMobileSheetOpen}>
             <SheetTrigger asChild>
               <Button variant="outline" size="icon" className="shrink-0 md:hidden">
                 <Menu className="h-5 w-5" />
@@ -265,7 +267,7 @@ const AppLayout = ({ user }: { user: User }) => {
                    <span className="">LexoraNet</span>
                  </Link>
                </div>
-              <SidebarNav user={user} activeView={activeView} setActiveView={setActiveView} />
+              <SidebarNav user={user} activeView={activeView} setActiveView={setActiveView} onLinkClick={() => setIsMobileSheetOpen(false)} />
             </SheetContent>
           </Sheet>
           <div className="w-full flex-1">
