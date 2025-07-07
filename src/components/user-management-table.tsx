@@ -199,11 +199,26 @@ export default function UserManagementTable({ data, allIncomeRecords }: UserMana
   });
 
   const handleGenerateCsv = () => {
-    const rows = table.getRowModel().rows;
-    const reportData = rows.map(row => row.original);
+    const reportData = table.getRowModel().rows.map(row => row.original);
+    
+    const roleOrderMap: Record<Role, number> = {
+      'Admin': 1,
+      'Regional Director': 2,
+      'Head Group Manager': 3,
+      'Group Operation Manager': 4,
+      'Team Operation Manager': 5,
+      'Shop Manager': 6,
+      'Salesman': 7,
+    };
+    
+    const sortedReportData = [...reportData].sort((a, b) => {
+      const roleA = roleOrderMap[a.role] || 99;
+      const roleB = roleOrderMap[b.role] || 99;
+      return roleA - roleB;
+    });
 
     const csvHeader = "Name,Email,Role,Income (LKR)\n";
-    const csvRows = reportData.map(user => {
+    const csvRows = sortedReportData.map(user => {
         const name = `"${user.name.replace(/"/g, '""')}"`;
         const email = user.email;
         const role = user.role;
