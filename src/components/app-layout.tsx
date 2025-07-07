@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from "react";
@@ -54,12 +55,14 @@ import MyCustomersView from "./my-customers-view";
 import IncomeRecordsView from "./income-records-view";
 import ProductCommissionSettings from "./product-commission-settings";
 import SignupRoleSettingsForm from "./signup-role-settings";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 type NavItem = {
   href: string;
   icon: React.ElementType;
   label: string;
   roles: Role[];
+  children?: Omit<NavItem, 'children'>[];
 };
 
 const navItems: NavItem[] = [
@@ -71,9 +74,17 @@ const navItems: NavItem[] = [
   { href: "#", icon: Building, label: "User Management", roles: ["Admin"] },
   { href: "#", icon: Briefcase, label: "Customer Management", roles: ["Admin"]},
   { href: "#", icon: Network, label: "Network View", roles: ["Admin"] },
-  { href: "#", icon: Settings, label: "Token Commissions", roles: ["Admin"] },
-  { href: "#", icon: Settings, label: "Product Commissions", roles: ["Admin"] },
-  { href: "#", icon: SlidersHorizontal, label: "Signup Roles", roles: ["Admin"] },
+  { 
+    href: "#", 
+    icon: Settings, 
+    label: "Settings", 
+    roles: ["Admin"],
+    children: [
+      { href: "#", icon: DollarSign, label: "Token Commissions", roles: ["Admin"] },
+      { href: "#", icon: Briefcase, label: "Product Commissions", roles: ["Admin"] },
+      { href: "#", icon: SlidersHorizontal, label: "Signup Roles", roles: ["Admin"] },
+    ]
+  },
   { href: "#", icon: Lightbulb, label: "Insights", roles: ["Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager"] },
 ];
 
@@ -81,24 +92,65 @@ const SidebarNav = ({ user, activeView, setActiveView, onLinkClick }: { user: Us
   <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
     {navItems
       .filter(item => item.roles.includes(user.role))
-      .map((item) => (
-        <a
-          key={item.label}
-          href="#"
-          onClick={(e) => {
-            e.preventDefault();
-            setActiveView(item.label);
-            onLinkClick?.();
-          }}
-          className={cn(
-            "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
-            activeView === item.label && "bg-muted text-primary"
-          )}
-        >
-          <item.icon className="h-4 w-4" />
-          {item.label}
-        </a>
-      ))}
+      .map((item) => {
+        if (item.children && item.roles.includes(user.role)) {
+          const isGroupActive = item.children.some(child => child.label === activeView);
+          return (
+            <Accordion key={item.label} type="single" collapsible className="w-full" defaultValue={isGroupActive ? item.label : undefined}>
+              <AccordionItem value={item.label} className="border-b-0">
+                <AccordionTrigger
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary hover:no-underline",
+                    isGroupActive && "text-primary"
+                  )}
+                >
+                  <item.icon className="h-4 w-4" />
+                  <span>{item.label}</span>
+                </AccordionTrigger>
+                <AccordionContent className="space-y-1 pt-1">
+                  {item.children.map((child) => (
+                    <a
+                      key={child.label}
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setActiveView(child.label);
+                        onLinkClick?.();
+                      }}
+                      className={cn(
+                        "flex items-center gap-3 rounded-lg py-2 pl-11 pr-3 text-muted-foreground transition-all hover:text-primary",
+                        activeView === child.label && "bg-muted text-primary"
+                      )}
+                    >
+                      <child.icon className="h-4 w-4" />
+                      {child.label}
+                    </a>
+                  ))}
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          )
+        }
+
+        return (
+          <a
+            key={item.label}
+            href="#"
+            onClick={(e) => {
+              e.preventDefault();
+              setActiveView(item.label);
+              onLinkClick?.();
+            }}
+            className={cn(
+              "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
+              activeView === item.label && "bg-muted text-primary"
+            )}
+          >
+            <item.icon className="h-4 w-4" />
+            {item.label}
+          </a>
+        );
+      })}
   </nav>
 );
 
