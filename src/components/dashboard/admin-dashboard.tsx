@@ -76,6 +76,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
   const totalRevenue = commissionSettings ? commissionSettings.tokenPrice * allCustomers.length : 0;
   const adminTeamCommission = commissionSettings ? allCustomers.length * commissionSettings.admin : 0;
   const adminCommissionPerSale = commissionSettings ? commissionSettings.admin : '...';
+  const adminTeamTotalIncome = allUsers
+    .filter(u => u.role === 'Admin')
+    .reduce((acc, u) => acc + u.totalIncome, 0);
 
   return (
     <div className="flex flex-col gap-4">
@@ -118,6 +121,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
           <CardContent>
             <div className="text-2xl font-bold">LKR {adminTeamCommission.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">From all token sales (LKR {adminCommissionPerSale.toLocaleString()} per sale)</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Admin Team Total Income</CardTitle>
+            <Landmark className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">LKR {adminTeamTotalIncome.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">Includes all token and product sale commissions.</p>
           </CardContent>
         </Card>
         <Card>
