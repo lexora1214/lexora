@@ -71,3 +71,23 @@ export interface IncomeRecord {
   productPrice?: number;
   paymentMethod?: 'cash' | 'installments';
 }
+
+
+// New types for product commission settings
+export interface CommissionValues {
+  cash: number;
+  installments: number;
+}
+
+export type ProductCommissionRole = "salesman" | "teamOperationManager" | "groupOperationManager" | "headGroupManager" | "regionalDirector" | "admin";
+
+export interface ProductCommissionTier {
+  id: string;
+  minPrice: number;
+  maxPrice: number | null; // null for the highest tier
+  commissions: Record<ProductCommissionRole, CommissionValues>;
+}
+
+export interface ProductCommissionSettings {
+  tiers: ProductCommissionTier[];
+}

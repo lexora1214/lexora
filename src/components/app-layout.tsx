@@ -51,6 +51,7 @@ import ActionableInsights from "@/components/actionable-insights";
 import TeamView from "@/components/team-view";
 import MyCustomersView from "./my-customers-view";
 import IncomeRecordsView from "./income-records-view";
+import ProductCommissionSettings from "./product-commission-settings";
 
 type NavItem = {
   href: string;
@@ -68,7 +69,8 @@ const navItems: NavItem[] = [
   { href: "#", icon: Building, label: "User Management", roles: ["Admin"] },
   { href: "#", icon: Briefcase, label: "Customer Management", roles: ["Admin"]},
   { href: "#", icon: Network, label: "Network View", roles: ["Admin"] },
-  { href: "#", icon: Settings, label: "Commission Settings", roles: ["Admin"] },
+  { href: "#", icon: Settings, label: "Token Commissions", roles: ["Admin"] },
+  { href: "#", icon: Settings, label: "Product Commissions", roles: ["Admin"] },
   { href: "#", icon: Lightbulb, label: "Insights", roles: ["Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager"] },
 ];
 
@@ -107,7 +109,7 @@ const AppLayout = ({ user }: { user: User }) => {
     const usersUnsub = onSnapshot(collection(db, "users"), (snapshot) => {
       const usersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
       setAllUsers(usersData);
-      if(loading) setLoading(false);
+      setLoading(false);
     });
 
     const customersUnsub = onSnapshot(collection(db, "customers"), (snapshot) => {
@@ -119,7 +121,7 @@ const AppLayout = ({ user }: { user: User }) => {
       usersUnsub();
       customersUnsub();
     };
-  }, [loading]);
+  }, []);
 
 
   const handleLogout = async () => {
@@ -204,16 +206,18 @@ const AppLayout = ({ user }: { user: User }) => {
             </CardContent>
           </Card>
         );
-      case "Commission Settings":
+      case "Token Commissions":
         return (
           <Card>
             <CardHeader>
-              <CardTitle>Commission Settings</CardTitle>
-              <CardDescription>Adjust commission amounts for each role.</CardDescription>
+              <CardTitle>Token Commission Settings</CardTitle>
+              <CardDescription>Adjust commission amounts for each role for the initial LKR 2000 token sale.</CardDescription>
             </CardHeader>
             <CommissionSettings />
           </Card>
         );
+      case "Product Commissions":
+        return <ProductCommissionSettings />;
       case "Insights":
         return <ActionableInsights user={user} allUsers={allUsers} allCustomers={allCustomers} />;
       default:
