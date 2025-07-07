@@ -27,7 +27,7 @@ import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 const formSchema = z.object({
   productName: z.string().min(2, "Product name is required."),
   productCode: z.string().optional(),
-  price: z.coerce.number().min(20000, "Price must be at least LKR 20,000."),
+  price: z.coerce.number().min(1, "Price must be a positive value."),
   paymentMethod: z.enum(["cash", "installments"], {
     required_error: "You need to select a payment method.",
   }),

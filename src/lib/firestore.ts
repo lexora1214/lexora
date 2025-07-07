@@ -1,6 +1,6 @@
 import { doc, getDoc, setDoc, collection, getDocs, query, where, writeBatch, increment, updateDoc } from "firebase/firestore";
 import { db } from "./firebase";
-import { User, Role, Customer, CommissionSettings, IncomeRecord, ProductSale, ProductCommissionSettings, SignupRoleSettings } from "@/types";
+import { User, Role, Customer, CommissionSettings, IncomeRecord, ProductSale, ProductCommissionSettings, SignupRoleSettings, ProductCommissionTier } from "@/types";
 import type { User as FirebaseUser } from 'firebase/auth';
 
 function generateReferralCode(): string {
@@ -266,88 +266,97 @@ export async function createProductSaleAndDistributeCommissions(
     const customerRef = doc(db, "customers", customer.id);
     batch.update(customerRef, { tokenIsAvailable: false });
 
-    const productSettings = await getProductCommissionSettings();
-    const applicableTier = productSettings.tiers.find(tier => 
-        newSale.price >= tier.minPrice && (tier.maxPrice === null || newSale.price <= tier.maxPrice)
-    );
-
-    if (!applicableTier) {
-        // No commissions if price doesn't fall into any tier
-        await batch.commit();
-        return;
-    }
-
     const salesman = allUsers.find(u => u.id === customer.salesmanId);
     if (!salesman) {
         throw new Error(`Could not find the original salesman (ID: ${customer.salesmanId}) for this token.`);
     }
 
+    let applicableTier: ProductCommissionTier | undefined;
+    // Only look for tiers if price is >= 20000, otherwise commissions are 0.
+    if (newSale.price >= 20000) {
+        const productSettings = await getProductCommissionSettings();
+        applicableTier = productSettings.tiers.find(tier => 
+            newSale.price >= tier.minPrice && (tier.maxPrice === null || newSale.price <= tier.maxPrice)
+        );
+    }
+    
+    // This loop handles both commission and zero-commission scenarios.
     let currentUser: User | undefined = salesman;
     while(currentUser) {
-        const roleKey = currentUser.role.replace(/\s/g, '').charAt(0).toLowerCase() + currentUser.role.replace(/\s/g, '').slice(1) as keyof typeof applicableTier.commissions;
-        
-        const tierCommissions = applicableTier.commissions[roleKey];
+        let commission = 0;
+        if (applicableTier) {
+            const roleKey = currentUser.role.replace(/\s/g, '').charAt(0).toLowerCase() + currentUser.role.replace(/\s/g, '').slice(1) as keyof typeof applicableTier.commissions;
+            
+            const tierCommissions = applicableTier.commissions[roleKey];
 
-        if (tierCommissions) {
-            const commission = tierCommissions[newSale.paymentMethod];
-            if (commission > 0) {
-                const userRef = doc(db, "users", currentUser.id);
-                batch.update(userRef, { totalIncome: increment(commission) });
-
-                const incomeRecordRef = doc(collection(db, "incomeRecords"));
-                const newIncomeRecord: IncomeRecord = {
-                    id: incomeRecordRef.id,
-                    userId: currentUser.id,
-                    amount: commission,
-                    saleDate: saleDate,
-                    grantedForRole: currentUser.role,
-                    salesmanId: salesman.id,
-                    salesmanName: salesman.name,
-                    shopManagerName: shopManager.name,
-                    sourceType: 'product_sale',
-                    customerId: customer.id,
-                    customerName: customer.name,
-                    tokenSerial: newSale.tokenSerial,
-                    productName: newSale.productName,
-                    productPrice: newSale.price,
-                    paymentMethod: newSale.paymentMethod,
-                };
-                batch.set(incomeRecordRef, newIncomeRecord);
+            if (tierCommissions) {
+                commission = tierCommissions[newSale.paymentMethod];
             }
+        }
+        
+        // Always create an income record.
+        const incomeRecordRef = doc(collection(db, "incomeRecords"));
+        const newIncomeRecord: IncomeRecord = {
+            id: incomeRecordRef.id,
+            userId: currentUser.id,
+            amount: commission,
+            saleDate: saleDate,
+            grantedForRole: currentUser.role,
+            salesmanId: salesman.id,
+            salesmanName: salesman.name,
+            shopManagerName: shopManager.name,
+            sourceType: 'product_sale',
+            customerId: customer.id,
+            customerName: customer.name,
+            tokenSerial: newSale.tokenSerial,
+            productName: newSale.productName,
+            productPrice: newSale.price,
+            paymentMethod: newSale.paymentMethod,
+        };
+        batch.set(incomeRecordRef, newIncomeRecord);
+
+        // Only update total income if commission is greater than 0.
+        if (commission > 0) {
+            const userRef = doc(db, "users", currentUser.id);
+            batch.update(userRef, { totalIncome: increment(commission) });
         }
 
         currentUser = currentUser.referrerId ? allUsers.find(u => u.id === currentUser!.referrerId) : undefined;
     }
 
-    const adminCommissionValues = applicableTier.commissions.admin;
-    if (adminCommissionValues) {
-        const adminCommission = adminCommissionValues[newSale.paymentMethod];
+    // Handle Admin commission
+    let adminCommission = 0;
+    if (applicableTier?.commissions.admin) {
+        adminCommission = applicableTier.commissions.admin[newSale.paymentMethod];
+    }
+    
+    const adminUsers = allUsers.filter(u => u.role === 'Admin');
+    for (const adminUser of adminUsers) {
+        // Always create an income record for admins.
+        const incomeRecordRef = doc(collection(db, "incomeRecords"));
+        const newIncomeRecord: IncomeRecord = {
+            id: incomeRecordRef.id,
+            userId: adminUser.id,
+            amount: adminCommission,
+            saleDate: saleDate,
+            grantedForRole: 'Admin',
+            salesmanId: salesman.id,
+            salesmanName: salesman.name,
+            shopManagerName: shopManager.name,
+            sourceType: 'product_sale',
+            customerId: customer.id,
+            customerName: customer.name,
+            tokenSerial: newSale.tokenSerial,
+            productName: newSale.productName,
+            productPrice: newSale.price,
+            paymentMethod: newSale.paymentMethod,
+        };
+        batch.set(incomeRecordRef, newIncomeRecord);
+        
+        // Only update total income if commission is greater than 0.
         if (adminCommission > 0) {
-            const adminUsers = allUsers.filter(u => u.role === 'Admin');
-            for (const adminUser of adminUsers) {
-                const userRef = doc(db, "users", adminUser.id);
-                batch.update(userRef, { totalIncome: increment(adminCommission) });
-
-                const incomeRecordRef = doc(collection(db, "incomeRecords"));
-                 const newIncomeRecord: IncomeRecord = {
-                    id: incomeRecordRef.id,
-                    userId: adminUser.id,
-                    amount: adminCommission,
-                    saleDate: saleDate,
-                    grantedForRole: 'Admin',
-                    salesmanId: salesman.id,
-                    salesmanName: salesman.name,
-                    shopManagerName: shopManager.name,
-                    sourceType: 'product_sale',
-                    customerId: customer.id,
-                    customerName: customer.name,
-                    tokenSerial: newSale.tokenSerial,
-                    productName: newSale.productName,
-                    productPrice: newSale.price,
-                    paymentMethod: newSale.paymentMethod,
-                };
-                batch.set(incomeRecordRef, newIncomeRecord);
-            }
+            const userRef = doc(db, "users", adminUser.id);
+            batch.update(userRef, { totalIncome: increment(adminCommission) });
         }
     }
 
