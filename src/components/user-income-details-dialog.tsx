@@ -69,6 +69,8 @@ const UserIncomeDetailsDialog: React.FC<UserIncomeDetailsDialogProps> = ({ user,
     const doc = new jsPDF();
     const tableRows: any[] = [];
     const tableColumns = ["Date", "Source", "Details", "Role Granted", "Amount (LKR)"];
+    
+    const totalIncome = filteredRecords.reduce((sum, record) => sum + record.amount, 0);
 
     filteredRecords.forEach(record => {
       let detailText = "";
@@ -108,7 +110,11 @@ const UserIncomeDetailsDialog: React.FC<UserIncomeDetailsDialogProps> = ({ user,
       startY: 50,
       columnStyles: {
         4: { halign: 'right' },
-      }
+      },
+      foot: [
+        [{ content: 'Total Income', colSpan: 4, styles: { halign: 'right', fontStyle: 'bold', textColor: '#000' } }, { content: `LKR ${totalIncome.toLocaleString()}`, styles: { halign: 'right', fontStyle: 'bold', textColor: '#000' } }]
+      ],
+      footStyles: { fillColor: [239, 241, 245] }
     });
 
     const fileNameDateSuffix = dateRange?.from ? `_${format(dateRange.from, "yyyy-MM-dd")}_to_${format(dateRange.to ?? dateRange.from, "yyyy-MM-dd")}` : '_all-time';
