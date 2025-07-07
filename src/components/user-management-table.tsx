@@ -1,7 +1,8 @@
+
 "use client";
 
 import * as React from "react";
-import { ArrowUpDown, ChevronDown, MoreHorizontal } from "lucide-react";
+import { ArrowUpDown, ChevronDown, MoreHorizontal, Calendar as CalendarIcon } from "lucide-react";
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -14,6 +15,8 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
+import { DateRange } from "react-day-picker";
+import { format } from "date-fns";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -37,6 +40,10 @@ import {
 import { User } from "@/types";
 import { Badge } from "./ui/badge";
 import EditUserDialog from "./edit-user-dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { Calendar } from "./ui/calendar";
+import { cn } from "@/lib/utils";
+
 
 export const getColumns = (onEdit: (user: User) => void): ColumnDef<User>[] => [
   {
@@ -63,6 +70,21 @@ export const getColumns = (onEdit: (user: User) => void): ColumnDef<User>[] => [
     accessorKey: "role",
     header: "Role",
     cell: ({ row }) => <Badge variant="secondary">{row.getValue("role")}</Badge>,
+  },
+   {
+    accessorKey: "createdAt",
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Joined Date
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      );
+    },
+    cell: ({ row }) => new Date(row.getValue("createdAt")).toLocaleDateString(),
   },
   {
     accessorKey: "totalIncome",
@@ -109,11 +131,12 @@ interface UserManagementTableProps {
 }
 
 export default function UserManagementTable({ data }: UserManagementTableProps) {
-  const [sorting, setSorting] = React.useState<SortingState>([]);
+  const [sorting, setSorting] = React.useState<SortingState>([ { id: 'createdAt', desc: true }]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [selectedUser, setSelectedUser] = React.useState<User | null>(null);
+  const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
 
   const handleEditClick = (user: User) => {
     setSelectedUser(user);
@@ -121,9 +144,25 @@ export default function UserManagementTable({ data }: UserManagementTableProps) 
   };
 
   const columns = React.useMemo(() => getColumns(handleEditClick), []);
+  
+  const filteredData = React.useMemo(() => {
+    if (!dateRange || !dateRange.from) {
+      return data;
+    }
+    const from = dateRange.from;
+    const to = dateRange.to ? new Date(dateRange.to) : new Date(from);
+    to.setHours(23, 59, 59, 999);
+
+    return data.filter(user => {
+        if (!user.createdAt) return false;
+        const createdAtDate = new Date(user.createdAt);
+        return createdAtDate >= from && createdAtDate <= to;
+    });
+  }, [data, dateRange]);
+
 
   const table = useReactTable({
-    data,
+    data: filteredData,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -141,7 +180,7 @@ export default function UserManagementTable({ data }: UserManagementTableProps) 
 
   return (
     <div className="w-full">
-      <div className="flex items-center py-4">
+      <div className="flex flex-col md:flex-row items-center gap-4 py-4">
         <Input
           placeholder="Filter by email..."
           value={(table.getColumn("email")?.getFilterValue() as string) ?? ""}
@@ -150,6 +189,45 @@ export default function UserManagementTable({ data }: UserManagementTableProps) 
           }
           className="max-w-sm"
         />
+        <Popover>
+            <PopoverTrigger asChild>
+            <Button
+                id="date"
+                variant={"outline"}
+                className={cn(
+                "w-full justify-start text-left font-normal md:w-[300px]",
+                !dateRange && "text-muted-foreground"
+                )}
+            >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {dateRange?.from ? (
+                dateRange.to ? (
+                    <>
+                    {format(dateRange.from, "LLL dd, y")} -{" "}
+                    {format(dateRange.to, "LLL dd, y")}
+                    </>
+                ) : (
+                    format(dateRange.from, "LLL dd, y")
+                )
+                ) : (
+                <span>Filter by join date</span>
+                )}
+            </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+            <Calendar
+                initialFocus
+                mode="range"
+                defaultMonth={dateRange?.from}
+                selected={dateRange}
+                onSelect={setDateRange}
+                numberOfMonths={2}
+            />
+            <div className="p-2 border-t">
+                <Button variant="ghost" className="w-full justify-center" onClick={() => setDateRange(undefined)}>Clear</Button>
+            </div>
+            </PopoverContent>
+        </Popover>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="ml-auto">
@@ -161,14 +239,19 @@ export default function UserManagementTable({ data }: UserManagementTableProps) 
               .getAllColumns()
               .filter((column) => column.getCanHide())
               .map((column) => {
+                let displayName = column.id.replace(/([A-Z])/g, ' $1');
+                displayName = displayName.charAt(0).toUpperCase() + displayName.slice(1);
+                
+                if (column.id === 'createdAt') displayName = 'Joined Date';
+                if (column.id === 'totalIncome') displayName = 'Total Income';
+                
                 return (
                   <DropdownMenuCheckboxItem
                     key={column.id}
-                    className="capitalize"
                     checked={column.getIsVisible()}
                     onCheckedChange={(value) => column.toggleVisibility(!!value)}
                   >
-                    {column.id}
+                    {displayName}
                   </DropdownMenuCheckboxItem>
                 );
               })}
