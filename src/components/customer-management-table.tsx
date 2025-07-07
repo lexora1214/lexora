@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/table";
 import { Customer, User } from "@/types";
 import { Badge } from "./ui/badge";
+import { cn } from "@/lib/utils";
 
 interface CustomerManagementTableProps {
     data: Customer[];
@@ -93,18 +94,6 @@ export const getColumns = (users: User[]): ColumnDef<Customer>[] => [
                 ? "border-transparent bg-success text-success-foreground hover:bg-success/80"
                 : "border-transparent bg-warning text-warning-foreground hover:bg-warning/80"}>
                 {isPaid ? 'Paid' : 'Pending'}
-            </Badge>
-        )
-    },
-  },
-  {
-    accessorKey: "tokenIsAvailable",
-    header: "Token Status",
-    cell: ({ row }) => {
-        const isAvailable = row.getValue("tokenIsAvailable");
-        return (
-            <Badge variant={isAvailable ? 'success' : 'destructive'} className="whitespace-nowrap">
-                {isAvailable ? 'Available' : 'Used'}
             </Badge>
         )
     },
@@ -195,7 +184,6 @@ export default function CustomerManagementTable({ data, users }: CustomerManagem
                     saleDate: 'Sale Date',
                     salesmanId: 'Registered By',
                     commissionDistributed: 'Commission Status',
-                    tokenIsAvailable: 'Token Status',
                 };
                 return (
                   <DropdownMenuCheckboxItem
@@ -233,7 +221,15 @@ export default function CustomerManagementTable({ data, users }: CustomerManagem
           <TableBody>
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
+                <TableRow 
+                  key={row.id} 
+                  data-state={row.getIsSelected() && "selected"}
+                  className={cn(
+                    row.original.tokenIsAvailable
+                        ? "bg-success/10 hover:bg-success/20"
+                        : "bg-destructive/10 hover:bg-destructive/20"
+                  )}
+                >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
