@@ -224,18 +224,18 @@ const TeamView: React.FC<TeamViewProps> = ({ downlineUsers, allCustomers }) => {
                     const user = row.original;
                     return (
                         <Card key={user.id} className="p-4 flex flex-col gap-3">
-                            <div className="flex justify-between items-start">
-                                <div className="flex items-center gap-3">
-                                    <Avatar className="h-10 w-10">
+                            <div className="flex justify-between items-start gap-4">
+                                <div className="flex items-center gap-3 min-w-0">
+                                    <Avatar className="h-10 w-10 flex-shrink-0">
                                         <AvatarImage src={user.avatar} alt={user.name} data-ai-hint="profile avatar" />
                                         <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
                                     </Avatar>
-                                    <div>
-                                        <p className="font-semibold text-card-foreground">{user.name}</p>
-                                        <p className="text-xs text-muted-foreground">{user.email}</p>
+                                    <div className="min-w-0">
+                                        <p className="font-semibold text-card-foreground truncate" title={user.name}>{user.name}</p>
+                                        <p className="text-xs text-muted-foreground truncate" title={user.email}>{user.email}</p>
                                     </div>
                                 </div>
-                                <Badge variant="outline" className="text-xs">{user.role}</Badge>
+                                <Badge variant="outline" className="text-xs flex-shrink-0 text-center whitespace-normal">{user.role}</Badge>
                             </div>
                             
                             <div className="border-t pt-3 grid grid-cols-2 gap-4 text-sm">
