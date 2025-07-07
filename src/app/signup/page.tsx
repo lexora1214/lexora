@@ -152,9 +152,11 @@ export default function SignupPage() {
                       {loadingRoles ? (
                         <div className="flex items-center justify-center p-2"><LoaderCircle className="h-4 w-4 animate-spin" /></div>
                       ) : (
-                        ALL_ROLES.map(r => (
-                          visibleRoles?.[r] && <SelectItem key={r} value={r}>{r}</SelectItem>
-                        ))
+                        ALL_ROLES
+                          .filter(r => visibleRoles?.[r] === true)
+                          .map(r => (
+                            <SelectItem key={r} value={r}>{r}</SelectItem>
+                          ))
                       )}
                     </SelectContent>
                   </Select>
