@@ -240,6 +240,8 @@ export default function UserManagementTable({ data, allIncomeRecords }: UserMana
       return roleA - roleB;
     });
 
+    const totalIncome = sortedReportData.reduce((sum, user) => sum + user.periodIncome, 0);
+
     const csvHeader = "Name,Email,Role,Income (LKR)\n";
     const csvRows = sortedReportData.map(user => {
         const name = `"${user.name.replace(/"/g, '""')}"`;
@@ -248,8 +250,9 @@ export default function UserManagementTable({ data, allIncomeRecords }: UserMana
         const income = user.periodIncome;
         return `${name},${email},${role},${income}`;
     }).join("\n");
-
-    const csvContent = csvHeader + csvRows;
+    
+    const csvFooter = `\n,,Total,${totalIncome.toLocaleString()}`;
+    const csvContent = csvHeader + csvRows + csvFooter;
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -277,6 +280,8 @@ export default function UserManagementTable({ data, allIncomeRecords }: UserMana
       const roleB = roleOrderMap[b.role] || 99;
       return roleA - roleB;
     });
+
+    const totalIncome = sortedReportData.reduce((sum, user) => sum + user.periodIncome, 0);
 
     sortedReportData.forEach(user => {
       const userData = [
@@ -307,6 +312,10 @@ export default function UserManagementTable({ data, allIncomeRecords }: UserMana
         head: [tableColumns],
         body: tableRows,
         startY: 50,
+        foot: [
+            [{ content: 'Total Income', colSpan: 3, styles: { halign: 'right', fontStyle: 'bold', textColor: '#000' } }, { content: `LKR ${totalIncome.toLocaleString()}`, styles: { halign: 'right', fontStyle: 'bold', textColor: '#000' } }]
+        ],
+        footStyles: { fillColor: [239, 241, 245] }
     });
     
     const fileNameSuffix = dateRange?.from ? `_${format(dateRange.from, "yyyy-MM-dd")}_to_${format(dateRange.to ?? dateRange.from, "yyyy-MM-dd")}` : '_all-time';
