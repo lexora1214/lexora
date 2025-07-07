@@ -88,29 +88,24 @@ const UserIncomeDetailsDialog: React.FC<UserIncomeDetailsDialogProps> = ({ user,
       tableRows.push(recordData);
     });
 
+    // Header
     doc.setFontSize(18);
     doc.setFont("helvetica", "bold");
-    doc.text(`Income Report for ${user.name} (${user.role})`, 14, 22);
+    doc.text("Lexora", 14, 22);
 
     doc.setFontSize(12);
     doc.setFont("helvetica", "normal");
+    doc.text(`Income Report for ${user.name} (${user.role})`, 14, 30);
+    
+    doc.setFontSize(10);
     const dateSuffix = dateRange?.from ? `Period: ${format(dateRange.from, "LLL dd, y")} - ${format(dateRange.to ?? dateRange.from, "LLL dd, y")}` : 'Period: All Time';
-    doc.text(dateSuffix, 14, 30);
-    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 36);
-
+    doc.text(dateSuffix, 14, 36);
+    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 42);
 
     (doc as any).autoTable({
       head: [tableColumns],
       body: tableRows,
-      startY: 45,
-      styles: {
-        cellPadding: 2,
-        fontSize: 8,
-      },
-      headStyles: {
-        fillColor: [34, 139, 34],
-        fontSize: 9,
-      },
+      startY: 50,
       columnStyles: {
         4: { halign: 'right' },
       }
