@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ArrowUpDown, ChevronDown, MoreHorizontal } from "lucide-react";
+import { ArrowUpDown, ChevronDown, MoreHorizontal, Calendar as CalendarIcon } from "lucide-react";
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -43,6 +43,10 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { DateRange } from "react-day-picker";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { format } from "date-fns";
+import { Calendar } from "./ui/calendar";
 
 interface CustomerManagementTableProps {
     data: Customer[];
@@ -64,6 +68,9 @@ export const getColumns = (users: User[]): ColumnDef<Customer>[] => [
   {
     accessorKey: "contactInfo",
     header: "Contact Info",
+    filterFn: (row, id, value) => {
+        return (row.getValue(id) as string).toLowerCase().includes(value.toLowerCase());
+    },
   },
   {
     accessorKey: "tokenSerial",
@@ -121,11 +128,26 @@ export const getColumns = (users: User[]): ColumnDef<Customer>[] => [
 export default function CustomerManagementTable({ data, users }: CustomerManagementTableProps) {
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
+  const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
   
   const columns = React.useMemo(() => getColumns(users), [users]);
 
-  const availableData = React.useMemo(() => data.filter(c => c.tokenIsAvailable), [data]);
-  const unavailableData = React.useMemo(() => data.filter(c => !c.tokenIsAvailable), [data]);
+  const dateFilteredData = React.useMemo(() => {
+    if (!dateRange || !dateRange.from) {
+      return data;
+    }
+    const from = dateRange.from;
+    const to = dateRange.to ? new Date(dateRange.to) : new Date(from);
+    to.setHours(23, 59, 59, 999);
+
+    return data.filter(customer => {
+        const saleDate = new Date(customer.saleDate);
+        return saleDate >= from && saleDate <= to;
+    });
+  }, [data, dateRange]);
+
+  const availableData = React.useMemo(() => dateFilteredData.filter(c => c.tokenIsAvailable), [dateFilteredData]);
+  const unavailableData = React.useMemo(() => dateFilteredData.filter(c => !c.tokenIsAvailable), [dateFilteredData]);
 
   const useTable = (tableData: Customer[]) => {
       const [sorting, setSorting] = React.useState<SortingState>([]);
@@ -154,93 +176,66 @@ export default function CustomerManagementTable({ data, users }: CustomerManagem
 
   const availableTable = useTable(availableData);
   const unavailableTable = useTable(unavailableData);
-
-  const TableView = ({ table, isAvailable }: { table: ReturnType<typeof useTable>, isAvailable: boolean}) => (
-    <>
-      <div className="rounded-md border">
-        <Table>
-          {!isAvailable && <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => {
-                  return (
-                    <TableHead key={header.id}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                    </TableHead>
-                  );
-                })}
-              </TableRow>
-            ))}
-          </TableHeader>}
-          <TableBody>
-            {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow 
-                  key={row.id} 
-                  data-state={row.getIsSelected() && "selected"}
-                  className={cn(
-                    row.original.tokenIsAvailable
-                        ? "bg-success/10 hover:bg-success/20"
-                        : "bg-destructive/10 hover:bg-destructive/20"
-                  )}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">
-                  No customers found.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
-      <div className="flex items-center justify-end space-x-2 py-4">
-        <div className="space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
-          >
-            Previous
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
-          >
-            Next
-          </Button>
-        </div>
-      </div>
-    </>
-  );
+  
+  const handleFilterChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    setColumnFilters(prev => {
+        const existingFilter = prev.find(f => f.id === 'contactInfo');
+        if (!existingFilter) {
+            return [...prev, { id: 'contactInfo', value }];
+        }
+        return prev.map(f => f.id === 'contactInfo' ? { ...f, value } : f);
+    });
+  }
 
   return (
     <div className="w-full">
-      <div className="flex items-center py-4">
+      <div className="flex flex-col md:flex-row items-center gap-4 py-4">
         <Input
           placeholder="Filter by contact info..."
-          value={(availableTable.getColumn("contactInfo")?.getFilterValue() as string) ?? ""}
-          onChange={(event) => {
-            availableTable.getColumn("contactInfo")?.setFilterValue(event.target.value)
-            unavailableTable.getColumn("contactInfo")?.setFilterValue(event.target.value)
-          }}
+          value={(columnFilters.find(f => f.id === 'contactInfo')?.value as string) ?? ''}
+          onChange={handleFilterChange}
           className="max-w-sm"
         />
+         <Popover>
+            <PopoverTrigger asChild>
+            <Button
+                id="date"
+                variant={"outline"}
+                className={cn(
+                "w-full justify-start text-left font-normal md:w-[300px]",
+                !dateRange && "text-muted-foreground"
+                )}
+            >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {dateRange?.from ? (
+                dateRange.to ? (
+                    <>
+                    {format(dateRange.from, "LLL dd, y")} -{" "}
+                    {format(dateRange.to, "LLL dd, y")}
+                    </>
+                ) : (
+                    format(dateRange.from, "LLL dd, y")
+                )
+                ) : (
+                <span>Filter by sale date</span>
+                )}
+            </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+            <Calendar
+                initialFocus
+                mode="range"
+                defaultMonth={dateRange?.from}
+                selected={dateRange}
+                onSelect={setDateRange}
+                numberOfMonths={2}
+            />
+            <div className="p-2 border-t">
+                <Button variant="ghost" className="w-full justify-center" onClick={() => setDateRange(undefined)}>Clear</Button>
+            </div>
+            </PopoverContent>
+        </Popover>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="ml-auto">
@@ -312,7 +307,7 @@ export default function CustomerManagementTable({ data, users }: CustomerManagem
             ) : (
               <TableRow>
                 <TableCell colSpan={columns.length} className="h-24 text-center">
-                  No available tokens.
+                  No available tokens found for the selected period.
                 </TableCell>
               </TableRow>
             )}
@@ -344,7 +339,7 @@ export default function CustomerManagementTable({ data, users }: CustomerManagem
           <Accordion type="single" collapsible className="w-full">
               <AccordionItem value="used-tokens">
                   <AccordionTrigger className="text-base font-semibold text-destructive">
-                      Used Tokens ({unavailableTable.getFilteredRowModel().rows.length})
+                      Used Tokens ({unavailableTable.getRowModel().rows.length})
                   </AccordionTrigger>
                   <AccordionContent className="pt-4">
                       <div className="rounded-md border">

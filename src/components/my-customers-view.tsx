@@ -12,11 +12,16 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { UserPlus, LoaderCircle, Calendar, Phone } from "lucide-react";
+import { UserPlus, LoaderCircle, Calendar as CalendarIcon, Phone } from "lucide-react";
 import CustomerRegistrationDialog from "@/components/customer-registration-dialog";
 import { Badge } from "@/components/ui/badge";
 import { getCustomersForSalesman } from "@/lib/firestore";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
+import { DateRange } from "react-day-picker";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
+import { Calendar } from "./ui/calendar";
 
 interface MyCustomersViewProps {
   user: User;
@@ -26,6 +31,7 @@ const MyCustomersView: React.FC<MyCustomersViewProps> = ({ user }) => {
   const [myCustomers, setMyCustomers] = React.useState<CustomerType[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+  const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
 
   const fetchMyData = React.useCallback(async () => {
     setLoading(true);
@@ -37,6 +43,21 @@ const MyCustomersView: React.FC<MyCustomersViewProps> = ({ user }) => {
   React.useEffect(() => {
     fetchMyData();
   }, [fetchMyData]);
+
+  const filteredCustomers = React.useMemo(() => {
+    if (!dateRange || !dateRange.from) {
+      return myCustomers;
+    }
+    const from = dateRange.from;
+    const to = dateRange.to ? new Date(dateRange.to) : new Date(from);
+    to.setHours(23, 59, 59, 999);
+
+    return myCustomers.filter(customer => {
+      const saleDate = new Date(customer.saleDate);
+      return saleDate >= from && saleDate <= to;
+    });
+  }, [myCustomers, dateRange]);
+
 
   if (loading) {
     return (
@@ -54,10 +75,51 @@ const MyCustomersView: React.FC<MyCustomersViewProps> = ({ user }) => {
                 <CardTitle>My Customer Registrations</CardTitle>
                 <CardDescription>A list of customers you have registered.</CardDescription>
             </div>
-            <Button onClick={() => setIsDialogOpen(true)} className="w-full md:w-auto">
-                <UserPlus className="mr-2 h-4 w-4" />
-                Register New Customer
-            </Button>
+            <div className="flex flex-col-reverse sm:flex-row gap-2 w-full md:w-auto">
+                <Popover>
+                    <PopoverTrigger asChild>
+                    <Button
+                        id="date"
+                        variant={"outline"}
+                        className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !dateRange && "text-muted-foreground"
+                        )}
+                    >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {dateRange?.from ? (
+                        dateRange.to ? (
+                            <>
+                            {format(dateRange.from, "LLL dd, y")} -{" "}
+                            {format(dateRange.to, "LLL dd, y")}
+                            </>
+                        ) : (
+                            format(dateRange.from, "LLL dd, y")
+                        )
+                        ) : (
+                        <span>Filter by registration date</span>
+                        )}
+                    </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="end">
+                    <Calendar
+                        initialFocus
+                        mode="range"
+                        defaultMonth={dateRange?.from}
+                        selected={dateRange}
+                        onSelect={setDateRange}
+                        numberOfMonths={2}
+                    />
+                    <div className="p-2 border-t">
+                        <Button variant="ghost" className="w-full justify-center" onClick={() => setDateRange(undefined)}>Clear</Button>
+                    </div>
+                    </PopoverContent>
+                </Popover>
+                <Button onClick={() => setIsDialogOpen(true)} className="w-full md:w-auto">
+                    <UserPlus className="mr-2 h-4 w-4" />
+                    Register New Customer
+                </Button>
+            </div>
         </CardHeader>
         <CardContent>
             {/* Desktop Table View */}
@@ -73,8 +135,8 @@ const MyCustomersView: React.FC<MyCustomersViewProps> = ({ user }) => {
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {myCustomers.length > 0 ? (
-                    myCustomers.map((customer) => (
+                    {filteredCustomers.length > 0 ? (
+                    filteredCustomers.map((customer) => (
                         <TableRow key={customer.id}>
                         <TableCell className="font-medium">{customer.name}</TableCell>
                         <TableCell>{customer.contactInfo}</TableCell>
@@ -92,7 +154,7 @@ const MyCustomersView: React.FC<MyCustomersViewProps> = ({ user }) => {
                     ) : (
                     <TableRow>
                         <TableCell colSpan={5} className="h-24 text-center">
-                        You have not registered any customers yet.
+                        No customers found for the selected period.
                         </TableCell>
                     </TableRow>
                     )}
@@ -102,8 +164,8 @@ const MyCustomersView: React.FC<MyCustomersViewProps> = ({ user }) => {
 
             {/* Mobile Card View */}
             <div className="grid gap-4 md:hidden">
-                {myCustomers.length > 0 ? (
-                    myCustomers.map((customer) => (
+                {filteredCustomers.length > 0 ? (
+                    filteredCustomers.map((customer) => (
                         <Card key={customer.id} className="p-4 flex flex-col gap-3">
                             <div className="flex justify-between items-start">
                                 <div>
@@ -116,13 +178,13 @@ const MyCustomersView: React.FC<MyCustomersViewProps> = ({ user }) => {
                             </div>
                             <div className="border-t pt-3 flex justify-between items-center text-sm text-muted-foreground">
                                 <Badge variant="outline" className="font-mono text-xs">{customer.tokenSerial}</Badge>
-                                <div className="flex items-center gap-1.5"><Calendar className="w-3 h-3"/>{new Date(customer.saleDate).toLocaleDateString()}</div>
+                                <div className="flex items-center gap-1.5"><CalendarIcon className="w-3 h-3"/>{new Date(customer.saleDate).toLocaleDateString()}</div>
                             </div>
                         </Card>
                     ))
                 ) : (
                     <div className="text-center text-muted-foreground py-10">
-                        You have not registered any customers yet.
+                        No customers found for the selected period.
                     </div>
                 )}
             </div>

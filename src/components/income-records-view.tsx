@@ -10,7 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ArrowUpDown, Calendar, CreditCard, LoaderCircle, ShoppingBag, User as UserIcon } from "lucide-react";
+import { ArrowUpDown, Calendar as CalendarIcon, CreditCard, LoaderCircle, ShoppingBag, User as UserIcon } from "lucide-react";
 import { getIncomeRecordsForUser } from "@/lib/firestore";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import {
@@ -24,6 +24,11 @@ import {
 } from "@tanstack/react-table";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
+import { DateRange } from "react-day-picker";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
+import { Calendar } from "./ui/calendar";
 
 interface IncomeRecordsViewProps {
   user: User;
@@ -109,6 +114,7 @@ const IncomeRecordsView: React.FC<IncomeRecordsViewProps> = ({ user }) => {
   const [records, setRecords] = useState<IncomeRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [sorting, setSorting] = useState<SortingState>([]);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
 
   useEffect(() => {
     const fetchRecords = async () => {
@@ -120,8 +126,22 @@ const IncomeRecordsView: React.FC<IncomeRecordsViewProps> = ({ user }) => {
     fetchRecords();
   }, [user.id]);
 
+  const filteredRecords = React.useMemo(() => {
+    if (!dateRange || !dateRange.from) {
+      return records;
+    }
+    const from = dateRange.from;
+    const to = dateRange.to ? new Date(dateRange.to) : new Date(from);
+    to.setHours(23, 59, 59, 999);
+
+    return records.filter(record => {
+      const saleDate = new Date(record.saleDate);
+      return saleDate >= from && saleDate <= to;
+    });
+  }, [records, dateRange]);
+
   const table = useReactTable({
-    data: records,
+    data: filteredRecords,
     columns,
     state: {
       sorting,
@@ -146,9 +166,50 @@ const IncomeRecordsView: React.FC<IncomeRecordsViewProps> = ({ user }) => {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>My Income Records</CardTitle>
-        <CardDescription>A detailed history of all commissions you have earned.</CardDescription>
+      <CardHeader className="flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+            <CardTitle>My Income Records</CardTitle>
+            <CardDescription>A detailed history of all commissions you have earned.</CardDescription>
+        </div>
+        <Popover>
+            <PopoverTrigger asChild>
+            <Button
+                id="date"
+                variant={"outline"}
+                className={cn(
+                "w-full justify-start text-left font-normal md:w-[300px]",
+                !dateRange && "text-muted-foreground"
+                )}
+            >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {dateRange?.from ? (
+                dateRange.to ? (
+                    <>
+                    {format(dateRange.from, "LLL dd, y")} -{" "}
+                    {format(dateRange.to, "LLL dd, y")}
+                    </>
+                ) : (
+                    format(dateRange.from, "LLL dd, y")
+                )
+                ) : (
+                <span>Pick a date range</span>
+                )}
+            </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+            <Calendar
+                initialFocus
+                mode="range"
+                defaultMonth={dateRange?.from}
+                selected={dateRange}
+                onSelect={setDateRange}
+                numberOfMonths={2}
+            />
+             <div className="p-2 border-t">
+                <Button variant="ghost" className="w-full justify-center" onClick={() => setDateRange(undefined)}>Clear</Button>
+            </div>
+            </PopoverContent>
+        </Popover>
       </CardHeader>
       <CardContent>
         {/* Desktop Table View */}
@@ -181,7 +242,7 @@ const IncomeRecordsView: React.FC<IncomeRecordsViewProps> = ({ user }) => {
               ) : (
                 <TableRow>
                   <TableCell colSpan={columns.length} className="h-24 text-center">
-                    You have not earned any income yet.
+                    No records found for the selected period.
                   </TableCell>
                 </TableRow>
               )}
@@ -205,7 +266,7 @@ const IncomeRecordsView: React.FC<IncomeRecordsViewProps> = ({ user }) => {
                                     </Badge>
                                 </div>
                                 <div className="text-sm text-muted-foreground flex items-center gap-1.5">
-                                    <Calendar className="w-3.5 h-3.5" />
+                                    <CalendarIcon className="w-3.5 h-3.5" />
                                     {new Date(record.saleDate).toLocaleDateString()}
                                 </div>
                             </div>
@@ -230,12 +291,12 @@ const IncomeRecordsView: React.FC<IncomeRecordsViewProps> = ({ user }) => {
                 })
             ) : (
                 <div className="text-center text-muted-foreground py-10">
-                    You have not earned any income yet.
+                    No records found for the selected period.
                 </div>
             )}
         </div>
         
-        {records.length > table.getState().pagination.pageSize && (
+        {filteredRecords.length > table.getState().pagination.pageSize && (
             <div className="flex items-center justify-end space-x-2 py-4">
             <Button
                 variant="outline"
