@@ -218,13 +218,13 @@ const TeamView: React.FC<TeamViewProps> = ({ downlineUsers, allCustomers }) => {
         </div>
 
         {/* Mobile Card View */}
-        <div className="grid gap-4 md:hidden">
+        <div className="grid gap-3 md:hidden">
             {table.getRowModel().rows.length > 0 ? (
                 table.getRowModel().rows.map((row) => {
                     const user = row.original;
                     return (
-                        <Card key={user.id} className="p-4 flex flex-col gap-3">
-                            <div className="flex justify-between items-start gap-4">
+                        <Card key={user.id} className="p-3">
+                            <div className="flex items-center justify-between gap-3">
                                 <div className="flex items-center gap-3 min-w-0">
                                     <Avatar className="h-10 w-10 flex-shrink-0">
                                         <AvatarImage src={user.avatar} alt={user.name} data-ai-hint="profile avatar" />
@@ -232,25 +232,18 @@ const TeamView: React.FC<TeamViewProps> = ({ downlineUsers, allCustomers }) => {
                                     </Avatar>
                                     <div className="min-w-0">
                                         <p className="font-semibold text-card-foreground truncate" title={user.name}>{user.name}</p>
-                                        <p className="text-xs text-muted-foreground truncate" title={user.email}>{user.email}</p>
+                                        <Badge variant="outline" className="text-xs mt-1 text-center whitespace-normal">{user.role}</Badge>
                                     </div>
                                 </div>
-                                <Badge variant="outline" className="text-xs flex-shrink-0 text-center whitespace-normal">{user.role}</Badge>
-                            </div>
-                            
-                            <div className="border-t pt-3 grid grid-cols-2 gap-4 text-sm">
-                                <div className="flex items-center gap-2">
-                                    <Wallet className="w-4 h-4 text-primary" />
-                                    <div>
-                                        <p className="text-muted-foreground text-xs">Income</p>
-                                        <p className="font-semibold">LKR {user.totalIncome.toLocaleString()}</p>
+                                
+                                <div className="text-right flex-shrink-0 space-y-1">
+                                    <div className="flex items-center justify-end gap-1.5">
+                                        <Wallet className="w-3.5 h-3.5 text-muted-foreground" />
+                                        <p className="font-semibold text-sm">LKR {user.totalIncome.toLocaleString()}</p>
                                     </div>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <Users className="w-4 h-4 text-primary" />
-                                    <div>
-                                        <p className="text-muted-foreground text-xs">Customers</p>
-                                        <p className="font-semibold">{user.customerCount}</p>
+                                    <div className="flex items-center justify-end gap-1.5">
+                                        <Users className="w-3.5 h-3.5 text-muted-foreground" />
+                                        <p className="text-sm text-muted-foreground">{user.customerCount} customers</p>
                                     </div>
                                 </div>
                             </div>
