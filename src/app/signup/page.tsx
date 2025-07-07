@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -44,6 +45,7 @@ export default function SignupPage() {
         setVisibleRoles(settings.visibleRoles);
       } catch (error) {
         console.error("Failed to fetch role settings:", error);
+        // Fallback to all roles being visible on error
         const fallbackRoles: Record<string, boolean> = {};
         ALL_ROLES.forEach(r => fallbackRoles[r] = true);
         setVisibleRoles(fallbackRoles);
@@ -149,11 +151,11 @@ export default function SignupPage() {
                       <SelectValue placeholder="Select a role" />
                     </SelectTrigger>
                     <SelectContent>
-                      {loadingRoles ? (
+                      {loadingRoles || !visibleRoles ? (
                         <div className="flex items-center justify-center p-2"><LoaderCircle className="h-4 w-4 animate-spin" /></div>
                       ) : (
                         ALL_ROLES
-                          .filter(r => visibleRoles?.[r] === true)
+                          .filter(r => visibleRoles[r] === true)
                           .map(r => (
                             <SelectItem key={r} value={r}>{r}</SelectItem>
                           ))
