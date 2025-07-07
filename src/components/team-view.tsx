@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from "react";
@@ -25,7 +26,8 @@ import {
 } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowUpDown } from "lucide-react";
+import { ArrowUpDown, Wallet, Users } from "lucide-react";
+import { Card } from "@/components/ui/card";
 
 interface TeamViewProps {
   downlineUsers: User[];
@@ -150,8 +152,9 @@ const TeamView: React.FC<TeamViewProps> = ({ downlineUsers, allCustomers }) => {
     getPaginationRowModel: getPaginationRowModel(),
     initialState: {
         pagination: {
-            pageSize: 5,
-        }
+            pageSize: 10,
+        },
+        sorting: [{ id: 'totalIncome', desc: true }],
     },
   });
 
@@ -162,7 +165,7 @@ const TeamView: React.FC<TeamViewProps> = ({ downlineUsers, allCustomers }) => {
 
   return (
     <div className="w-full">
-        <div className="flex items-center py-4">
+        <div className="flex items-center pb-4">
             <Input
                 placeholder="Filter by member name..."
                 value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
@@ -172,7 +175,9 @@ const TeamView: React.FC<TeamViewProps> = ({ downlineUsers, allCustomers }) => {
                 className="max-w-sm"
             />
         </div>
-        <div className="rounded-md border">
+        
+        {/* Desktop Table View */}
+        <div className="hidden rounded-md border md:block">
             <Table>
                 <TableHeader>
                     {table.getHeaderGroups().map((headerGroup) => (
@@ -211,24 +216,74 @@ const TeamView: React.FC<TeamViewProps> = ({ downlineUsers, allCustomers }) => {
                 </TableBody>
             </Table>
         </div>
-        <div className="flex items-center justify-end space-x-2 py-4">
-             <Button
-                variant="outline"
-                size="sm"
-                onClick={() => table.previousPage()}
-                disabled={!table.getCanPreviousPage()}
-            >
-                Previous
-            </Button>
-            <Button
-                variant="outline"
-                size="sm"
-                onClick={() => table.nextPage()}
-                disabled={!table.getCanNextPage()}
-            >
-                Next
-            </Button>
+
+        {/* Mobile Card View */}
+        <div className="grid gap-4 md:hidden">
+            {table.getRowModel().rows.length > 0 ? (
+                table.getRowModel().rows.map((row) => {
+                    const user = row.original;
+                    return (
+                        <Card key={user.id} className="p-4 flex flex-col gap-3">
+                            <div className="flex justify-between items-start">
+                                <div className="flex items-center gap-3">
+                                    <Avatar className="h-10 w-10">
+                                        <AvatarImage src={user.avatar} alt={user.name} data-ai-hint="profile avatar" />
+                                        <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                                    </Avatar>
+                                    <div>
+                                        <p className="font-semibold text-card-foreground">{user.name}</p>
+                                        <p className="text-xs text-muted-foreground">{user.email}</p>
+                                    </div>
+                                </div>
+                                <Badge variant="outline" className="text-xs">{user.role}</Badge>
+                            </div>
+                            
+                            <div className="border-t pt-3 grid grid-cols-2 gap-4 text-sm">
+                                <div className="flex items-center gap-2">
+                                    <Wallet className="w-4 h-4 text-primary" />
+                                    <div>
+                                        <p className="text-muted-foreground text-xs">Income</p>
+                                        <p className="font-semibold">LKR {user.totalIncome.toLocaleString()}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Users className="w-4 h-4 text-primary" />
+                                    <div>
+                                        <p className="text-muted-foreground text-xs">Customers</p>
+                                        <p className="font-semibold">{user.customerCount}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </Card>
+                    )
+                })
+            ) : (
+                 <div className="text-center text-muted-foreground py-10">
+                    No team members found.
+                </div>
+            )}
         </div>
+
+        {data.length > table.getState().pagination.pageSize && (
+            <div className="flex items-center justify-end space-x-2 py-4">
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => table.previousPage()}
+                    disabled={!table.getCanPreviousPage()}
+                >
+                    Previous
+                </Button>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => table.nextPage()}
+                    disabled={!table.getCanNextPage()}
+                >
+                    Next
+                </Button>
+            </div>
+        )}
     </div>
   );
 };
