@@ -66,6 +66,7 @@ export interface IncomeRecord {
   sourceType: 'token_sale' | 'product_sale';
   customerId: string;
   customerName: string;
+  tokenSerial?: string;
   // Optional product details
   productName?: string;
   productPrice?: number;

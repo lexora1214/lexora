@@ -79,6 +79,7 @@ const columns: ColumnDef<IncomeRecord>[] = [
                         <p className="text-sm text-muted-foreground">
                             LKR {record.productPrice?.toLocaleString()} ({record.paymentMethod}) for {record.customerName}
                         </p>
+                        {record.tokenSerial && <Badge variant="outline" className="mt-1 font-mono">{record.tokenSerial}</Badge>}
                     </div>
                 );
             }
@@ -86,6 +87,7 @@ const columns: ColumnDef<IncomeRecord>[] = [
                  <div>
                     <p className="font-medium">Token Sale</p>
                     <p className="text-sm text-muted-foreground">For customer: {record.customerName}</p>
+                    {record.tokenSerial && <Badge variant="outline" className="mt-1 font-mono">{record.tokenSerial}</Badge>}
                 </div>
             )
         },

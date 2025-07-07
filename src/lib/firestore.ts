@@ -164,6 +164,7 @@ export async function createCustomer(customerData: Omit<Customer, 'id' | 'saleDa
                 sourceType: 'token_sale',
                 customerId: newCustomer.id,
                 customerName: newCustomer.name,
+                tokenSerial: newCustomer.tokenSerial,
             };
             batch.set(incomeRecordRef, newIncomeRecord);
         }
@@ -194,6 +195,7 @@ export async function createCustomer(customerData: Omit<Customer, 'id' | 'saleDa
                 sourceType: 'token_sale',
                 customerId: newCustomer.id,
                 customerName: newCustomer.name,
+                tokenSerial: newCustomer.tokenSerial,
             };
             batch.set(incomeRecordRef, newIncomeRecord);
         }
@@ -296,6 +298,7 @@ export async function createProductSaleAndDistributeCommissions(
                     sourceType: 'product_sale',
                     customerId: customer.id,
                     customerName: customer.name,
+                    tokenSerial: newSale.tokenSerial,
                     productName: newSale.productName,
                     productPrice: newSale.price,
                     paymentMethod: newSale.paymentMethod,
@@ -328,6 +331,7 @@ export async function createProductSaleAndDistributeCommissions(
                     sourceType: 'product_sale',
                     customerId: customer.id,
                     customerName: customer.name,
+                    tokenSerial: newSale.tokenSerial,
                     productName: newSale.productName,
                     productPrice: newSale.price,
                     paymentMethod: newSale.paymentMethod,
