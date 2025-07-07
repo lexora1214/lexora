@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from "react";
@@ -12,6 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import TokenUsagePieChart from "../token-usage-pie-chart";
 
 interface SalesmanDashboardProps {
   user: User;
@@ -50,6 +50,17 @@ const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ user, allCustomer
 
   const { filteredCustomers, filteredIncomeRecords } = filteredData;
   const personalIncome = filteredIncomeRecords.reduce((acc, r) => acc + r.amount, 0);
+
+  // Data for the pie chart
+  const usedTokens = filteredCustomers.filter(c => !c.tokenIsAvailable).length;
+  const availableTokens = filteredCustomers.length - usedTokens;
+  const totalTokens = filteredCustomers.length;
+
+  const tokenUsageData = [
+    { status: 'Used' as const, count: usedTokens, fill: 'var(--color-Used)' },
+    { status: 'Available' as const, count: availableTokens, fill: 'var(--color-Available)' },
+  ].filter(item => item.count > 0);
+
 
   return (
     <>
@@ -122,6 +133,7 @@ const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ user, allCustomer
               </Button>
             </CardFooter>
           </Card>
+          <TokenUsagePieChart data={tokenUsageData} totalTokens={totalTokens} />
         </div>
       </div>
       <CustomerRegistrationDialog 
