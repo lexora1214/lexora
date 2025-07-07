@@ -7,6 +7,13 @@ import { DollarSign, Users, Briefcase, ShieldCheck, LoaderCircle, Landmark } fro
 import { getCommissionSettings } from "@/lib/firestore";
 import { Line, LineChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
 
 interface AdminDashboardProps {
   user: User;
@@ -19,6 +26,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
   const [chartData, setChartData] = React.useState<any[]>([]);
   const [loadingChart, setLoadingChart] = React.useState(true);
   const [commissionSettings, setCommissionSettings] = React.useState<CommissionSettings | null>(null);
+  const [isBreakdownOpen, setIsBreakdownOpen] = React.useState(false);
 
   React.useEffect(() => {
     const processDataForChart = async () => {
@@ -75,11 +83,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
   };
 
   const totalRevenue = commissionSettings ? commissionSettings.tokenPrice * allCustomers.length : 0;
-  const adminTeamCommission = commissionSettings ? allCustomers.length * commissionSettings.admin : 0;
-  const adminCommissionPerSale = commissionSettings ? commissionSettings.admin : '...';
+  const adminTeamTokenCommission = commissionSettings ? allCustomers.length * commissionSettings.admin : 0;
   const adminTeamTotalIncome = allUsers
     .filter(u => u.role === 'Admin')
     .reduce((acc, u) => acc + u.totalIncome, 0);
+  const adminTeamProductCommission = adminTeamTotalIncome - adminTeamTokenCommission;
 
   return (
     <div className="flex flex-col gap-4">
@@ -114,24 +122,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
             <p className="text-xs text-muted-foreground">Customers registered</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Admin Team Commission (Tokens)</CardTitle>
-            <Landmark className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">LKR {adminTeamCommission.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">From all token sales (LKR {adminCommissionPerSale.toLocaleString()} per sale)</p>
-          </CardContent>
-        </Card>
-        <Card onClick={() => setActiveView('Income Records')} className="cursor-pointer hover:bg-muted/50 transition-colors">
+        <Card onClick={() => setIsBreakdownOpen(true)} className="cursor-pointer hover:bg-muted/50 transition-colors">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Admin Team Total Income</CardTitle>
             <Landmark className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">LKR {adminTeamTotalIncome.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">Includes all token and product sale commissions. Click to view details.</p>
+            <p className="text-xs text-muted-foreground">Includes all token and product sale commissions. Click for breakdown.</p>
           </CardContent>
         </Card>
         <Card>
@@ -198,6 +196,31 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={isBreakdownOpen} onOpenChange={setIsBreakdownOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Admin Team Income Breakdown</DialogTitle>
+            <DialogDescription>
+              This is the total commission earned by all administrators.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="flex justify-between items-center border-b pb-2">
+                <span className="text-muted-foreground">Total from Token Sales</span>
+                <span className="font-bold text-lg">LKR {adminTeamTokenCommission.toLocaleString()}</span>
+            </div>
+             <div className="flex justify-between items-center border-b pb-2">
+                <span className="text-muted-foreground">Total from Product Sales</span>
+                <span className="font-bold text-lg">LKR {adminTeamProductCommission.toLocaleString()}</span>
+            </div>
+             <div className="flex justify-between items-center pt-2">
+                <span className="font-bold text-xl">Total Income</span>
+                <span className="font-bold text-xl text-primary">LKR {adminTeamTotalIncome.toLocaleString()}</span>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
