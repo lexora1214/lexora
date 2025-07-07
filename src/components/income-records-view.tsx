@@ -1,6 +1,9 @@
+
 "use client";
 
 import React, { useEffect, useState } from "react";
+import jsPDF from "jspdf";
+import "jspdf-autotable";
 import { User, IncomeRecord } from "@/types";
 import {
   Table,
@@ -10,7 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ArrowUpDown, Calendar as CalendarIcon, CreditCard, LoaderCircle, ShoppingBag, User as UserIcon } from "lucide-react";
+import { ArrowUpDown, Calendar as CalendarIcon, CreditCard, LoaderCircle, ShoppingBag, User as UserIcon, FileDown } from "lucide-react";
 import { getIncomeRecordsForUser } from "@/lib/firestore";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import {
@@ -156,6 +159,58 @@ const IncomeRecordsView: React.FC<IncomeRecordsViewProps> = ({ user }) => {
     },
   });
 
+  const handleGeneratePdf = () => {
+    if (!user || filteredRecords.length === 0) return;
+
+    const doc = new jsPDF();
+    const tableRows: any[] = [];
+    const tableColumns = ["Date", "Source", "Details", "Role Granted", "Amount (LKR)"];
+
+    filteredRecords.forEach(record => {
+      let detailText = "";
+      if (record.sourceType === 'product_sale') {
+          detailText = `${record.productName || 'Product'} for ${record.customerName}. Sale by: ${record.shopManagerName || 'N/A'}`;
+      } else {
+          detailText = `Token Sale for ${record.customerName}. Sale by: ${record.salesmanName || 'N/A'}`;
+      }
+
+      const recordData = [
+        new Date(record.saleDate).toLocaleDateString(),
+        record.sourceType === 'product_sale' ? 'Product' : 'Token',
+        detailText,
+        record.grantedForRole,
+        record.amount.toLocaleString(),
+      ];
+      tableRows.push(recordData);
+    });
+
+    // Header
+    doc.setFontSize(18);
+    doc.setFont("helvetica", "bold");
+    doc.text("Lexora", 14, 22);
+
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Income Report for ${user.name} (${user.role})`, 14, 30);
+    
+    doc.setFontSize(10);
+    const dateSuffix = dateRange?.from ? `Period: ${format(dateRange.from, "LLL dd, y")} - ${format(dateRange.to ?? dateRange.from, "LLL dd, y")}` : 'Period: All Time';
+    doc.text(dateSuffix, 14, 36);
+    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 42);
+
+    (doc as any).autoTable({
+      head: [tableColumns],
+      body: tableRows,
+      startY: 50,
+      columnStyles: {
+        4: { halign: 'right' },
+      }
+    });
+
+    const fileNameDateSuffix = dateRange?.from ? `_${format(dateRange.from, "yyyy-MM-dd")}_to_${format(dateRange.to ?? dateRange.from, "yyyy-MM-dd")}` : '_all-time';
+    doc.save(`my_income_report${fileNameDateSuffix}.pdf`);
+  };
+
   if (loading) {
     return (
       <div className="flex h-full w-full items-center justify-center">
@@ -171,45 +226,51 @@ const IncomeRecordsView: React.FC<IncomeRecordsViewProps> = ({ user }) => {
             <CardTitle>My Income Records</CardTitle>
             <CardDescription>A detailed history of all commissions you have earned.</CardDescription>
         </div>
-        <Popover>
-            <PopoverTrigger asChild>
-            <Button
-                id="date"
-                variant={"outline"}
-                className={cn(
-                "w-full justify-start text-left font-normal md:w-[300px]",
-                !dateRange && "text-muted-foreground"
-                )}
-            >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {dateRange?.from ? (
-                dateRange.to ? (
-                    <>
-                    {format(dateRange.from, "LLL dd, y")} -{" "}
-                    {format(dateRange.to, "LLL dd, y")}
-                    </>
-                ) : (
-                    format(dateRange.from, "LLL dd, y")
-                )
-                ) : (
-                <span>Pick a date range</span>
-                )}
+        <div className="flex flex-col-reverse sm:flex-row gap-2 w-full md:w-auto">
+            <Popover>
+                <PopoverTrigger asChild>
+                <Button
+                    id="date"
+                    variant={"outline"}
+                    className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !dateRange && "text-muted-foreground"
+                    )}
+                >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dateRange?.from ? (
+                    dateRange.to ? (
+                        <>
+                        {format(dateRange.from, "LLL dd, y")} -{" "}
+                        {format(dateRange.to, "LLL dd, y")}
+                        </>
+                    ) : (
+                        format(dateRange.from, "LLL dd, y")
+                    )
+                    ) : (
+                    <span>Pick a date range</span>
+                    )}
+                </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                    initialFocus
+                    mode="range"
+                    defaultMonth={dateRange?.from}
+                    selected={dateRange}
+                    onSelect={setDateRange}
+                    numberOfMonths={2}
+                />
+                <div className="p-2 border-t">
+                    <Button variant="ghost" className="w-full justify-center" onClick={() => setDateRange(undefined)}>Clear</Button>
+                </div>
+                </PopoverContent>
+            </Popover>
+             <Button onClick={handleGeneratePdf} disabled={loading || filteredRecords.length === 0}>
+                <FileDown className="mr-2 h-4 w-4" />
+                Download PDF
             </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="end">
-            <Calendar
-                initialFocus
-                mode="range"
-                defaultMonth={dateRange?.from}
-                selected={dateRange}
-                onSelect={setDateRange}
-                numberOfMonths={2}
-            />
-             <div className="p-2 border-t">
-                <Button variant="ghost" className="w-full justify-center" onClick={() => setDateRange(undefined)}>Clear</Button>
-            </div>
-            </PopoverContent>
-        </Popover>
+        </div>
       </CardHeader>
       <CardContent>
         {/* Desktop Table View */}
