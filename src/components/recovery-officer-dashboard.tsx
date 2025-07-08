@@ -4,14 +4,13 @@ import React, { useState, useEffect, useMemo } from "react";
 import { User, ProductSale, Customer } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { LoaderCircle, Phone, HandCoins, Package, CheckCircle2, ChevronRight } from "lucide-react";
+import { LoaderCircle, Phone, HandCoins, Package, CheckCircle2 } from "lucide-react";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { markInstallmentPaid } from "@/lib/firestore";
 import { useToast } from "@/hooks/use-toast";
 import MapPicker from "./map-picker";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { cn } from "@/lib/utils";
 import { format, addMonths } from 'date-fns';
 
 interface RecoveryOfficerDashboardProps {
@@ -77,12 +76,12 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const fiveDaysLater = new Date(today);
-    fiveDaysLater.setDate(today.getDate() + 5);
+    const twoMonthsLater = new Date(today);
+    twoMonthsLater.setMonth(today.getMonth() + 2);
 
-    const collectionsInNext5Days = upcomingInstallments.filter(inst => inst.dueDate >= today && inst.dueDate < fiveDaysLater);
+    const collectionsInNext2Months = upcomingInstallments.filter(inst => inst.dueDate >= today && inst.dueDate < twoMonthsLater);
     
-    const groupedByDay = collectionsInNext5Days.reduce((acc, curr) => {
+    const groupedByDay = collectionsInNext2Months.reduce((acc, curr) => {
         const dayString = curr.dueDate.toISOString().split('T')[0];
         if (!acc[dayString]) {
             acc[dayString] = [];
@@ -134,11 +133,11 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><HandCoins /> My Collection Tasks</CardTitle>
-          <CardDescription>Installment collections for the next 5 days. Mark them as paid once collected.</CardDescription>
+          <CardDescription>Installment collections for the next two months. Mark them as paid once collected.</CardDescription>
         </CardHeader>
       </Card>
       {upcomingCollectionsByDay.length > 0 ? (
-        <Accordion type="multiple" defaultValue={[upcomingCollectionsByDay[0][0]]} className="w-full space-y-4">
+        <Accordion type="multiple" defaultValue={upcomingCollectionsByDay.length > 0 ? [upcomingCollectionsByDay[0][0]] : []} className="w-full space-y-4">
             {upcomingCollectionsByDay.map(([date, collections]) => (
                  <AccordionItem value={date} key={date}>
                     <AccordionTrigger className="text-lg font-semibold flex items-center gap-2 p-4 rounded-md bg-muted hover:bg-muted/80">
@@ -191,7 +190,7 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
       ) : (
           <Card>
             <CardContent className="p-10 text-center text-muted-foreground">
-                You have no collections due in the next 5 days.
+                You have no collections due in the next two months.
             </CardContent>
           </Card>
       )}
