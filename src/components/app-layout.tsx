@@ -212,7 +212,6 @@ const AppLayout = ({ user }: { user: User }) => {
           case "Salesman":
             return <SalesmanDashboard user={user} allCustomers={allCustomers} allIncomeRecords={allIncomeRecords} />;
           case "Shop Manager":
-          case "Team Operation Manager":
             return <ShopManagerDashboard user={user} />;
           default:
             return <ManagerDashboard user={user} allUsers={allUsers} allIncomeRecords={allIncomeRecords} />;
