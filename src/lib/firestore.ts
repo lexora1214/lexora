@@ -237,37 +237,64 @@ export async function updateProductCommissionSettings(data: ProductCommissionSet
 }
 
 export async function createProductSaleAndDistributeCommissions(
-  saleData: Omit<ProductSale, 'id' | 'saleDate' | 'shopManagerName' | 'deliveryStatus'>,
-  shopManager: User
+  formData: {
+    productName: string;
+    productCode?: string;
+    totalValue: number;
+    discountValue?: number;
+    downPayment?: number;
+    installments?: number;
+    monthlyInstallment?: number;
+    paymentMethod: 'cash' | 'installments';
+    customerToken: string;
+  },
+  shopManager: User,
+  customerId: string,
+  customerName: string
 ): Promise<void> {
     const batch = writeBatch(db);
     const allUsers = await getAllUsers();
 
-    const customerQuery = query(collection(db, "customers"), where("tokenSerial", "==", saleData.tokenSerial));
-    const customerSnap = await getDocs(customerQuery);
-    if (customerSnap.empty) {
-        throw new Error(`No customer found with token: ${saleData.tokenSerial}`);
+    const customerDocRef = doc(db, "customers", customerId);
+    const customerDoc = await getDoc(customerDocRef);
+    if (!customerDoc.exists()) {
+        throw new Error(`No customer found with token: ${formData.customerToken}`);
     }
-    const customerDoc = customerSnap.docs[0];
     const customer = { ...customerDoc.data(), id: customerDoc.id } as Customer;
 
     if (!customer.tokenIsAvailable) {
-        throw new Error(`Token ${saleData.tokenSerial} has already been used to purchase a product.`);
+        throw new Error(`Token ${formData.customerToken} has already been used to purchase a product.`);
     }
+
+    // Update the customer record with the (potentially edited) details from the sale form
+    batch.update(customerDocRef, {
+      tokenIsAvailable: false,
+      purchasingItem: formData.productName,
+      purchasingItemCode: formData.productCode,
+      totalValue: formData.totalValue,
+      discountValue: formData.discountValue,
+      downPayment: formData.downPayment,
+      installments: formData.installments,
+      monthlyInstallment: formData.monthlyInstallment,
+    });
 
     const newSaleRef = doc(collection(db, "productSales"));
     const saleDate = new Date().toISOString();
     const newSale: ProductSale = {
-        ...saleData,
         id: newSaleRef.id,
+        productName: formData.productName,
+        productCode: formData.productCode,
+        price: formData.totalValue, // Use totalValue for commission calculation
+        paymentMethod: formData.paymentMethod,
+        customerId: customerId,
+        customerName: customerName,
+        tokenSerial: formData.customerToken,
         saleDate,
+        shopManagerId: shopManager.id,
         shopManagerName: shopManager.name,
         deliveryStatus: 'pending',
     };
     batch.set(newSaleRef, newSale);
-
-    const customerRef = doc(db, "customers", customer.id);
-    batch.update(customerRef, { tokenIsAvailable: false });
 
     const salesman = allUsers.find(u => u.id === customer.salesmanId);
     if (!salesman) {
@@ -275,7 +302,6 @@ export async function createProductSaleAndDistributeCommissions(
     }
 
     let applicableTier: ProductCommissionTier | undefined;
-    // Only look for tiers if price is >= 20000, otherwise commissions are 0.
     if (newSale.price >= 20000) {
         const productSettings = await getProductCommissionSettings();
         applicableTier = productSettings.tiers.find(tier => 
@@ -283,7 +309,6 @@ export async function createProductSaleAndDistributeCommissions(
         );
     }
     
-    // This loop handles both commission and zero-commission scenarios.
     let currentUser: User | undefined = salesman;
     while(currentUser) {
         let commission = 0;
@@ -297,7 +322,6 @@ export async function createProductSaleAndDistributeCommissions(
             }
         }
         
-        // Always create an income record.
         const incomeRecordRef = doc(collection(db, "incomeRecords"));
         const newIncomeRecord: IncomeRecord = {
             id: incomeRecordRef.id,
@@ -318,7 +342,6 @@ export async function createProductSaleAndDistributeCommissions(
         };
         batch.set(incomeRecordRef, newIncomeRecord);
 
-        // Only update total income if commission is greater than 0.
         if (commission > 0) {
             const userRef = doc(db, "users", currentUser.id);
             batch.update(userRef, { totalIncome: increment(commission) });
@@ -327,7 +350,6 @@ export async function createProductSaleAndDistributeCommissions(
         currentUser = currentUser.referrerId ? allUsers.find(u => u.id === currentUser!.referrerId) : undefined;
     }
 
-    // Handle Admin commission
     let adminCommission = 0;
     if (applicableTier?.commissions.admin) {
         adminCommission = applicableTier.commissions.admin[newSale.paymentMethod];
@@ -335,7 +357,6 @@ export async function createProductSaleAndDistributeCommissions(
     
     const adminUsers = allUsers.filter(u => u.role === 'Admin');
     for (const adminUser of adminUsers) {
-        // Always create an income record for admins.
         const incomeRecordRef = doc(collection(db, "incomeRecords"));
         const newIncomeRecord: IncomeRecord = {
             id: incomeRecordRef.id,
@@ -356,7 +377,6 @@ export async function createProductSaleAndDistributeCommissions(
         };
         batch.set(incomeRecordRef, newIncomeRecord);
         
-        // Only update total income if commission is greater than 0.
         if (adminCommission > 0) {
             const userRef = doc(db, "users", adminUser.id);
             batch.update(userRef, { totalIncome: increment(adminCommission) });

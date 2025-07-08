@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { User, Customer } from "@/types";
 import {
   Dialog,
@@ -23,15 +23,20 @@ import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "./ui/command";
 import { cn } from "@/lib/utils";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
+import { ScrollArea } from "./ui/scroll-area";
 
 const formSchema = z.object({
+  customerToken: z.string({ required_error: "Please select a customer token." }),
   productName: z.string().min(2, "Product name is required."),
   productCode: z.string().optional(),
-  price: z.coerce.number().min(1, "Price must be a positive value."),
+  totalValue: z.coerce.number().min(0, "Total value must be a positive number."),
+  discountValue: z.coerce.number().min(0, "Discount must be a positive number.").optional(),
+  downPayment: z.coerce.number().min(0, "Down payment must be a positive number.").optional(),
+  installments: z.coerce.number().min(1, "Number of installments must be at least 1.").optional(),
+  monthlyInstallment: z.coerce.number().optional(),
   paymentMethod: z.enum(["cash", "installments"], {
     required_error: "You need to select a payment method.",
   }),
-  customerToken: z.string({ required_error: "Please select a customer token." }),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -61,9 +66,29 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
     control,
     formState: { errors },
     reset,
+    watch,
+    setValue
   } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
   });
+  
+  const [totalValue, discountValue, downPayment, installments] = watch([
+    'totalValue', 'discountValue', 'downPayment', 'installments'
+  ]);
+
+  useEffect(() => {
+    if (totalValue > 0 && installments && installments > 0) {
+      const discountedValue = totalValue - (discountValue || 0);
+      const loanAmount = discountedValue - (downPayment || 0);
+      if (loanAmount >= 0) {
+        const monthly = loanAmount / installments;
+        setValue('monthlyInstallment', parseFloat(monthly.toFixed(2)));
+      }
+    } else {
+        setValue('monthlyInstallment', undefined);
+    }
+  }, [totalValue, discountValue, downPayment, installments, setValue]);
+
 
   const onSubmit = async (data: FormValues) => {
     setIsLoading(true);
@@ -74,17 +99,10 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
       }
 
       await createProductSaleAndDistributeCommissions(
-        {
-          productName: data.productName,
-          productCode: data.productCode,
-          price: data.price,
-          paymentMethod: data.paymentMethod,
-          customerId: selectedCustomer.id,
-          customerName: selectedCustomer.name,
-          tokenSerial: selectedCustomer.tokenSerial,
-          shopManagerId: shopManager.id,
-        },
-        shopManager
+        data,
+        shopManager,
+        selectedCustomer.id,
+        selectedCustomer.name,
       );
 
       toast({
@@ -114,114 +132,143 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
           <DialogHeader>
             <DialogTitle>Record Product Sale</DialogTitle>
             <DialogDescription>
-              Fill in the details for the new product sale.
+              Fill in the details for the new product sale. Select a customer to auto-fill their details.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            
-            <div>
-              <Label>Customer & Token</Label>
-              <Controller
-                control={control}
-                name="customerToken"
-                render={({ field }) => (
-                  <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        role="combobox"
-                        aria-expanded={isPopoverOpen}
-                        className="w-full justify-between"
-                      >
-                        {field.value
-                          ? customers.find((c) => c.tokenSerial === field.value)?.name + ` (${field.value})`
-                          : "Select customer..."}
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[375px] p-0">
-                      <Command>
-                        <CommandInput placeholder="Search customer or token..." />
-                        <CommandList>
-                            <CommandEmpty>No available tokens found.</CommandEmpty>
-                            <CommandGroup>
-                            {customers
-                                .filter((customer) => customer.tokenIsAvailable)
-                                .map((customer) => (
-                                <CommandItem
-                                key={customer.tokenSerial}
-                                value={`${customer.name} ${customer.tokenSerial}`}
-                                onSelect={() => {
-                                    field.onChange(customer.tokenSerial);
-                                    setIsPopoverOpen(false);
-                                }}
-                                >
-                                <Check
-                                    className={cn(
-                                    "mr-2 h-4 w-4",
-                                    field.value === customer.tokenSerial ? "opacity-100" : "opacity-0"
-                                    )}
-                                />
-                                {customer.name} - <span className="text-muted-foreground ml-2">{customer.tokenSerial}</span>
-                                </CommandItem>
-                            ))}
-                            </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
-                )}
-              />
-               {errors.customerToken && <p className="text-xs text-destructive mt-1">{errors.customerToken.message}</p>}
-            </div>
-
-            <div>
-              <Label htmlFor="productName">Product Name</Label>
-              <Input id="productName" {...register("productName")} />
-              {errors.productName && <p className="text-xs text-destructive mt-1">{errors.productName.message}</p>}
-            </div>
-
-             <div>
-              <Label htmlFor="productCode">Product Code (Optional)</Label>
-              <Input id="productCode" {...register("productCode")} />
-            </div>
-
-            <div>
-              <Label htmlFor="price">Price (LKR)</Label>
-              <Input id="price" type="number" {...register("price")} />
-              {errors.price && <p className="text-xs text-destructive mt-1">{errors.price.message}</p>}
-            </div>
-
-            <div>
-                <Label>Payment Method</Label>
+          <ScrollArea className="h-[60vh] p-1">
+            <div className="grid gap-4 py-4 px-4">
+              
+              <div>
+                <Label>Customer & Token</Label>
                 <Controller
                   control={control}
-                  name="paymentMethod"
+                  name="customerToken"
                   render={({ field }) => (
-                    <RadioGroup
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                        className="flex space-x-4 pt-2"
-                    >
-                        <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="cash" id="cash" />
-                            <Label htmlFor="cash">Cash</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="installments" id="installments" />
-                            <Label htmlFor="installments">Installments</Label>
-                        </div>
-                    </RadioGroup>
+                    <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={isPopoverOpen}
+                          className="w-full justify-between"
+                        >
+                          {field.value
+                            ? customers.find((c) => c.tokenSerial === field.value)?.name + ` (${field.value})`
+                            : "Select customer..."}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[375px] p-0">
+                        <Command>
+                          <CommandInput placeholder="Search customer or token..." />
+                          <CommandList>
+                              <CommandEmpty>No available tokens found.</CommandEmpty>
+                              <CommandGroup>
+                              {customers
+                                  .filter((customer) => customer.tokenIsAvailable)
+                                  .map((customer) => (
+                                  <CommandItem
+                                  key={customer.tokenSerial}
+                                  value={`${customer.name} ${customer.tokenSerial}`}
+                                  onSelect={() => {
+                                      field.onChange(customer.tokenSerial);
+                                      setValue('productName', customer.purchasingItem || '');
+                                      setValue('productCode', customer.purchasingItemCode || '');
+                                      setValue('totalValue', customer.totalValue || 0);
+                                      setValue('discountValue', customer.discountValue || undefined);
+                                      setValue('downPayment', customer.downPayment || undefined);
+                                      setValue('installments', customer.installments || undefined);
+                                      setIsPopoverOpen(false);
+                                  }}
+                                  >
+                                  <Check
+                                      className={cn(
+                                      "mr-2 h-4 w-4",
+                                      field.value === customer.tokenSerial ? "opacity-100" : "opacity-0"
+                                      )}
+                                  />
+                                  {customer.name} - <span className="text-muted-foreground ml-2">{customer.tokenSerial}</span>
+                                  </CommandItem>
+                              ))}
+                              </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                   )}
                 />
-                 {errors.paymentMethod && <p className="text-xs text-destructive mt-1">{errors.paymentMethod.message}</p>}
-            </div>
+                {errors.customerToken && <p className="text-xs text-destructive mt-1">{errors.customerToken.message}</p>}
+              </div>
 
-          </div>
-          <DialogFooter>
+              <div>
+                <Label htmlFor="productName">Product Name</Label>
+                <Input id="productName" {...register("productName")} />
+                {errors.productName && <p className="text-xs text-destructive mt-1">{errors.productName.message}</p>}
+              </div>
+
+              <div>
+                <Label htmlFor="productCode">Product Code (Optional)</Label>
+                <Input id="productCode" {...register("productCode")} />
+              </div>
+
+              <div>
+                <Label htmlFor="totalValue">Total Value (LKR)</Label>
+                <Input id="totalValue" type="number" {...register("totalValue")} />
+                {errors.totalValue && <p className="text-xs text-destructive mt-1">{errors.totalValue.message}</p>}
+              </div>
+              
+              <div>
+                <Label htmlFor="discountValue">Discount (LKR, Optional)</Label>
+                <Input id="discountValue" type="number" {...register("discountValue")} />
+              </div>
+
+              <div>
+                  <Label htmlFor="downPayment">Down Payment (LKR, Optional)</Label>
+                  <Input id="downPayment" type="number" {...register("downPayment")} />
+              </div>
+
+              <div>
+                  <Label htmlFor="installments">Number of Installments (Optional)</Label>
+                  <Input id="installments" type="number" {...register("installments")} />
+                  {errors.installments && <p className="text-xs text-destructive mt-1">{errors.installments.message}</p>}
+              </div>
+
+              <div>
+                  <Label htmlFor="monthlyInstallment">Monthly Installment (LKR)</Label>
+                  <Input id="monthlyInstallment" {...register("monthlyInstallment")} disabled placeholder="Calculated automatically" />
+              </div>
+
+              <div>
+                  <Label>Payment Method</Label>
+                  <Controller
+                    control={control}
+                    name="paymentMethod"
+                    render={({ field }) => (
+                      <RadioGroup
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                          className="flex space-x-4 pt-2"
+                      >
+                          <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="cash" id="cash" />
+                              <Label htmlFor="cash">Cash</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="installments" id="installments" />
+                              <Label htmlFor="installments">Installments</Label>
+                          </div>
+                      </RadioGroup>
+                    )}
+                  />
+                  {errors.paymentMethod && <p className="text-xs text-destructive mt-1">{errors.paymentMethod.message}</p>}
+              </div>
+
+            </div>
+          </ScrollArea>
+          <DialogFooter className="border-t pt-6 px-6 pb-0">
             <Button type="submit" disabled={isLoading}>
               {isLoading && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
-              Save Sale
+              Save Sale & Update Customer
             </Button>
           </DialogFooter>
         </form>
