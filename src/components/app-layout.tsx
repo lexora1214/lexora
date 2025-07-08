@@ -212,12 +212,13 @@ const AppLayout = ({ user }: { user: User }) => {
           case "Salesman":
             return <SalesmanDashboard user={user} allCustomers={allCustomers} allIncomeRecords={allIncomeRecords} />;
           case "Shop Manager":
-            return <ShopManagerDashboard user={user} onAddNewSale={() => setActiveView("Record Product Sale")} />;
+          case "Team Operation Manager":
+            return <ShopManagerDashboard user={user} />;
           default:
             return <ManagerDashboard user={user} allUsers={allUsers} allIncomeRecords={allIncomeRecords} />;
         }
       case "Record Product Sale":
-        return <ShopManagerDashboard user={user} onAddNewSale={() => setActiveView("Record Product Sale")} openDialogOnLoad />;
+        return <ShopManagerDashboard user={user} openDialogOnLoad />;
       case "Income Records":
         return <IncomeRecordsView user={user} />;
       case "My Customers":

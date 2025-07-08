@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -25,11 +26,10 @@ import { Calendar } from "@/components/ui/calendar";
 
 interface ShopManagerDashboardProps {
   user: User;
-  onAddNewSale: () => void;
   openDialogOnLoad?: boolean;
 }
 
-const ShopManagerDashboard: React.FC<ShopManagerDashboardProps> = ({ user, onAddNewSale, openDialogOnLoad = false }) => {
+const ShopManagerDashboard: React.FC<ShopManagerDashboardProps> = ({ user, openDialogOnLoad = false }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(openDialogOnLoad);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [sales, setSales] = useState<ProductSale[]>([]);
