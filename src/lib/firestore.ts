@@ -270,12 +270,12 @@ export async function createProductSaleAndDistributeCommissions(
     batch.update(customerDocRef, {
       tokenIsAvailable: false,
       purchasingItem: formData.productName,
-      purchasingItemCode: formData.productCode,
+      purchasingItemCode: formData.productCode ?? null,
       totalValue: formData.totalValue,
-      discountValue: formData.discountValue,
-      downPayment: formData.downPayment,
-      installments: formData.installments,
-      monthlyInstallment: formData.monthlyInstallment,
+      discountValue: formData.discountValue ?? null,
+      downPayment: formData.downPayment ?? null,
+      installments: formData.installments ?? null,
+      monthlyInstallment: formData.monthlyInstallment ?? null,
     });
 
     const newSaleRef = doc(collection(db, "productSales"));
