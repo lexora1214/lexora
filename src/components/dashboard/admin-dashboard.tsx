@@ -93,7 +93,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
 
             const sortedMonths = Object.keys(revenueByMonth).sort();
             const formattedChartData = sortedMonths.map(monthStr => {
-              const date = new Date(monthStr + '-02T00:00:00Z');
+              const [year, month] = monthStr.split('-').map(Number);
+              // Create date in local timezone to avoid shifts
+              const date = new Date(year, month - 1, 2);
               return {
                 date: format(date, 'MMM yy'),
                 revenue: revenueByMonth[monthStr],
@@ -114,7 +116,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
 
             const sortedDays = Object.keys(revenueByDay).sort();
             const formattedChartData = sortedDays.map(dayStr => {
-              const date = new Date(dayStr + 'T00:00:00Z');
+              const [year, month, day] = dayStr.split('-').map(Number);
+              // Create date in local timezone to avoid shifts
+              const date = new Date(year, month - 1, day);
               return {
                 date: format(date, 'MMM d'),
                 revenue: revenueByDay[dayStr],
