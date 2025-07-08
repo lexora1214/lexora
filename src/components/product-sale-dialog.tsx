@@ -257,8 +257,8 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
               </div>
               
               <div>
-                  <Label htmlFor="downPayment">Down Payment (LKR, Optional)</Label>
-                  <Input id="downPayment" type="number" {...register("downPayment")} />
+                  <Label htmlFor="downPayment">Down Payment (LKR)</Label>
+                  <Input id="downPayment" type="number" {...register("downPayment")} disabled />
                   {errors.downPayment && <p className="text-xs text-destructive mt-1">{errors.downPayment.message}</p>}
               </div>
 
