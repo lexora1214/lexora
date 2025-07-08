@@ -89,8 +89,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
           const growthByMonth: Record<string, number> = {};
           sortedCustomers.forEach(customer => {
             const month = format(new Date(customer.saleDate), 'yyyy-MM');
-            if (!growthByMonth[month]) growthByMonth[month] = 0;
-            growthByMonth[month]++;
+            growthByMonth[month] = (growthByMonth[month] || 0) + 1;
           });
 
           let cumulativeCount = 0;
@@ -105,8 +104,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
           const startOfRange = dateRange.from!;
           const endOfRange = dateRange.to ?? dateRange.from!;
           
-          const countBeforeRange = allCustomers.filter(c => new Date(c.saleDate) < startOfRange).length;
-          
           const dailyIncrements: Record<string, number> = {};
           filteredCustomers.forEach(customer => {
               const dayStr = format(new Date(customer.saleDate), 'yyyy-MM-dd');
@@ -115,7 +112,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
 
           const allDays = eachDayOfInterval({ start: startOfRange, end: endOfRange });
           
-          let cumulativeCount = countBeforeRange;
+          let cumulativeCount = 0; // Start count from 0 for the period
           const formattedData = allDays.map(day => {
               const dayStr = format(day, 'yyyy-MM-dd');
               cumulativeCount += (dailyIncrements[dayStr] || 0);
@@ -136,7 +133,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
   
   const chartConfig = {
     customers: {
-      label: "Total Customers",
+      label: "Customers",
       color: "hsl(var(--primary))",
     },
   };
@@ -153,6 +150,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
     .reduce((acc, r) => acc + r.amount, 0);
   
   const adminTeamProductCommission = adminTeamTotalIncome - adminTeamTokenCommission;
+
+  const isAllTime = !dateRange || !dateRange.from;
 
   return (
     <div className="flex flex-col gap-4">
@@ -206,7 +205,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">LKR {totalRevenue.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">Based on {filteredCustomers.length} token sales</p>
+            <p className="text-xs text-muted-foreground">Based on {filteredCustomers.length} token sales in period</p>
           </CardContent>
         </Card>
         <Card onClick={() => setIsBreakdownOpen(true)} className="cursor-pointer hover:bg-muted/50 transition-colors">
@@ -216,7 +215,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">LKR {adminTeamTotalIncome.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">Includes all token and product sale commissions. Click for breakdown.</p>
+            <p className="text-xs text-muted-foreground">Includes all commissions in period. Click for breakdown.</p>
           </CardContent>
         </Card>
         <Card>
@@ -231,12 +230,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Customers</CardTitle>
+            <CardTitle className="text-sm font-medium">{isAllTime ? "Total Customers" : "New Customers"}</CardTitle>
             <Briefcase className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">+{filteredCustomers.length}</div>
-            <p className="text-xs text-muted-foreground">Customers registered</p>
+            <div className="text-2xl font-bold">
+               {isAllTime ? allCustomers.length : `+${filteredCustomers.length}`}
+            </div>
+            <p className="text-xs text-muted-foreground">{isAllTime ? "Registered all time" : "Registered in selected period"}</p>
           </CardContent>
         </Card>
         <Card>
@@ -254,7 +255,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
       <Card className="hidden md:block">
         <CardHeader>
           <CardTitle>Customer Growth</CardTitle>
-          <CardDescription>Cumulative customer growth over the selected period.</CardDescription>
+          <CardDescription>
+            {isAllTime ? "Total cumulative customer growth over time." : "Cumulative new customers added during the selected period."}
+          </CardDescription>
         </CardHeader>
         <CardContent className="pl-2">
           {loadingChart ? (
@@ -281,6 +284,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
                     axisLine={false}
                     tickFormatter={(value) => `${value}`}
                     domain={['auto', 'auto']}
+                    allowDecimals={false}
                   />
                   <ChartTooltip
                     cursor={true}
