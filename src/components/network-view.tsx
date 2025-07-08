@@ -73,7 +73,7 @@ interface NetworkViewProps {
 }
 
 const NetworkView: React.FC<NetworkViewProps> = ({ allUsers }) => {
-  const usersInNetwork = allUsers.filter((user) => user.role !== 'Delivery Boy');
+  const usersInNetwork = allUsers.filter((user) => !['Delivery Boy', 'Recovery Officer'].includes(user.role));
   const rootUsers = usersInNetwork.filter((user) => !user.referrerId);
 
   return (

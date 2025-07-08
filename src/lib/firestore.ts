@@ -33,7 +33,7 @@ export async function createUserProfile(firebaseUser: FirebaseUser, name: string
   }
   
   let newReferralCode = '';
-  const isReferralCodeNeeded = role && !['Salesman', 'Delivery Boy'].includes(role);
+  const isReferralCodeNeeded = role && !['Salesman', 'Delivery Boy', 'Recovery Officer'].includes(role);
   
   if (isReferralCodeNeeded) {
     let isCodeUnique = false;
@@ -241,10 +241,10 @@ export async function createProductSaleAndDistributeCommissions(
     productName: string;
     productCode?: string;
     totalValue: number;
-    discountValue?: number;
-    downPayment?: number;
-    installments?: number;
-    monthlyInstallment?: number;
+    discountValue?: number | null;
+    downPayment?: number | null;
+    installments?: number | null;
+    monthlyInstallment?: number | null;
     paymentMethod: 'cash' | 'installments';
     customerToken: string;
   },
@@ -292,7 +292,13 @@ export async function createProductSaleAndDistributeCommissions(
         saleDate,
         shopManagerId: shopManager.id,
         shopManagerName: shopManager.name,
+        installments: formData.installments ?? undefined,
+        monthlyInstallment: formData.monthlyInstallment ?? undefined,
         deliveryStatus: 'pending',
+        ...(formData.paymentMethod === 'installments' && { 
+            paidInstallments: 0,
+            recoveryStatus: 'pending' 
+        }),
     };
     batch.set(newSaleRef, newSale);
 
@@ -429,6 +435,7 @@ const DEFAULT_SIGNUP_ROLE_SETTINGS: SignupRoleSettings = {
     "Team Operation Manager": true,
     "Salesman": true,
     "Delivery Boy": true,
+    "Recovery Officer": true,
   }
 };
 
@@ -471,5 +478,23 @@ export async function markAsDelivered(productSaleId: string): Promise<void> {
   await updateDoc(saleDocRef, {
     deliveryStatus: 'delivered',
     deliveredAt: new Date().toISOString(),
+  });
+}
+
+// --- Recovery Management ---
+
+export async function assignRecovery(productSaleId: string, recoveryOfficerId: string, recoveryOfficerName: string): Promise<void> {
+  const saleDocRef = doc(db, "productSales", productSaleId);
+  await updateDoc(saleDocRef, {
+    recoveryStatus: 'assigned',
+    recoveryOfficerId: recoveryOfficerId,
+    recoveryOfficerName: recoveryOfficerName,
+  });
+}
+
+export async function markInstallmentPaid(productSaleId: string): Promise<void> {
+  const saleDocRef = doc(db, "productSales", productSaleId);
+  await updateDoc(saleDocRef, {
+    paidInstallments: increment(1),
   });
 }

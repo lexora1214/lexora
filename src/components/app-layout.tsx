@@ -22,6 +22,8 @@ import {
   Users,
   UserPlus,
   Wallet,
+  Repeat,
+  HandCoins,
 } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
@@ -63,6 +65,9 @@ import AddSalesmanView from "./add-salesman-view";
 import AddDeliveryBoyView from "./add-delivery-boy-view";
 import ManageDeliveriesView from "./manage-deliveries-view";
 import DeliveryBoyDashboard from "./delivery-boy-dashboard";
+import AddRecoveryOfficerView from "./add-recovery-officer-view";
+import ManageRecoveryView from "./manage-recovery-view";
+import RecoveryOfficerDashboard from "./recovery-officer-dashboard";
 
 type NavItem = {
   href: string;
@@ -73,11 +78,12 @@ type NavItem = {
 };
 
 const navItems: NavItem[] = [
-  { href: "#", icon: LayoutDashboard, label: "Dashboard", roles: ["Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Salesman", "Delivery Boy"] },
+  { href: "#", icon: LayoutDashboard, label: "Dashboard", roles: ["Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Salesman", "Delivery Boy", "Recovery Officer"] },
   { href: "#", icon: ShoppingCart, label: "Record Product Sale", roles: ["Team Operation Manager"] },
   { href: "#", icon: Wallet, label: "Income Records", roles: ["Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Salesman"] },
   { href: "#", icon: Users, label: "My Customers", roles: ["Salesman"] },
   { href: "#", icon: Truck, label: "My Deliveries", roles: ["Delivery Boy"] },
+  { href: "#", icon: HandCoins, label: "My Collections", roles: ["Recovery Officer"] },
   { href: "#", icon: Network, label: "Team Performance", roles: ["Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager"] },
   { 
     href: "#", 
@@ -87,9 +93,11 @@ const navItems: NavItem[] = [
     children: [
       { href: "#", icon: UserPlus, label: "Add Salesman", roles: ["Team Operation Manager"] },
       { href: "#", icon: UserPlus, label: "Add Delivery Boy", roles: ["Team Operation Manager"] },
+      { href: "#", icon: UserPlus, label: "Add Recovery Officer", roles: ["Team Operation Manager"] },
     ]
   },
   { href: "#", icon: Truck, label: "Manage Deliveries", roles: ["Team Operation Manager"] },
+  { href: "#", icon: Repeat, label: "Manage Recovery", roles: ["Team Operation Manager"] },
   { href: "#", icon: Building, label: "User Management", roles: ["Admin"] },
   { href: "#", icon: Briefcase, label: "Customer Management", roles: ["Admin"]},
   { href: "#", icon: Network, label: "Network View", roles: ["Admin"] },
@@ -233,6 +241,8 @@ const AppLayout = ({ user }: { user: User }) => {
             return <ManagerDashboard user={user} allUsers={allUsers} allIncomeRecords={allIncomeRecords} />;
           case "Delivery Boy":
             return <DeliveryBoyDashboard user={user} />;
+          case "Recovery Officer":
+            return <RecoveryOfficerDashboard user={user} />;
           default:
             return <ManagerDashboard user={user} allUsers={allUsers} allIncomeRecords={allIncomeRecords} />;
         }
@@ -244,6 +254,8 @@ const AppLayout = ({ user }: { user: User }) => {
         return <MyCustomersView user={user} />;
       case "My Deliveries":
         return <DeliveryBoyDashboard user={user} />;
+      case "My Collections":
+        return <RecoveryOfficerDashboard user={user} />;
       case "Team Performance": {
         const { users: downlineUsers } = getDownlineIdsAndUsers(user.id, allUsers);
         return (
@@ -262,8 +274,12 @@ const AppLayout = ({ user }: { user: User }) => {
         return <AddSalesmanView manager={user} />;
       case "Add Delivery Boy":
         return <AddDeliveryBoyView manager={user} />;
+      case "Add Recovery Officer":
+        return <AddRecoveryOfficerView manager={user} />;
       case "Manage Deliveries":
         return <ManageDeliveriesView manager={user} allUsers={allUsers} />;
+      case "Manage Recovery":
+        return <ManageRecoveryView manager={user} allUsers={allUsers} />;
       case "User Management":
         return (
           <Card>

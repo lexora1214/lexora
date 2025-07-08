@@ -32,7 +32,7 @@ import {
 const formSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
   mobileNumber: z.string().regex(/^0\d{9}$/, { message: "Please enter a valid 10-digit mobile number." }),
-  role: z.enum(["Salesman", "Team Operation Manager", "Group Operation Manager", "Head Group Manager", "Regional Director", "Admin", "Delivery Boy"]),
+  role: z.enum(["Salesman", "Team Operation Manager", "Group Operation Manager", "Head Group Manager", "Regional Director", "Admin", "Delivery Boy", "Recovery Officer"]),
   branch: z.string().optional(),
 });
 
@@ -162,6 +162,7 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({
                                     <SelectItem value="Team Operation Manager">Team Operation Manager</SelectItem>
                                     <SelectItem value="Salesman">Salesman</SelectItem>
                                     <SelectItem value="Delivery Boy">Delivery Boy</SelectItem>
+                                    <SelectItem value="Recovery Officer">Recovery Officer</SelectItem>
                                 </SelectContent>
                             </Select>
                         )}

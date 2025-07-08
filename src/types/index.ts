@@ -5,7 +5,8 @@ export type Role =
   | "Head Group Manager"
   | "Regional Director"
   | "Admin"
-  | "Delivery Boy";
+  | "Delivery Boy"
+  | "Recovery Officer";
 
 export interface User {
   id: string;
@@ -61,12 +62,19 @@ export interface ProductSale {
   saleDate: string;
   shopManagerId: string;
   shopManagerName: string;
+  installments?: number;
+  monthlyInstallment?: number;
+  paidInstallments?: number;
   // Delivery fields
   deliveryStatus: 'pending' | 'assigned' | 'delivered';
   assignedTo?: string; // Delivery Boy ID
   assignedToName?: string; // Delivery Boy Name
   assignedAt?: string;
   deliveredAt?: string;
+  // Recovery fields
+  recoveryStatus?: 'pending' | 'assigned';
+  recoveryOfficerId?: string;
+  recoveryOfficerName?: string;
 }
 
 export interface CommissionSettings {
