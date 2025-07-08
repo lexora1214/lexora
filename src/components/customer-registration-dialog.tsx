@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
@@ -18,8 +18,9 @@ import * as z from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { createCustomer } from "@/lib/firestore";
 import { User, Customer } from "@/types";
-import { LoaderCircle, MapPin } from "lucide-react";
+import { LoaderCircle } from "lucide-react";
 import { ScrollArea } from "./ui/scroll-area";
+import MapPicker from "./map-picker";
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
@@ -65,6 +66,7 @@ const CustomerRegistrationDialog: React.FC<CustomerRegistrationDialogProps> = ({
     reset,
     watch,
     setValue,
+    getValues,
   } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -89,22 +91,11 @@ const CustomerRegistrationDialog: React.FC<CustomerRegistrationDialogProps> = ({
     }
   }, [totalValue, discountValue, downPayment, installments, setValue]);
   
-  const handleGetLocation = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setValue("latitude", position.coords.latitude);
-          setValue("longitude", position.coords.longitude);
-          toast({ title: "Location captured successfully."});
-        },
-        (error) => {
-          toast({ variant: "destructive", title: "Could not get location", description: error.message });
-        }
-      );
-    } else {
-      toast({ variant: "destructive", title: "Geolocation not supported", description: "Your browser does not support geolocation." });
-    }
-  };
+  const handleLocationChange = useCallback((location: { lat: number; lng: number }) => {
+    setValue("latitude", location.lat);
+    setValue("longitude", location.lng);
+    toast({ title: "Location Updated", description: `Set to: ${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}`});
+  }, [setValue, toast]);
 
   const onSubmit: SubmitHandler<FormValues> = async (data) => {
     setIsLoading(true);
@@ -190,21 +181,19 @@ const CustomerRegistrationDialog: React.FC<CustomerRegistrationDialogProps> = ({
                     {errors.address && <p className="text-xs text-destructive mt-1">{errors.address.message}</p>}
                   </div>
                   <div className="md:col-span-2">
-                      <div className="flex justify-between items-center mb-1">
-                        <Label>Customer Location (Optional)</Label>
-                        <Button type="button" variant="outline" size="sm" onClick={handleGetLocation}>
-                            <MapPin className="mr-2 h-4 w-4" />
-                            Get Current Location
-                        </Button>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <Input id="latitude" placeholder="Latitude" {...register("latitude")} />
-                          </div>
-                           <div>
-                            <Input id="longitude" placeholder="Longitude" {...register("longitude")} />
-                          </div>
-                      </div>
+                    <Label>Customer Location (Click on map to set)</Label>
+                    <div className="mt-2">
+                        <MapPicker 
+                            onLocationChange={handleLocationChange} 
+                            initialPosition={
+                                getValues("latitude") && getValues("longitude")
+                                ? { lat: getValues("latitude")!, lng: getValues("longitude")! }
+                                : null
+                            }
+                        />
+                    </div>
+                    <input type="hidden" {...register("latitude")} />
+                    <input type="hidden" {...register("longitude")} />
                   </div>
               </div>
 
