@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
@@ -78,12 +77,12 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const twoMonthsLater = new Date(today);
-    twoMonthsLater.setMonth(today.getMonth() + 2);
+    const threeMonthsLater = new Date(today);
+    threeMonthsLater.setMonth(today.getMonth() + 3);
 
-    const collectionsInNext2Months = upcomingInstallments.filter(inst => inst.dueDate >= today && inst.dueDate < twoMonthsLater);
+    const collectionsInNext3Months = upcomingInstallments.filter(inst => inst.dueDate >= today && inst.dueDate < threeMonthsLater);
     
-    const groupedByDay = collectionsInNext2Months.reduce((acc, curr) => {
+    const groupedByDay = collectionsInNext3Months.reduce((acc, curr) => {
         const dayString = curr.dueDate.toISOString().split('T')[0];
         if (!acc[dayString]) {
             acc[dayString] = [];
@@ -135,7 +134,7 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><HandCoins /> My Collection Tasks</CardTitle>
-          <CardDescription>Installment collections for the next two months. Mark them as paid once collected.</CardDescription>
+          <CardDescription>Installment collections for the next three months. Mark them as paid once collected.</CardDescription>
         </CardHeader>
       </Card>
       {upcomingCollectionsByDay.length > 0 ? (
@@ -212,7 +211,7 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
       ) : (
           <Card>
             <CardContent className="p-10 text-center text-muted-foreground">
-                You have no collections due in the next two months.
+                You have no collections due in the next three months.
             </CardContent>
           </Card>
       )}
