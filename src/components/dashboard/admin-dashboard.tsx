@@ -7,12 +7,12 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { DollarSign, Users, Briefcase, ShieldCheck, LoaderCircle, Landmark, Calendar as CalendarIcon } from "lucide-react";
 import { getCommissionSettings } from "@/lib/firestore";
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer } from "recharts";
+import { Line, LineChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { DateRange } from "react-day-picker";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { format } from "date-fns";
+import { format, eachDayOfInterval } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -65,82 +65,78 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
 
 
   React.useEffect(() => {
-    const processDataForChart = async () => {
-      setLoadingChart(true);
+    const fetchSettings = async () => {
       try {
         const settings = await getCommissionSettings();
         setCommissionSettings(settings);
+      } catch (error) {
+        console.error("Failed to fetch commission settings:", error);
+      }
+    };
+    fetchSettings();
 
-        if (!settings || filteredCustomers.length === 0) {
-          setChartData([]);
-          setLoadingChart(false);
-          return;
-        }
-
+    const processCustomerGrowthData = () => {
+      setLoadingChart(true);
+      try {
         const isAllTime = !dateRange || !dateRange.from;
 
         if (isAllTime) {
-            // Group by month for all-time view
-            const revenueByMonth = filteredCustomers.reduce((acc, customer) => {
-              const saleDate = new Date(customer.saleDate);
-              const month = format(saleDate, 'yyyy-MM');
-              if (!acc[month]) {
-                acc[month] = 0;
-              }
-              acc[month] += settings.tokenPrice;
-              return acc;
-            }, {} as Record<string, number>);
+          if (allCustomers.length === 0) {
+            setChartData([]);
+            return;
+          }
+          const sortedCustomers = [...allCustomers].sort((a, b) => new Date(a.saleDate).getTime() - new Date(b.saleDate).getTime());
+          const growthByMonth: Record<string, number> = {};
+          sortedCustomers.forEach(customer => {
+            const month = format(new Date(customer.saleDate), 'yyyy-MM');
+            if (!growthByMonth[month]) growthByMonth[month] = 0;
+            growthByMonth[month]++;
+          });
 
-            const sortedMonths = Object.keys(revenueByMonth).sort();
-            const formattedChartData = sortedMonths.map(monthStr => {
-              const [year, month] = monthStr.split('-').map(Number);
-              // Create date in local timezone to avoid shifts
-              const date = new Date(year, month - 1, 2);
-              return {
-                date: format(date, 'MMM yy'),
-                revenue: revenueByMonth[monthStr],
-              };
-            });
-            setChartData(formattedChartData);
+          let cumulativeCount = 0;
+          const formattedData = Object.keys(growthByMonth).sort().map(monthStr => {
+            cumulativeCount += growthByMonth[monthStr];
+            const [year, month] = monthStr.split('-').map(Number);
+            const date = new Date(year, month - 1, 2);
+            return { date: format(date, 'MMM yy'), customers: cumulativeCount };
+          });
+          setChartData(formattedData);
         } else {
-            // Group by day for date-range view
-            const revenueByDay = filteredCustomers.reduce((acc, customer) => {
-              const saleDate = new Date(customer.saleDate);
-              const day = format(saleDate, 'yyyy-MM-dd');
-              if (!acc[day]) {
-                acc[day] = 0;
-              }
-              acc[day] += settings.tokenPrice;
-              return acc;
-            }, {} as Record<string, number>);
+          const startOfRange = dateRange.from!;
+          const endOfRange = dateRange.to ?? dateRange.from!;
+          
+          const countBeforeRange = allCustomers.filter(c => new Date(c.saleDate) < startOfRange).length;
+          
+          const dailyIncrements: Record<string, number> = {};
+          filteredCustomers.forEach(customer => {
+              const dayStr = format(new Date(customer.saleDate), 'yyyy-MM-dd');
+              dailyIncrements[dayStr] = (dailyIncrements[dayStr] || 0) + 1;
+          });
 
-            const sortedDays = Object.keys(revenueByDay).sort();
-            const formattedChartData = sortedDays.map(dayStr => {
-              const [year, month, day] = dayStr.split('-').map(Number);
-              // Create date in local timezone to avoid shifts
-              const date = new Date(year, month - 1, day);
-              return {
-                date: format(date, 'MMM d'),
-                revenue: revenueByDay[dayStr],
-              };
-            });
-            setChartData(formattedChartData);
+          const allDays = eachDayOfInterval({ start: startOfRange, end: endOfRange });
+          
+          let cumulativeCount = countBeforeRange;
+          const formattedData = allDays.map(day => {
+              const dayStr = format(day, 'yyyy-MM-dd');
+              cumulativeCount += (dailyIncrements[dayStr] || 0);
+              return { date: format(day, 'MMM d'), customers: cumulativeCount };
+          });
+          setChartData(formattedData);
         }
-
       } catch (error) {
-        console.error("Failed to process chart data:", error);
+        console.error("Failed to process customer growth data:", error);
         setChartData([]);
       } finally {
         setLoadingChart(false);
       }
     };
 
-    processDataForChart();
-  }, [filteredCustomers, dateRange]);
+    processCustomerGrowthData();
+  }, [allCustomers, filteredCustomers, dateRange]);
   
   const chartConfig = {
-    revenue: {
-      label: "Daily Revenue",
+    customers: {
+      label: "Total Customers",
       color: "hsl(var(--primary))",
     },
   };
@@ -257,8 +253,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
       
       <Card className="hidden md:block">
         <CardHeader>
-          <CardTitle>Daily Token Revenue</CardTitle>
-          <CardDescription>Revenue from token sales per day/month for the selected period.</CardDescription>
+          <CardTitle>Customer Growth</CardTitle>
+          <CardDescription>Cumulative customer growth over the selected period.</CardDescription>
         </CardHeader>
         <CardContent className="pl-2">
           {loadingChart ? (
@@ -268,7 +264,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
           ) : chartData.length > 0 ? (
             <ChartContainer config={chartConfig} className="h-[350px] w-full">
               <ResponsiveContainer>
-                <BarChart data={chartData} margin={{ top: 5, right: 20, left: isMobile ? -10 : 10, bottom: 5 }}>
+                <LineChart data={chartData} margin={{ top: 5, right: 20, left: isMobile ? -10 : 10, bottom: 5 }}>
                   <CartesianGrid vertical={false} strokeDasharray="3 3" />
                   <XAxis
                     dataKey="date"
@@ -283,23 +279,26 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
                     fontSize={12}
                     tickLine={false}
                     axisLine={false}
-                    tickFormatter={(value) => `LKR ${value / 1000}k`}
+                    tickFormatter={(value) => `${value}`}
+                    domain={['auto', 'auto']}
                   />
                   <ChartTooltip
-                    cursor={false}
-                    content={<ChartTooltipContent indicator="dot" />}
+                    cursor={true}
+                    content={<ChartTooltipContent indicator="line" />}
                   />
-                  <Bar
-                    dataKey="revenue"
-                    fill="hsl(var(--primary))"
-                    radius={[4, 4, 0, 0]}
+                  <Line
+                    dataKey="customers"
+                    type="monotone"
+                    stroke="hsl(var(--primary))"
+                    strokeWidth={2}
+                    dot={false}
                   />
-                </BarChart>
+                </LineChart>
               </ResponsiveContainer>
             </ChartContainer>
           ) : (
             <div className="flex h-[350px] items-center justify-center">
-              <p className="text-muted-foreground">No sales data available for the selected period.</p>
+              <p className="text-muted-foreground">No customer data available for the selected period.</p>
             </div>
           )}
         </CardContent>
