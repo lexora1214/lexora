@@ -24,6 +24,7 @@ import { LoaderCircle } from "lucide-react";
 const formSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
   mobileNumber: z.string().regex(/^0\d{9}$/, { message: "Please enter a valid 10-digit mobile number." }),
+  branch: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -55,6 +56,7 @@ const ProfileSettingsDialog: React.FC<ProfileSettingsDialogProps> = ({
       reset({
         name: user.name,
         mobileNumber: user.mobileNumber || "",
+        branch: user.branch || "",
       });
     }
   }, [user, reset]);
@@ -64,7 +66,16 @@ const ProfileSettingsDialog: React.FC<ProfileSettingsDialogProps> = ({
 
     setIsLoading(true);
     try {
-      await updateUser(user.id, { name: data.name, mobileNumber: data.mobileNumber });
+      const updateData: Partial<User> = {
+        name: data.name,
+        mobileNumber: data.mobileNumber,
+      };
+
+      if (user.role === 'Team Operation Manager') {
+        updateData.branch = data.branch;
+      }
+
+      await updateUser(user.id, updateData);
       toast({
         title: "Profile Updated",
         description: "Your profile has been successfully updated.",
@@ -112,6 +123,15 @@ const ProfileSettingsDialog: React.FC<ProfileSettingsDialogProps> = ({
                 {errors.mobileNumber && <p className="text-xs text-destructive mt-1">{errors.mobileNumber.message}</p>}
               </div>
             </div>
+            {user.role === 'Team Operation Manager' && (
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="branch" className="text-right">Branch</Label>
+                <div className="col-span-3">
+                  <Input id="branch" {...register("branch")} />
+                  {errors.branch && <p className="text-xs text-destructive mt-1">{errors.branch.message}</p>}
+                </div>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <DialogClose asChild>

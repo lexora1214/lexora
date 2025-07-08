@@ -33,6 +33,7 @@ const formSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
   mobileNumber: z.string().regex(/^0\d{9}$/, { message: "Please enter a valid 10-digit mobile number." }),
   role: z.enum(["Salesman", "Team Operation Manager", "Group Operation Manager", "Head Group Manager", "Regional Director", "Admin"]),
+  branch: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -58,9 +59,12 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({
     formState: { errors },
     reset,
     control,
+    watch,
   } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
   });
+
+  const selectedRole = watch("role");
 
   useEffect(() => {
     if (user) {
@@ -68,6 +72,7 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({
         name: user.name,
         role: user.role,
         mobileNumber: user.mobileNumber || "",
+        branch: user.branch || "",
       });
     }
   }, [user, reset]);
@@ -77,7 +82,19 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({
 
     setIsLoading(true);
     try {
-      await updateUser(user.id, data);
+      const updateData: Partial<User> = {
+        name: data.name,
+        mobileNumber: data.mobileNumber,
+        role: data.role,
+      };
+
+      if (data.role === 'Team Operation Manager') {
+        updateData.branch = data.branch;
+      } else {
+        updateData.branch = ""; // Clear branch if role is not TOM
+      }
+
+      await updateUser(user.id, updateData);
       toast({
         title: "User Updated",
         description: `${data.name}'s profile has been successfully updated.`,
@@ -151,6 +168,15 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({
                     {errors.role && <p className="text-xs text-destructive mt-1">{errors.role.message}</p>}
                 </div>
             </div>
+            {selectedRole === 'Team Operation Manager' && (
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="branch" className="text-right">Branch</Label>
+                <div className="col-span-3">
+                  <Input id="branch" {...register("branch")} />
+                  {errors.branch && <p className="text-xs text-destructive mt-1">{errors.branch.message}</p>}
+                </div>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <DialogClose asChild>

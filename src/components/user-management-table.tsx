@@ -59,7 +59,6 @@ const roleOrderMap: Record<Role, number> = {
   'Head Group Manager': 3,
   'Group Operation Manager': 4,
   'Team Operation Manager': 5,
-  'Shop Manager': 6,
   'Salesman': 7,
 };
 
@@ -150,6 +149,11 @@ export default function UserManagementTable({ data, allIncomeRecords }: UserMana
         const roleB = roleOrderMap[rowB.getValue(columnId) as Role] ?? 99;
         return roleA - roleB;
       },
+    },
+     {
+      accessorKey: "branch",
+      header: "Branch",
+      cell: ({ row }) => row.original.branch || 'N/A',
     },
     {
       accessorKey: "createdAt",
@@ -418,6 +422,7 @@ export default function UserManagementTable({ data, allIncomeRecords }: UserMana
                     if (column.id === 'email') displayName = 'Email';
                     if (column.id === 'role') displayName = 'Role';
                     if (column.id === 'mobileNumber') displayName = 'Mobile Number';
+                    if (column.id === 'branch') displayName = 'Branch';
 
                     return (
                     <DropdownMenuCheckboxItem

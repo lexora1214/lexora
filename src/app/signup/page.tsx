@@ -32,11 +32,13 @@ export default function SignupPage() {
   const [mobileNumber, setMobileNumber] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<Role | "">("");
+  const [branch, setBranch] = useState("");
   const [visibleRoles, setVisibleRoles] = useState<Record<string, boolean> | null>(null);
   const [loadingRoles, setLoadingRoles] = useState(true);
   const [referralCode, setReferralCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const isReferralRequired = role && !['Regional Director', 'Admin'].includes(role);
+  const isBranchRequired = role === 'Team Operation Manager';
 
   useEffect(() => {
     const fetchRoles = async () => {
@@ -84,6 +86,14 @@ export default function SignupPage() {
       });
       return;
     }
+    if (isBranchRequired && !branch.trim()) {
+        toast({
+            variant: "destructive",
+            title: "Sign Up Failed",
+            description: "Branch name is required for this role.",
+        });
+        return;
+    }
     if (isReferralRequired) {
       if (!referralCode) {
         toast({
@@ -105,7 +115,7 @@ export default function SignupPage() {
     setIsLoading(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      await createUserProfile(userCredential.user, name, mobileNumber, role, referralCode.toUpperCase());
+      await createUserProfile(userCredential.user, name, mobileNumber, role, referralCode.toUpperCase(), branch);
       toast({
         title: "Account Created",
         description: "You have been successfully signed up.",
@@ -159,6 +169,9 @@ export default function SignupPage() {
                        if (['Regional Director', 'Admin'].includes(newRole)) {
                            setReferralCode('');
                        }
+                       if (newRole !== 'Team Operation Manager') {
+                           setBranch('');
+                       }
                    }}>
                     <SelectTrigger id="role">
                       <SelectValue placeholder="Select a role" />
@@ -176,6 +189,18 @@ export default function SignupPage() {
                     </SelectContent>
                   </Select>
                 </div>
+                {isBranchRequired && (
+                  <div className="grid gap-2">
+                    <Label htmlFor="branch">Branch</Label>
+                    <Input
+                      id="branch"
+                      placeholder="e.g. Kandy Branch"
+                      value={branch}
+                      onChange={(e) => setBranch(e.target.value)}
+                      required={isBranchRequired}
+                    />
+                  </div>
+                )}
                  <div className="grid gap-2">
                     <Label htmlFor="referral-code">Referral Code</Label>
                     <Input 

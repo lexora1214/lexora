@@ -4,8 +4,7 @@ export type Role =
   | "Group Operation Manager"
   | "Head Group Manager"
   | "Regional Director"
-  | "Admin"
-  | "Shop Manager";
+  | "Admin";
 
 export interface User {
   id: string;
@@ -18,6 +17,7 @@ export interface User {
   totalIncome: number;
   avatar: string;
   createdAt: string;
+  branch?: string;
 }
 
 export interface Customer {

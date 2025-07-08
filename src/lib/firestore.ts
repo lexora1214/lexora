@@ -12,7 +12,7 @@ function generateReferralCode(): string {
   return result;
 }
 
-export async function createUserProfile(firebaseUser: FirebaseUser, name: string, mobileNumber: string, role: Role, referralCodeInput: string): Promise<User> {
+export async function createUserProfile(firebaseUser: FirebaseUser, name: string, mobileNumber: string, role: Role, referralCodeInput: string, branch?: string): Promise<User> {
   let referrerId: string | null = null;
   const isReferralNeeded = role && !['Regional Director', 'Admin'].includes(role);
 
@@ -59,6 +59,7 @@ export async function createUserProfile(firebaseUser: FirebaseUser, name: string
     totalIncome: 0,
     avatar: `https://placehold.co/100x100.png`,
     createdAt: new Date().toISOString(),
+    ...(role === 'Team Operation Manager' && branch && { branch }),
   };
 
   await setDoc(doc(db, "users", firebaseUser.uid), newUser);
@@ -136,14 +137,13 @@ export async function createCustomer(customerData: Omit<Customer, 'id' | 'saleDa
     };
     batch.set(newCustomerRef, newCustomer);
 
-    const commissionAmounts: Record<Role, number> = {
+    const commissionAmounts: Record<string, number> = {
         "Salesman": settings.salesman,
         "Team Operation Manager": settings.teamOperationManager,
         "Group Operation Manager": settings.groupOperationManager,
         "Head Group Manager": settings.headGroupManager,
         "Regional Director": settings.regionalDirector,
         "Admin": 0,
-        "Shop Manager": 0,
     };
 
     let currentUser: User | undefined = salesman;
@@ -365,7 +365,7 @@ export async function createProductSaleAndDistributeCommissions(
 }
 
 
-export async function updateUser(userId: string, data: Partial<{ name: string; role: Role; mobileNumber: string }>): Promise<void> {
+export async function updateUser(userId: string, data: Partial<User>): Promise<void> {
   const userDocRef = doc(db, "users", userId);
   await updateDoc(userDocRef, data);
 }
@@ -401,7 +401,6 @@ export async function resetAllIncomes(): Promise<void> {
 const DEFAULT_SIGNUP_ROLE_SETTINGS: SignupRoleSettings = {
   visibleRoles: {
     "Admin": true,
-    "Shop Manager": true,
     "Regional Director": true,
     "Head Group Manager": true,
     "Group Operation Manager": true,
