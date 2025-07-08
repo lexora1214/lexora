@@ -19,6 +19,7 @@ import {
   ShoppingCart,
   SlidersHorizontal,
   Users,
+  UserPlus,
   Wallet,
 } from "lucide-react";
 import { signOut } from "firebase/auth";
@@ -57,6 +58,7 @@ import ProductCommissionSettings from "./product-commission-settings";
 import SignupRoleSettingsForm from "./signup-role-settings";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import ProfileSettingsDialog from "./profile-settings-dialog";
+import AddSalesmanView from "./add-salesman-view";
 
 type NavItem = {
   href: string;
@@ -67,11 +69,12 @@ type NavItem = {
 };
 
 const navItems: NavItem[] = [
-  { href: "#", icon: LayoutDashboard, label: "Dashboard", roles: ["Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Salesman", "Shop Manager"] },
-  { href: "#", icon: ShoppingCart, label: "Record Product Sale", roles: ["Shop Manager", "Team Operation Manager"] },
+  { href: "#", icon: LayoutDashboard, label: "Dashboard", roles: ["Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Salesman"] },
+  { href: "#", icon: ShoppingCart, label: "Record Product Sale", roles: ["Team Operation Manager"] },
   { href: "#", icon: Wallet, label: "Income Records", roles: ["Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Salesman"] },
   { href: "#", icon: Users, label: "My Customers", roles: ["Salesman"] },
   { href: "#", icon: Network, label: "Team Performance", roles: ["Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager"] },
+  { href: "#", icon: UserPlus, label: "Add Salesman", roles: ["Team Operation Manager"] },
   { href: "#", icon: Building, label: "User Management", roles: ["Admin"] },
   { href: "#", icon: Briefcase, label: "Customer Management", roles: ["Admin"]},
   { href: "#", icon: Network, label: "Network View", roles: ["Admin"] },
@@ -211,8 +214,8 @@ const AppLayout = ({ user }: { user: User }) => {
             return <AdminDashboard user={user} allUsers={allUsers} allCustomers={allCustomers} allIncomeRecords={allIncomeRecords} setActiveView={setActiveView} />;
           case "Salesman":
             return <SalesmanDashboard user={user} allCustomers={allCustomers} allIncomeRecords={allIncomeRecords} />;
-          case "Shop Manager":
-            return <ShopManagerDashboard user={user} />;
+          case "Team Operation Manager":
+            return <ManagerDashboard user={user} allUsers={allUsers} allIncomeRecords={allIncomeRecords} />;
           default:
             return <ManagerDashboard user={user} allUsers={allUsers} allIncomeRecords={allIncomeRecords} />;
         }
@@ -236,6 +239,8 @@ const AppLayout = ({ user }: { user: User }) => {
           </Card>
         );
       }
+      case "Add Salesman":
+        return <AddSalesmanView manager={user} />;
       case "User Management":
         return (
           <Card>
@@ -355,7 +360,7 @@ const AppLayout = ({ user }: { user: User }) => {
                   <Settings className="mr-2 h-4 w-4" />
                   Profile Settings
                 </DropdownMenuItem>
-                {user.role !== 'Salesman' && user.role !== 'Shop Manager' && <DropdownMenuItem>Your referral code: {user.referralCode}</DropdownMenuItem>}
+                {user.role !== 'Salesman' && <DropdownMenuItem>Your referral code: {user.referralCode}</DropdownMenuItem>}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout}>
                   <LogOut className="mr-2 h-4 w-4" />
