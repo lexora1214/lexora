@@ -266,7 +266,6 @@ export async function createProductSaleAndDistributeCommissions(
         throw new Error(`Token ${formData.customerToken} has already been used to purchase a product.`);
     }
 
-    // Update the customer record with the (potentially edited) details from the sale form
     batch.update(customerDocRef, {
       tokenIsAvailable: false,
       purchasingItem: formData.productName,
@@ -280,11 +279,12 @@ export async function createProductSaleAndDistributeCommissions(
 
     const newSaleRef = doc(collection(db, "productSales"));
     const saleDate = new Date().toISOString();
+    
     const newSale: ProductSale = {
         id: newSaleRef.id,
         productName: formData.productName,
         productCode: formData.productCode,
-        price: formData.totalValue, // Use totalValue for commission calculation
+        price: formData.totalValue,
         paymentMethod: formData.paymentMethod,
         customerId: customerId,
         customerName: customerName,
@@ -292,105 +292,97 @@ export async function createProductSaleAndDistributeCommissions(
         saleDate,
         shopManagerId: shopManager.id,
         shopManagerName: shopManager.name,
-        installments: formData.installments ?? undefined,
-        monthlyInstallment: formData.monthlyInstallment ?? undefined,
         deliveryStatus: 'pending',
-        ...(formData.paymentMethod === 'installments' && { 
-            paidInstallments: 0,
-            recoveryStatus: 'pending' 
-        }),
     };
+
+    if (formData.paymentMethod === 'installments') {
+        newSale.installments = formData.installments ?? undefined;
+        newSale.monthlyInstallment = formData.monthlyInstallment ?? undefined;
+        newSale.paidInstallments = 0;
+        newSale.recoveryStatus = 'pending';
+    }
+
     batch.set(newSaleRef, newSale);
 
-    // --- Commission Distribution ---
-    // Only distribute commissions immediately for cash sales. For installments, it's handled by markInstallmentPaid.
     if (formData.paymentMethod === 'cash') {
-      const salesman = allUsers.find(u => u.id === customer.salesmanId);
-      if (!salesman) {
-          throw new Error(`Could not find the original salesman (ID: ${customer.salesmanId}) for this token.`);
-      }
+        const salesman = allUsers.find(u => u.id === customer.salesmanId);
+        if (!salesman) {
+            throw new Error(`Could not find the original salesman (ID: ${customer.salesmanId}) for this token.`);
+        }
 
-      let applicableTier: ProductCommissionTier | undefined;
-      if (newSale.price >= 20000) {
-          const productSettings = await getProductCommissionSettings();
-          applicableTier = productSettings.tiers.find(tier => 
-              newSale.price >= tier.minPrice && (tier.maxPrice === null || newSale.price <= tier.maxPrice)
-          );
-      }
-      
-      let currentUser: User | undefined = salesman;
-      while(currentUser) {
-          let commission = 0;
-          if (applicableTier) {
-              const roleKey = currentUser.role.replace(/\s/g, '').charAt(0).toLowerCase() + currentUser.role.replace(/\s/g, '').slice(1) as keyof typeof applicableTier.commissions;
-              
-              const tierCommissions = applicableTier.commissions[roleKey];
+        const productSettings = await getProductCommissionSettings();
+        const applicableTier = productSettings.tiers.find(tier => 
+            newSale.price >= tier.minPrice && (tier.maxPrice === null || newSale.price <= tier.maxPrice)
+        );
+        
+        if (applicableTier) {
+            let currentUser: User | undefined = salesman;
+            while(currentUser) {
+                const roleKey = currentUser.role.replace(/\s/g, '').charAt(0).toLowerCase() + currentUser.role.replace(/\s/g, '').slice(1) as keyof typeof applicableTier.commissions;
+                const tierCommissions = applicableTier.commissions[roleKey];
+                
+                if (tierCommissions) {
+                    const commission = tierCommissions.cash;
+                    if (commission > 0) {
+                        const userRef = doc(db, "users", currentUser.id);
+                        batch.update(userRef, { totalIncome: increment(commission) });
 
-              if (tierCommissions) {
-                  commission = tierCommissions[newSale.paymentMethod];
-              }
-          }
-          
-          const incomeRecordRef = doc(collection(db, "incomeRecords"));
-          const newIncomeRecord: IncomeRecord = {
-              id: incomeRecordRef.id,
-              userId: currentUser.id,
-              amount: commission,
-              saleDate: saleDate,
-              grantedForRole: currentUser.role,
-              salesmanId: salesman.id,
-              salesmanName: salesman.name,
-              shopManagerName: shopManager.name,
-              sourceType: 'product_sale',
-              customerId: customer.id,
-              customerName: customer.name,
-              tokenSerial: newSale.tokenSerial,
-              productName: newSale.productName,
-              productPrice: newSale.price,
-              paymentMethod: newSale.paymentMethod,
-          };
-          batch.set(incomeRecordRef, newIncomeRecord);
+                        const incomeRecordRef = doc(collection(db, "incomeRecords"));
+                        const newIncomeRecord: IncomeRecord = {
+                            id: incomeRecordRef.id,
+                            userId: currentUser.id,
+                            amount: commission,
+                            saleDate: saleDate,
+                            grantedForRole: currentUser.role,
+                            salesmanId: salesman.id,
+                            salesmanName: salesman.name,
+                            shopManagerName: shopManager.name,
+                            sourceType: 'product_sale',
+                            customerId: customer.id,
+                            customerName: customer.name,
+                            tokenSerial: newSale.tokenSerial,
+                            productName: newSale.productName,
+                            productPrice: newSale.price,
+                            paymentMethod: newSale.paymentMethod,
+                        };
+                        batch.set(incomeRecordRef, newIncomeRecord);
+                    }
+                }
+                currentUser = currentUser.referrerId ? allUsers.find(u => u.id === currentUser!.referrerId) : undefined;
+            }
 
-          if (commission > 0) {
-              const userRef = doc(db, "users", currentUser.id);
-              batch.update(userRef, { totalIncome: increment(commission) });
-          }
+            const adminCommissionInfo = applicableTier.commissions.admin;
+            if (adminCommissionInfo) {
+                const adminCommission = adminCommissionInfo.cash;
+                if (adminCommission > 0) {
+                    const adminUsers = allUsers.filter(u => u.role === 'Admin');
+                    for (const adminUser of adminUsers) {
+                        const userRef = doc(db, "users", adminUser.id);
+                        batch.update(userRef, { totalIncome: increment(adminCommission) });
 
-          currentUser = currentUser.referrerId ? allUsers.find(u => u.id === currentUser!.referrerId) : undefined;
-      }
-
-      let adminCommission = 0;
-      if (applicableTier?.commissions.admin) {
-          adminCommission = applicableTier.commissions.admin[newSale.paymentMethod];
-      }
-      
-      const adminUsers = allUsers.filter(u => u.role === 'Admin');
-      for (const adminUser of adminUsers) {
-          const incomeRecordRef = doc(collection(db, "incomeRecords"));
-          const newIncomeRecord: IncomeRecord = {
-              id: incomeRecordRef.id,
-              userId: adminUser.id,
-              amount: adminCommission,
-              saleDate: saleDate,
-              grantedForRole: 'Admin',
-              salesmanId: salesman.id,
-              salesmanName: salesman.name,
-              shopManagerName: shopManager.name,
-              sourceType: 'product_sale',
-              customerId: customer.id,
-              customerName: customer.name,
-              tokenSerial: newSale.tokenSerial,
-              productName: newSale.productName,
-              productPrice: newSale.price,
-              paymentMethod: newSale.paymentMethod,
-          };
-          batch.set(incomeRecordRef, newIncomeRecord);
-          
-          if (adminCommission > 0) {
-              const userRef = doc(db, "users", adminUser.id);
-              batch.update(userRef, { totalIncome: increment(adminCommission) });
-          }
-      }
+                        const incomeRecordRef = doc(collection(db, "incomeRecords"));
+                        const newIncomeRecord: IncomeRecord = {
+                            id: incomeRecordRef.id,
+                            userId: adminUser.id,
+                            amount: adminCommission,
+                            saleDate: saleDate,
+                            grantedForRole: 'Admin',
+                            salesmanId: salesman.id,
+                            salesmanName: salesman.name,
+                            shopManagerName: shopManager.name,
+                            sourceType: 'product_sale',
+                            customerId: customer.id,
+                            customerName: customer.name,
+                            tokenSerial: newSale.tokenSerial,
+                            productName: newSale.productName,
+                            productPrice: newSale.price,
+                            paymentMethod: newSale.paymentMethod,
+                        };
+                        batch.set(incomeRecordRef, newIncomeRecord);
+                    }
+                }
+            }
+        }
     }
 
     await batch.commit();
