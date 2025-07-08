@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -34,7 +35,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Customer, User } from "@/types";
+import { Customer, User, ProductSale } from "@/types";
 import { Badge } from "./ui/badge";
 import { cn } from "@/lib/utils";
 import {
@@ -53,6 +54,7 @@ import CustomerDetailsDialog from "./customer-details-dialog";
 interface CustomerManagementTableProps {
     data: Customer[];
     users: User[];
+    allProductSales: ProductSale[];
 }
 
 const getSalesmanNameById = (salesmanId: string, users: User[]): string => {
@@ -133,7 +135,7 @@ export const getColumns = (
   },
 ];
 
-export default function CustomerManagementTable({ data, users }: CustomerManagementTableProps) {
+export default function CustomerManagementTable({ data, users, allProductSales }: CustomerManagementTableProps) {
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
@@ -206,6 +208,11 @@ export default function CustomerManagementTable({ data, users }: CustomerManagem
         return prev.map(f => f.id === 'contactInfo' ? { ...f, value } : f);
     });
   }
+
+  const productSaleForSelectedCustomer = React.useMemo(() => {
+    if (!selectedCustomer) return undefined;
+    return allProductSales.find(p => p.customerId === selectedCustomer.id);
+  }, [selectedCustomer, allProductSales]);
 
   return (
     <div className="w-full">
@@ -439,6 +446,7 @@ export default function CustomerManagementTable({ data, users }: CustomerManagem
         isOpen={isDetailsDialogOpen}
         onOpenChange={setIsDetailsDialogOpen}
         customer={selectedCustomer}
+        productSale={productSaleForSelectedCustomer}
       />
     </div>
   );

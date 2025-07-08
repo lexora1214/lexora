@@ -2,7 +2,7 @@
 "use client";
 
 import React from "react";
-import { User, Customer as CustomerType } from "@/types";
+import { User, Customer as CustomerType, ProductSale } from "@/types";
 import {
   Table,
   TableBody,
@@ -12,11 +12,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { UserPlus, LoaderCircle, Calendar as CalendarIcon, Phone } from "lucide-react";
+import { UserPlus, Calendar as CalendarIcon, Phone } from "lucide-react";
 import CustomerRegistrationDialog from "@/components/customer-registration-dialog";
 import CustomerDetailsDialog from "@/components/customer-details-dialog";
 import { Badge } from "@/components/ui/badge";
-import { getCustomersForSalesman } from "@/lib/firestore";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { DateRange } from "react-day-picker";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
@@ -26,26 +25,19 @@ import { Calendar } from "./ui/calendar";
 
 interface MyCustomersViewProps {
   user: User;
+  allCustomers: CustomerType[];
+  allProductSales: ProductSale[];
 }
 
-const MyCustomersView: React.FC<MyCustomersViewProps> = ({ user }) => {
-  const [myCustomers, setMyCustomers] = React.useState<CustomerType[]>([]);
-  const [loading, setLoading] = React.useState(true);
+const MyCustomersView: React.FC<MyCustomersViewProps> = ({ user, allCustomers, allProductSales }) => {
   const [isRegisterDialogOpen, setIsRegisterDialogOpen] = React.useState(false);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = React.useState(false);
   const [selectedCustomer, setSelectedCustomer] = React.useState<CustomerType | null>(null);
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
 
-  const fetchMyData = React.useCallback(async () => {
-    setLoading(true);
-    const customersData = await getCustomersForSalesman(user.id);
-    setMyCustomers(customersData);
-    setLoading(false);
-  }, [user.id]);
-  
-  React.useEffect(() => {
-    fetchMyData();
-  }, [fetchMyData]);
+  const myCustomers = React.useMemo(() => {
+    return allCustomers.filter(c => c.salesmanId === user.id);
+  }, [allCustomers, user.id]);
 
   const filteredCustomers = React.useMemo(() => {
     if (!dateRange || !dateRange.from) {
@@ -66,13 +58,10 @@ const MyCustomersView: React.FC<MyCustomersViewProps> = ({ user }) => {
     setIsDetailsDialogOpen(true);
   };
 
-  if (loading) {
-    return (
-      <div className="flex h-full w-full items-center justify-center">
-        <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+  const productSaleForSelectedCustomer = React.useMemo(() => {
+    if (!selectedCustomer) return undefined;
+    return allProductSales.find(p => p.customerId === selectedCustomer.id);
+  }, [selectedCustomer, allProductSales]);
 
   return (
     <>
@@ -201,12 +190,13 @@ const MyCustomersView: React.FC<MyCustomersViewProps> = ({ user }) => {
         isOpen={isRegisterDialogOpen} 
         onOpenChange={setIsRegisterDialogOpen} 
         salesman={user}
-        onRegistrationSuccess={fetchMyData} 
+        onRegistrationSuccess={() => {}} 
       />
       <CustomerDetailsDialog 
         isOpen={isDetailsDialogOpen}
         onOpenChange={setIsDetailsDialogOpen}
         customer={selectedCustomer}
+        productSale={productSaleForSelectedCustomer}
       />
     </>
   );

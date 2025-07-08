@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
@@ -12,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import MapPicker from "./map-picker";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { format, addMonths } from 'date-fns';
+import { Progress } from "./ui/progress";
 
 interface RecoveryOfficerDashboardProps {
   user: User;
@@ -180,6 +182,21 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
                                             ) : <p className="text-sm text-muted-foreground">No location provided.</p>}
                                         </div>
                                     </div>
+                                     {sale.installments && sale.paidInstallments !== undefined && (
+                                        <div className="border-t pt-4 mt-4">
+                                            <h4 className="font-semibold text-md mb-2">Installment Progress</h4>
+                                            <div>
+                                              <div className="flex justify-between text-sm mb-1">
+                                                  <span className="font-medium">Paid Installments</span>
+                                                  <span>{sale.paidInstallments} / {sale.installments}</span>
+                                              </div>
+                                              <Progress value={(sale.paidInstallments / sale.installments) * 100} className="h-2" />
+                                              <p className="text-xs text-muted-foreground mt-1">
+                                                  {sale.installments - sale.paidInstallments} months remaining.
+                                              </p>
+                                            </div>
+                                        </div>
+                                    )}
                                 </CardContent>
                             </Card>
                         ))}

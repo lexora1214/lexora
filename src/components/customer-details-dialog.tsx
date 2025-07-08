@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from "react";
@@ -9,13 +10,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Customer } from "@/types";
+import { Customer, ProductSale } from "@/types";
 import { CalendarIcon, Hash, Home, Phone, User, CheckCircle2, XCircle, Mail, MessageSquare, MapPin, ShoppingCart, Percent, DollarSign, Repeat, Clock } from "lucide-react";
 import { ScrollArea } from "./ui/scroll-area";
 import MapPicker from "./map-picker";
+import { Progress } from "./ui/progress";
 
 interface CustomerDetailsDialogProps {
   customer: Customer | null;
+  productSale?: ProductSale | null;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
 }
@@ -35,10 +38,13 @@ const DetailRow: React.FC<{ icon: React.ElementType, label: string, value?: Reac
 
 const CustomerDetailsDialog: React.FC<CustomerDetailsDialogProps> = ({
   customer,
+  productSale,
   isOpen,
   onOpenChange,
 }) => {
   if (!customer) return null;
+
+  const hasInstallments = productSale?.paymentMethod === 'installments' && productSale.installments;
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -104,6 +110,25 @@ const CustomerDetailsDialog: React.FC<CustomerDetailsDialogProps> = ({
                         <DetailRow icon={Clock} label="Monthly Installment" value={`LKR ${customer.monthlyInstallment?.toLocaleString()}`} />
                     </div>
                 </div>
+
+                {hasInstallments && productSale.paidInstallments !== undefined && (
+                    <div className="pt-4 mt-4">
+                        <h4 className="font-semibold text-lg mb-4 text-primary">Installment Status</h4>
+                        <div className="space-y-4">
+                            <div>
+                                <div className="flex justify-between text-sm mb-1">
+                                    <span className="font-medium">Paid Installments</span>
+                                    <span>{productSale.paidInstallments} / {productSale.installments}</span>
+                                </div>
+                                <Progress value={(productSale.paidInstallments / productSale.installments!) * 100} className="h-2" />
+                            </div>
+                            <div className="grid md:grid-cols-2 gap-x-8">
+                               <DetailRow icon={Repeat} label="Remaining Installments" value={`${productSale.installments! - productSale.paidInstallments}`} />
+                               <DetailRow icon={Clock} label="Remaining Months" value={`${productSale.installments! - productSale.paidInstallments}`} />
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
           </ScrollArea>
       </DialogContent>

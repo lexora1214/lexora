@@ -41,7 +41,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import type { User, Role, Customer, IncomeRecord } from "@/types";
+import type { User, Role, Customer, IncomeRecord, ProductSale } from "@/types";
 import { getDownlineIdsAndUsers } from "@/lib/hierarchy";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -187,6 +187,7 @@ const AppLayout = ({ user }: { user: User }) => {
   const [allUsers, setAllUsers] = React.useState<User[]>([]);
   const [allCustomers, setAllCustomers] = React.useState<Customer[]>([]);
   const [allIncomeRecords, setAllIncomeRecords] = React.useState<IncomeRecord[]>([]);
+  const [allProductSales, setAllProductSales] = React.useState<ProductSale[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [isMobileSheetOpen, setIsMobileSheetOpen] = React.useState(false);
   const [isProfileSettingsOpen, setIsProfileSettingsOpen] = React.useState(false);
@@ -208,10 +209,16 @@ const AppLayout = ({ user }: { user: User }) => {
         setAllIncomeRecords(incomeRecordsData);
     });
 
+    const productSalesUnsub = onSnapshot(collection(db, "productSales"), (snapshot) => {
+        const salesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProductSale));
+        setAllProductSales(salesData);
+    });
+
     return () => {
       usersUnsub();
       customersUnsub();
       incomeRecordsUnsub();
+      productSalesUnsub();
     };
   }, []);
 
@@ -251,7 +258,7 @@ const AppLayout = ({ user }: { user: User }) => {
       case "Income Records":
         return <IncomeRecordsView user={user} />;
       case "My Customers":
-        return <MyCustomersView user={user} />;
+        return <MyCustomersView user={user} allCustomers={allCustomers} allProductSales={allProductSales} />;
       case "My Deliveries":
         return <DeliveryBoyDashboard user={user} />;
       case "My Collections":
@@ -300,7 +307,7 @@ const AppLayout = ({ user }: { user: User }) => {
               <CardDescription>View all registered customers in the system.</CardDescription>
             </CardHeader>
             <CardContent>
-              <CustomerManagementTable data={allCustomers} users={allUsers} />
+              <CustomerManagementTable data={allCustomers} users={allUsers} allProductSales={allProductSales} />
             </CardContent>
           </Card>
         );
