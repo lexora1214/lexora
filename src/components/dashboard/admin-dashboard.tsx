@@ -77,29 +77,56 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
           return;
         }
 
-        const revenueByMonth = filteredCustomers.reduce((acc, customer) => {
-          const saleDate = new Date(customer.saleDate);
-          const month = saleDate.toISOString().slice(0, 7); // YYYY-MM
-          if (!acc[month]) {
-            acc[month] = 0;
-          }
-          acc[month] += settings.tokenPrice;
-          return acc;
-        }, {} as Record<string, number>);
+        const isAllTime = !dateRange || !dateRange.from;
 
-        const sortedMonths = Object.keys(revenueByMonth).sort();
+        if (isAllTime) {
+            // Group by month for all-time view
+            const revenueByMonth = filteredCustomers.reduce((acc, customer) => {
+              const saleDate = new Date(customer.saleDate);
+              const month = format(saleDate, 'yyyy-MM');
+              if (!acc[month]) {
+                acc[month] = 0;
+              }
+              acc[month] += settings.tokenPrice;
+              return acc;
+            }, {} as Record<string, number>);
 
-        let cumulativeRevenue = 0;
-        const formattedChartData = sortedMonths.map(monthStr => {
-          cumulativeRevenue += revenueByMonth[monthStr];
-          const date = new Date(monthStr + '-02T00:00:00Z');
-          return {
-            month: date.toLocaleString('default', { month: 'short', year: '2-digit' }),
-            revenue: cumulativeRevenue,
-          };
-        });
+            const sortedMonths = Object.keys(revenueByMonth).sort();
+            let cumulativeRevenue = 0;
+            const formattedChartData = sortedMonths.map(monthStr => {
+              cumulativeRevenue += revenueByMonth[monthStr];
+              const date = new Date(monthStr + '-02T00:00:00Z');
+              return {
+                date: format(date, 'MMM yy'),
+                revenue: cumulativeRevenue,
+              };
+            });
+            setChartData(formattedChartData);
+        } else {
+            // Group by day for date-range view
+            const revenueByDay = filteredCustomers.reduce((acc, customer) => {
+              const saleDate = new Date(customer.saleDate);
+              const day = format(saleDate, 'yyyy-MM-dd');
+              if (!acc[day]) {
+                acc[day] = 0;
+              }
+              acc[day] += settings.tokenPrice;
+              return acc;
+            }, {} as Record<string, number>);
 
-        setChartData(formattedChartData);
+            const sortedDays = Object.keys(revenueByDay).sort();
+            let cumulativeRevenue = 0;
+            const formattedChartData = sortedDays.map(dayStr => {
+              cumulativeRevenue += revenueByDay[dayStr];
+              const date = new Date(dayStr + 'T00:00:00Z');
+              return {
+                date: format(date, 'MMM d'),
+                revenue: cumulativeRevenue,
+              };
+            });
+            setChartData(formattedChartData);
+        }
+
       } catch (error) {
         console.error("Failed to process chart data:", error);
         setChartData([]);
@@ -109,7 +136,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
     };
 
     processDataForChart();
-  }, [filteredCustomers]);
+  }, [filteredCustomers, dateRange]);
   
   const chartConfig = {
     revenue: {
@@ -244,7 +271,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
                 <LineChart data={chartData} margin={{ top: 5, right: 20, left: isMobile ? -10 : 10, bottom: 5 }}>
                   <CartesianGrid vertical={false} strokeDasharray="3 3" />
                   <XAxis
-                    dataKey="month"
+                    dataKey="date"
                     stroke="hsl(var(--muted-foreground))"
                     fontSize={12}
                     tickLine={false}
