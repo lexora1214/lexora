@@ -18,6 +18,7 @@ import {
   Settings,
   ShoppingCart,
   SlidersHorizontal,
+  Truck,
   Users,
   UserPlus,
   Wallet,
@@ -59,6 +60,9 @@ import SignupRoleSettingsForm from "./signup-role-settings";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import ProfileSettingsDialog from "./profile-settings-dialog";
 import AddSalesmanView from "./add-salesman-view";
+import AddDeliveryBoyView from "./add-delivery-boy-view";
+import ManageDeliveriesView from "./manage-deliveries-view";
+import DeliveryBoyDashboard from "./delivery-boy-dashboard";
 
 type NavItem = {
   href: string;
@@ -69,12 +73,23 @@ type NavItem = {
 };
 
 const navItems: NavItem[] = [
-  { href: "#", icon: LayoutDashboard, label: "Dashboard", roles: ["Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Salesman"] },
+  { href: "#", icon: LayoutDashboard, label: "Dashboard", roles: ["Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Salesman", "Delivery Boy"] },
   { href: "#", icon: ShoppingCart, label: "Record Product Sale", roles: ["Team Operation Manager"] },
   { href: "#", icon: Wallet, label: "Income Records", roles: ["Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Salesman"] },
   { href: "#", icon: Users, label: "My Customers", roles: ["Salesman"] },
+  { href: "#", icon: Truck, label: "My Deliveries", roles: ["Delivery Boy"] },
   { href: "#", icon: Network, label: "Team Performance", roles: ["Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager"] },
-  { href: "#", icon: UserPlus, label: "Add Salesman", roles: ["Team Operation Manager"] },
+  { 
+    href: "#", 
+    icon: UserPlus, 
+    label: "Add Members", 
+    roles: ["Team Operation Manager"],
+    children: [
+      { href: "#", icon: UserPlus, label: "Add Salesman", roles: ["Team Operation Manager"] },
+      { href: "#", icon: UserPlus, label: "Add Delivery Boy", roles: ["Team Operation Manager"] },
+    ]
+  },
+  { href: "#", icon: Truck, label: "Manage Deliveries", roles: ["Team Operation Manager"] },
   { href: "#", icon: Building, label: "User Management", roles: ["Admin"] },
   { href: "#", icon: Briefcase, label: "Customer Management", roles: ["Admin"]},
   { href: "#", icon: Network, label: "Network View", roles: ["Admin"] },
@@ -216,6 +231,8 @@ const AppLayout = ({ user }: { user: User }) => {
             return <SalesmanDashboard user={user} allCustomers={allCustomers} allIncomeRecords={allIncomeRecords} />;
           case "Team Operation Manager":
             return <ManagerDashboard user={user} allUsers={allUsers} allIncomeRecords={allIncomeRecords} />;
+          case "Delivery Boy":
+            return <DeliveryBoyDashboard user={user} />;
           default:
             return <ManagerDashboard user={user} allUsers={allUsers} allIncomeRecords={allIncomeRecords} />;
         }
@@ -225,6 +242,8 @@ const AppLayout = ({ user }: { user: User }) => {
         return <IncomeRecordsView user={user} />;
       case "My Customers":
         return <MyCustomersView user={user} />;
+      case "My Deliveries":
+        return <DeliveryBoyDashboard user={user} />;
       case "Team Performance": {
         const { users: downlineUsers } = getDownlineIdsAndUsers(user.id, allUsers);
         return (
@@ -241,6 +260,10 @@ const AppLayout = ({ user }: { user: User }) => {
       }
       case "Add Salesman":
         return <AddSalesmanView manager={user} />;
+      case "Add Delivery Boy":
+        return <AddDeliveryBoyView manager={user} />;
+      case "Manage Deliveries":
+        return <ManageDeliveriesView manager={user} allUsers={allUsers} />;
       case "User Management":
         return (
           <Card>

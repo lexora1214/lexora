@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/select";
 import { Role } from "@/types";
 
-const ALL_ROLES: Role[] = ["Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Salesman"];
+const ALL_ROLES: Role[] = ["Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Salesman", "Delivery Boy"];
 
 export default function SignupPage() {
   const router = useRouter();

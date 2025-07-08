@@ -33,7 +33,7 @@ export async function createUserProfile(firebaseUser: FirebaseUser, name: string
   }
   
   let newReferralCode = '';
-  const isReferralCodeNeeded = role && !['Salesman'].includes(role);
+  const isReferralCodeNeeded = role && !['Salesman', 'Delivery Boy'].includes(role);
   
   if (isReferralCodeNeeded) {
     let isCodeUnique = false;
@@ -237,7 +237,7 @@ export async function updateProductCommissionSettings(data: ProductCommissionSet
 }
 
 export async function createProductSaleAndDistributeCommissions(
-  saleData: Omit<ProductSale, 'id' | 'saleDate' | 'shopManagerName'>,
+  saleData: Omit<ProductSale, 'id' | 'saleDate' | 'shopManagerName' | 'deliveryStatus'>,
   shopManager: User
 ): Promise<void> {
     const batch = writeBatch(db);
@@ -262,6 +262,7 @@ export async function createProductSaleAndDistributeCommissions(
         id: newSaleRef.id,
         saleDate,
         shopManagerName: shopManager.name,
+        deliveryStatus: 'pending',
     };
     batch.set(newSaleRef, newSale);
 
@@ -407,6 +408,7 @@ const DEFAULT_SIGNUP_ROLE_SETTINGS: SignupRoleSettings = {
     "Group Operation Manager": true,
     "Team Operation Manager": true,
     "Salesman": true,
+    "Delivery Boy": true,
   }
 };
 
@@ -430,4 +432,24 @@ export async function getSignupRoleSettings(): Promise<SignupRoleSettings> {
 export async function updateSignupRoleSettings(data: SignupRoleSettings): Promise<void> {
   const settingsDocRef = doc(db, "settings", "signupRoles");
   await setDoc(settingsDocRef, data);
+}
+
+// --- Delivery Management ---
+
+export async function assignDelivery(productSaleId: string, deliveryBoyId: string, deliveryBoyName: string): Promise<void> {
+  const saleDocRef = doc(db, "productSales", productSaleId);
+  await updateDoc(saleDocRef, {
+    deliveryStatus: 'assigned',
+    assignedTo: deliveryBoyId,
+    assignedToName: deliveryBoyName,
+    assignedAt: new Date().toISOString(),
+  });
+}
+
+export async function markAsDelivered(productSaleId: string): Promise<void> {
+  const saleDocRef = doc(db, "productSales", productSaleId);
+  await updateDoc(saleDocRef, {
+    deliveryStatus: 'delivered',
+    deliveredAt: new Date().toISOString(),
+  });
 }

@@ -59,7 +59,8 @@ const roleOrderMap: Record<Role, number> = {
   'Head Group Manager': 3,
   'Group Operation Manager': 4,
   'Team Operation Manager': 5,
-  'Salesman': 7,
+  'Salesman': 6,
+  'Delivery Boy': 7,
 };
 
 export default function UserManagementTable({ data, allIncomeRecords }: UserManagementTableProps) {
