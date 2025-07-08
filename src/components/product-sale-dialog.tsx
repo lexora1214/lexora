@@ -75,6 +75,7 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+  const [remainingToPay, setRemainingToPay] = useState<number | null>(null);
   
   const {
     register,
@@ -93,21 +94,22 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
   ]);
 
   useEffect(() => {
-    if (paymentMethod === 'installments' && totalValue > 0 && installments && installments > 0) {
-      const discountedValue = totalValue - (discountValue || 0);
-      const loanAmount = discountedValue - (downPayment || 0);
-      if (loanAmount >= 0) {
-        const monthly = loanAmount / installments;
-        setValue('monthlyInstallment', parseFloat(monthly.toFixed(2)));
-      }
+    const total = totalValue || 0;
+    const discount = discountValue || 0;
+    const down = downPayment || 0;
+    const remaining = total - discount - down;
+    setRemainingToPay(remaining >= 0 ? remaining : 0);
+
+    if (paymentMethod === 'installments' && remaining > 0 && installments && installments > 0) {
+      const monthly = remaining / installments;
+      setValue('monthlyInstallment', parseFloat(monthly.toFixed(2)));
     } else {
-        setValue('monthlyInstallment', undefined);
+      setValue('monthlyInstallment', undefined);
     }
   }, [totalValue, discountValue, downPayment, installments, paymentMethod, setValue]);
 
   useEffect(() => {
     if (paymentMethod === 'cash') {
-        setValue('downPayment', undefined);
         setValue('installments', undefined);
         setValue('monthlyInstallment', undefined);
     }
@@ -125,7 +127,6 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
       // Explicitly nullify installment fields if payment is cash
       const payload = {...data};
       if (payload.paymentMethod === 'cash') {
-        payload.downPayment = undefined;
         payload.installments = undefined;
         payload.monthlyInstallment = undefined;
       }
@@ -210,7 +211,6 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
                                       setValue('discountValue', customer.discountValue || undefined);
                                       setValue('downPayment', customer.downPayment || undefined);
                                       setValue('installments', customer.installments || undefined);
-                                      // Default to installments if customer had them, else cash
                                       setValue('paymentMethod', customer.installments ? 'installments' : 'cash');
                                       setIsPopoverOpen(false);
                                   }}
@@ -257,6 +257,17 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
               </div>
               
               <div>
+                  <Label htmlFor="downPayment">Down Payment (LKR, Optional)</Label>
+                  <Input id="downPayment" type="number" {...register("downPayment")} />
+                  {errors.downPayment && <p className="text-xs text-destructive mt-1">{errors.downPayment.message}</p>}
+              </div>
+
+              <div>
+                  <Label htmlFor="remainingToPay">Remaining to Pay (LKR)</Label>
+                  <Input id="remainingToPay" value={remainingToPay !== null ? remainingToPay.toLocaleString() : '...'} disabled />
+              </div>
+
+              <div>
                   <Label>Payment Method</Label>
                   <Controller
                     control={control}
@@ -283,12 +294,6 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
 
               {paymentMethod === 'installments' && (
                 <>
-                  <div>
-                      <Label htmlFor="downPayment">Down Payment (LKR)</Label>
-                      <Input id="downPayment" type="number" {...register("downPayment")} />
-                      {errors.downPayment && <p className="text-xs text-destructive mt-1">{errors.downPayment.message}</p>}
-                  </div>
-
                   <div>
                       <Label htmlFor="installments">Number of Installments</Label>
                       <Input id="installments" type="number" {...register("installments")} />
