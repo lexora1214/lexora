@@ -7,7 +7,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { DollarSign, Users, Briefcase, ShieldCheck, LoaderCircle, Landmark, Calendar as CalendarIcon } from "lucide-react";
 import { getCommissionSettings } from "@/lib/firestore";
-import { Line, LineChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer } from "recharts";
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { DateRange } from "react-day-picker";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
@@ -92,13 +92,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
             }, {} as Record<string, number>);
 
             const sortedMonths = Object.keys(revenueByMonth).sort();
-            let cumulativeRevenue = 0;
             const formattedChartData = sortedMonths.map(monthStr => {
-              cumulativeRevenue += revenueByMonth[monthStr];
               const date = new Date(monthStr + '-02T00:00:00Z');
               return {
                 date: format(date, 'MMM yy'),
-                revenue: cumulativeRevenue,
+                revenue: revenueByMonth[monthStr],
               };
             });
             setChartData(formattedChartData);
@@ -115,13 +113,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
             }, {} as Record<string, number>);
 
             const sortedDays = Object.keys(revenueByDay).sort();
-            let cumulativeRevenue = 0;
             const formattedChartData = sortedDays.map(dayStr => {
-              cumulativeRevenue += revenueByDay[dayStr];
               const date = new Date(dayStr + 'T00:00:00Z');
               return {
                 date: format(date, 'MMM d'),
-                revenue: cumulativeRevenue,
+                revenue: revenueByDay[dayStr],
               };
             });
             setChartData(formattedChartData);
@@ -140,7 +136,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
   
   const chartConfig = {
     revenue: {
-      label: "Cumulative Revenue",
+      label: "Daily Revenue",
       color: "hsl(var(--primary))",
     },
   };
@@ -257,8 +253,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
       
       <Card className="hidden md:block">
         <CardHeader>
-          <CardTitle>Revenue Growth</CardTitle>
-          <CardDescription>Cumulative revenue generated from all token sales over time.</CardDescription>
+          <CardTitle>Daily Token Revenue</CardTitle>
+          <CardDescription>Revenue from token sales per day/month for the selected period.</CardDescription>
         </CardHeader>
         <CardContent className="pl-2">
           {loadingChart ? (
@@ -268,7 +264,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
           ) : chartData.length > 0 ? (
             <ChartContainer config={chartConfig} className="h-[350px] w-full">
               <ResponsiveContainer>
-                <LineChart data={chartData} margin={{ top: 5, right: 20, left: isMobile ? -10 : 10, bottom: 5 }}>
+                <BarChart data={chartData} margin={{ top: 5, right: 20, left: isMobile ? -10 : 10, bottom: 5 }}>
                   <CartesianGrid vertical={false} strokeDasharray="3 3" />
                   <XAxis
                     dataKey="date"
@@ -286,18 +282,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
                     tickFormatter={(value) => `LKR ${value / 1000}k`}
                   />
                   <ChartTooltip
-                    cursor={true}
-                    content={<ChartTooltipContent indicator="line" />}
+                    cursor={false}
+                    content={<ChartTooltipContent indicator="dot" />}
                   />
-                  <Line
+                  <Bar
                     dataKey="revenue"
-                    type="monotone"
-                    stroke="hsl(var(--primary))"
-                    strokeWidth={2}
-                    dot={{ r: 4, fill: "hsl(var(--primary))", strokeWidth: 2 }}
-                    activeDot={{ r: 6 }}
+                    fill="hsl(var(--primary))"
+                    radius={[4, 4, 0, 0]}
                   />
-                </LineChart>
+                </BarChart>
               </ResponsiveContainer>
             </ChartContainer>
           ) : (
