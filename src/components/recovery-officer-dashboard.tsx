@@ -5,7 +5,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { User, ProductSale, Customer } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { LoaderCircle, Phone, HandCoins, Package, CheckCircle2 } from "lucide-react";
+import { LoaderCircle, Phone, HandCoins, Package, CheckCircle2, DollarSign } from "lucide-react";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { markInstallmentPaid } from "@/lib/firestore";
@@ -191,9 +191,14 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
                                                   <span>{sale.paidInstallments} / {sale.installments}</span>
                                               </div>
                                               <Progress value={(sale.paidInstallments / sale.installments) * 100} className="h-2" />
-                                              <p className="text-xs text-muted-foreground mt-1">
-                                                  {sale.installments - sale.paidInstallments} months remaining.
-                                              </p>
+                                                <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                                                    <p>{sale.installments - sale.paidInstallments} months remaining.</p>
+                                                    {sale.monthlyInstallment && (
+                                                    <p className="font-semibold text-card-foreground">
+                                                        Balance: LKR {((sale.installments - sale.paidInstallments) * sale.monthlyInstallment).toLocaleString()}
+                                                    </p>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     )}

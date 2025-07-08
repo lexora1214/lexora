@@ -45,6 +45,9 @@ const CustomerDetailsDialog: React.FC<CustomerDetailsDialogProps> = ({
   if (!customer) return null;
 
   const hasInstallments = productSale?.paymentMethod === 'installments' && productSale.installments;
+  const remainingBalance = hasInstallments && productSale.paidInstallments !== undefined && productSale.monthlyInstallment
+    ? (productSale.installments! - productSale.paidInstallments) * productSale.monthlyInstallment
+    : 0;
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -124,7 +127,7 @@ const CustomerDetailsDialog: React.FC<CustomerDetailsDialogProps> = ({
                             </div>
                             <div className="grid md:grid-cols-2 gap-x-8">
                                <DetailRow icon={Repeat} label="Remaining Installments" value={`${productSale.installments! - productSale.paidInstallments}`} />
-                               <DetailRow icon={Clock} label="Remaining Months" value={`${productSale.installments! - productSale.paidInstallments}`} />
+                               <DetailRow icon={DollarSign} label="Remaining Balance" value={`LKR ${remainingBalance.toLocaleString()}`} />
                             </div>
                         </div>
                     </div>
