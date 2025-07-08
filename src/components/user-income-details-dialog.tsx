@@ -76,6 +76,9 @@ const UserIncomeDetailsDialog: React.FC<UserIncomeDetailsDialogProps> = ({ user,
       let detailText = "";
       if (record.sourceType === 'product_sale') {
           detailText = `${record.productName || 'Product'} for ${record.customerName}. Sale by: ${record.shopManagerName || 'N/A'}`;
+          if (record.installmentNumber) {
+            detailText += ` (Installment #${record.installmentNumber})`;
+          }
       } else {
           detailText = `Token Sale for ${record.customerName}. Sale by: ${record.salesmanName || 'N/A'}`;
       }
@@ -85,7 +88,7 @@ const UserIncomeDetailsDialog: React.FC<UserIncomeDetailsDialogProps> = ({ user,
         record.sourceType === 'product_sale' ? 'Product' : 'Token',
         detailText,
         record.grantedForRole,
-        record.amount.toLocaleString(),
+        record.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
       ];
       tableRows.push(recordData);
     });
@@ -112,7 +115,7 @@ const UserIncomeDetailsDialog: React.FC<UserIncomeDetailsDialogProps> = ({ user,
         4: { halign: 'right' },
       },
       foot: [
-        [{ content: 'Total Income', colSpan: 4, styles: { halign: 'right', fontStyle: 'bold', textColor: '#000' } }, { content: `LKR ${totalIncome.toLocaleString()}`, styles: { halign: 'right', fontStyle: 'bold', textColor: '#000' } }]
+        [{ content: 'Total Income', colSpan: 4, styles: { halign: 'right', fontStyle: 'bold', textColor: '#000' } }, { content: `LKR ${totalIncome.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, styles: { halign: 'right', fontStyle: 'bold', textColor: '#000' } }]
       ],
       footStyles: { fillColor: [239, 241, 245] }
     });
@@ -203,13 +206,14 @@ const UserIncomeDetailsDialog: React.FC<UserIncomeDetailsDialogProps> = ({ user,
                         <div className="text-sm">
                             <p className="font-medium">{record.sourceType === 'product_sale' ? record.productName : `Token for ${record.customerName}`}</p>
                             <p className="text-muted-foreground">Sale by: {record.sourceType === 'product_sale' ? record.shopManagerName : record.salesmanName}</p>
+                            {record.installmentNumber && <Badge variant="default" className="mt-1">Installment #{record.installmentNumber}</Badge>}
                         </div>
                     </TableCell>
                     <TableCell>
                         <Badge variant="outline">{record.grantedForRole}</Badge>
                     </TableCell>
                     <TableCell className="text-right font-medium">
-                      LKR {record.amount.toLocaleString()}
+                      LKR {record.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </TableCell>
                   </TableRow>
                 ))}

@@ -86,7 +86,10 @@ const columns: ColumnDef<IncomeRecord>[] = [
                         <p className="text-sm text-muted-foreground">
                             LKR {record.productPrice?.toLocaleString()} ({record.paymentMethod}) for {record.customerName}
                         </p>
-                        {record.tokenSerial && <Badge variant="outline" className="mt-1 font-mono">{record.tokenSerial}</Badge>}
+                        <div className="flex gap-2 items-center mt-1">
+                          {record.installmentNumber && <Badge variant="default">Installment #{record.installmentNumber}</Badge>}
+                          {record.tokenSerial && <Badge variant="outline" className="font-mono">{record.tokenSerial}</Badge>}
+                        </div>
                     </div>
                 );
             }
@@ -171,6 +174,9 @@ const IncomeRecordsView: React.FC<IncomeRecordsViewProps> = ({ user }) => {
       let detailText = "";
       if (record.sourceType === 'product_sale') {
           detailText = `${record.productName || 'Product'} for ${record.customerName}. Sale by: ${record.shopManagerName || 'N/A'}`;
+          if (record.installmentNumber) {
+            detailText += ` (Installment #${record.installmentNumber})`;
+          }
       } else {
           detailText = `Token Sale for ${record.customerName}. Sale by: ${record.salesmanName || 'N/A'}`;
       }
@@ -180,7 +186,7 @@ const IncomeRecordsView: React.FC<IncomeRecordsViewProps> = ({ user }) => {
         record.sourceType === 'product_sale' ? 'Product' : 'Token',
         detailText,
         record.grantedForRole,
-        record.amount.toLocaleString(),
+        record.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
       ];
       tableRows.push(recordData);
     });
@@ -207,7 +213,7 @@ const IncomeRecordsView: React.FC<IncomeRecordsViewProps> = ({ user }) => {
         4: { halign: 'right' },
       },
       foot: [
-        [{ content: 'Total Income', colSpan: 4, styles: { halign: 'right', fontStyle: 'bold', textColor: '#000' } }, { content: `LKR ${totalIncome.toLocaleString()}`, styles: { halign: 'right', fontStyle: 'bold', textColor: '#000' } }]
+        [{ content: 'Total Income', colSpan: 4, styles: { halign: 'right', fontStyle: 'bold', textColor: '#000' } }, { content: `LKR ${totalIncome.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, styles: { halign: 'right', fontStyle: 'bold', textColor: '#000' } }]
       ],
       footStyles: { fillColor: [239, 241, 245] }
     });
@@ -326,7 +332,7 @@ const IncomeRecordsView: React.FC<IncomeRecordsViewProps> = ({ user }) => {
                         <Card key={record.id} className="p-4 flex flex-col gap-3">
                             <div className="flex justify-between items-start">
                                 <div>
-                                    <p className="font-bold text-lg text-primary">LKR {record.amount.toLocaleString()}</p>
+                                    <p className="font-bold text-lg text-primary">LKR {record.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                                     <Badge variant={isProductSale ? 'default' : 'secondary'}>
                                         {isProductSale ? 'Product Sale' : 'Token Sale'}
                                     </Badge>
@@ -341,6 +347,11 @@ const IncomeRecordsView: React.FC<IncomeRecordsViewProps> = ({ user }) => {
                                     <ShoppingBag className="w-4 h-4 text-primary/80"/>
                                     <p><span className="font-medium text-card-foreground">{isProductSale ? record.productName : 'Token Sale'}</span> for {record.customerName}</p>
                                 </div>
+                                {record.installmentNumber && (
+                                    <div className="flex items-center gap-2">
+                                        <Badge variant="default">Installment #{record.installmentNumber}</Badge>
+                                    </div>
+                                )}
                                 {record.tokenSerial && (
                                     <div className="flex items-center gap-2">
                                         <CreditCard className="w-4 h-4 text-primary/80"/>

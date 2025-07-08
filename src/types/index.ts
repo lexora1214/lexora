@@ -105,6 +105,7 @@ export interface IncomeRecord {
   productName?: string;
   productPrice?: number;
   paymentMethod?: 'cash' | 'installments';
+  installmentNumber?: number;
 }
 
 
