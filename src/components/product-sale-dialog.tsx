@@ -31,12 +31,12 @@ const formSchema = z.object({
   productCode: z.string().optional(),
   totalValue: z.coerce.number().min(0, "Total value must be a positive number."),
   discountValue: z.coerce.number().min(0, "Discount must be a positive number.").optional(),
-  downPayment: z.coerce.number().min(0, "Down payment must be a positive number.").optional(),
-  installments: z.coerce.number().min(1, "Number of installments must be at least 1.").optional(),
-  monthlyInstallment: z.coerce.number().optional(),
   paymentMethod: z.enum(["cash", "installments"], {
     required_error: "You need to select a payment method.",
   }),
+  downPayment: z.coerce.number().min(0, "Down payment must be a positive number.").optional(),
+  installments: z.coerce.number().min(1, "Number of installments must be at least 1.").optional(),
+  monthlyInstallment: z.coerce.number().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -72,12 +72,12 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
     resolver: zodResolver(formSchema),
   });
   
-  const [totalValue, discountValue, downPayment, installments] = watch([
-    'totalValue', 'discountValue', 'downPayment', 'installments'
+  const [totalValue, discountValue, downPayment, installments, paymentMethod] = watch([
+    'totalValue', 'discountValue', 'downPayment', 'installments', 'paymentMethod'
   ]);
 
   useEffect(() => {
-    if (totalValue > 0 && installments && installments > 0) {
+    if (paymentMethod === 'installments' && totalValue > 0 && installments && installments > 0) {
       const discountedValue = totalValue - (discountValue || 0);
       const loanAmount = discountedValue - (downPayment || 0);
       if (loanAmount >= 0) {
@@ -87,7 +87,15 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
     } else {
         setValue('monthlyInstallment', undefined);
     }
-  }, [totalValue, discountValue, downPayment, installments, setValue]);
+  }, [totalValue, discountValue, downPayment, installments, paymentMethod, setValue]);
+
+  useEffect(() => {
+    if (paymentMethod === 'cash') {
+        setValue('downPayment', undefined);
+        setValue('installments', undefined);
+        setValue('monthlyInstallment', undefined);
+    }
+  }, [paymentMethod, setValue]);
 
 
   const onSubmit = async (data: FormValues) => {
@@ -98,8 +106,16 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
         throw new Error("Invalid customer selected.");
       }
 
+      // Explicitly nullify installment fields if payment is cash
+      const payload = {...data};
+      if (payload.paymentMethod === 'cash') {
+        payload.downPayment = undefined;
+        payload.installments = undefined;
+        payload.monthlyInstallment = undefined;
+      }
+
       await createProductSaleAndDistributeCommissions(
-        data,
+        payload,
         shopManager,
         selectedCustomer.id,
         selectedCustomer.name,
@@ -178,6 +194,8 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
                                       setValue('discountValue', customer.discountValue || undefined);
                                       setValue('downPayment', customer.downPayment || undefined);
                                       setValue('installments', customer.installments || undefined);
+                                      // Default to installments if customer had them, else cash
+                                      setValue('paymentMethod', customer.installments ? 'installments' : 'cash');
                                       setIsPopoverOpen(false);
                                   }}
                                   >
@@ -221,23 +239,7 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
                 <Label htmlFor="discountValue">Discount (LKR, Optional)</Label>
                 <Input id="discountValue" type="number" {...register("discountValue")} />
               </div>
-
-              <div>
-                  <Label htmlFor="downPayment">Down Payment (LKR, Optional)</Label>
-                  <Input id="downPayment" type="number" {...register("downPayment")} />
-              </div>
-
-              <div>
-                  <Label htmlFor="installments">Number of Installments (Optional)</Label>
-                  <Input id="installments" type="number" {...register("installments")} />
-                  {errors.installments && <p className="text-xs text-destructive mt-1">{errors.installments.message}</p>}
-              </div>
-
-              <div>
-                  <Label htmlFor="monthlyInstallment">Monthly Installment (LKR)</Label>
-                  <Input id="monthlyInstallment" {...register("monthlyInstallment")} disabled placeholder="Calculated automatically" />
-              </div>
-
+              
               <div>
                   <Label>Payment Method</Label>
                   <Controller
@@ -246,7 +248,7 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
                     render={({ field }) => (
                       <RadioGroup
                           onValueChange={field.onChange}
-                          defaultValue={field.value}
+                          value={field.value}
                           className="flex space-x-4 pt-2"
                       >
                           <div className="flex items-center space-x-2">
@@ -262,6 +264,26 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
                   />
                   {errors.paymentMethod && <p className="text-xs text-destructive mt-1">{errors.paymentMethod.message}</p>}
               </div>
+
+              {paymentMethod === 'installments' && (
+                <>
+                  <div>
+                      <Label htmlFor="downPayment">Down Payment (LKR, Optional)</Label>
+                      <Input id="downPayment" type="number" {...register("downPayment")} />
+                  </div>
+
+                  <div>
+                      <Label htmlFor="installments">Number of Installments</Label>
+                      <Input id="installments" type="number" {...register("installments")} />
+                      {errors.installments && <p className="text-xs text-destructive mt-1">{errors.installments.message}</p>}
+                  </div>
+
+                  <div>
+                      <Label htmlFor="monthlyInstallment">Monthly Installment (LKR)</Label>
+                      <Input id="monthlyInstallment" {...register("monthlyInstallment")} disabled placeholder="Calculated automatically" />
+                  </div>
+                </>
+              )}
 
             </div>
           </ScrollArea>
