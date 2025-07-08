@@ -68,7 +68,7 @@ type NavItem = {
 
 const navItems: NavItem[] = [
   { href: "#", icon: LayoutDashboard, label: "Dashboard", roles: ["Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Salesman", "Shop Manager"] },
-  { href: "#", icon: ShoppingCart, label: "Record Product Sale", roles: ["Shop Manager"] },
+  { href: "#", icon: ShoppingCart, label: "Record Product Sale", roles: ["Shop Manager", "Team Operation Manager"] },
   { href: "#", icon: Wallet, label: "Income Records", roles: ["Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Salesman"] },
   { href: "#", icon: Users, label: "My Customers", roles: ["Salesman"] },
   { href: "#", icon: Network, label: "Team Performance", roles: ["Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager"] },

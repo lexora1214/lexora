@@ -14,7 +14,7 @@ function generateReferralCode(): string {
 
 export async function createUserProfile(firebaseUser: FirebaseUser, name: string, mobileNumber: string, role: Role, referralCodeInput: string): Promise<User> {
   let referrerId: string | null = null;
-  const isReferralNeeded = role && !['Regional Director', 'Admin', 'Shop Manager'].includes(role);
+  const isReferralNeeded = role && !['Regional Director', 'Admin'].includes(role);
 
   if (isReferralNeeded) {
     if (!referralCodeInput || referralCodeInput.length !== 6) {
@@ -33,7 +33,7 @@ export async function createUserProfile(firebaseUser: FirebaseUser, name: string
   }
   
   let newReferralCode = '';
-  const isReferralCodeNeeded = role && !['Salesman', 'Shop Manager'].includes(role);
+  const isReferralCodeNeeded = role && !['Salesman'].includes(role);
   
   if (isReferralCodeNeeded) {
     let isCodeUnique = false;

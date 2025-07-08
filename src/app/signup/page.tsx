@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/select";
 import { Role } from "@/types";
 
-const ALL_ROLES: Role[] = ["Admin", "Shop Manager", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Salesman"];
+const ALL_ROLES: Role[] = ["Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Salesman"];
 
 export default function SignupPage() {
   const router = useRouter();
@@ -36,7 +36,7 @@ export default function SignupPage() {
   const [loadingRoles, setLoadingRoles] = useState(true);
   const [referralCode, setReferralCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const isReferralRequired = role && !['Regional Director', 'Admin', 'Shop Manager'].includes(role);
+  const isReferralRequired = role && !['Regional Director', 'Admin'].includes(role);
 
   useEffect(() => {
     const fetchRoles = async () => {
@@ -156,7 +156,7 @@ export default function SignupPage() {
                    <Select value={role} onValueChange={(value) => {
                        const newRole = value as Role;
                        setRole(newRole);
-                       if (['Regional Director', 'Admin', 'Shop Manager'].includes(newRole)) {
+                       if (['Regional Director', 'Admin'].includes(newRole)) {
                            setReferralCode('');
                        }
                    }}>
