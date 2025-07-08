@@ -37,6 +37,22 @@ const formSchema = z.object({
   downPayment: z.coerce.number().min(0, "Down payment must be a positive number.").optional(),
   installments: z.coerce.number().min(1, "Number of installments must be at least 1.").optional(),
   monthlyInstallment: z.coerce.number().optional(),
+}).refine(data => {
+  if (data.paymentMethod === 'installments') {
+    return data.downPayment !== undefined && data.downPayment !== null;
+  }
+  return true;
+}, {
+  message: "Down payment is required for installment plans.",
+  path: ['downPayment'],
+}).refine(data => {
+  if (data.paymentMethod === 'installments') {
+    return data.installments !== undefined && data.installments !== null;
+  }
+  return true;
+}, {
+  message: "Number of installments is required for installment plans.",
+  path: ['installments'],
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -268,8 +284,9 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
               {paymentMethod === 'installments' && (
                 <>
                   <div>
-                      <Label htmlFor="downPayment">Down Payment (LKR, Optional)</Label>
+                      <Label htmlFor="downPayment">Down Payment (LKR)</Label>
                       <Input id="downPayment" type="number" {...register("downPayment")} />
+                      {errors.downPayment && <p className="text-xs text-destructive mt-1">{errors.downPayment.message}</p>}
                   </div>
 
                   <div>
