@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Customer } from "@/types";
 import { CalendarIcon, Hash, Home, Phone, User, CheckCircle2, XCircle, Mail, MessageSquare, MapPin, ShoppingCart, Percent, DollarSign, Repeat, Clock } from "lucide-react";
 import { ScrollArea } from "./ui/scroll-area";
+import MapPicker from "./map-picker";
 
 interface CustomerDetailsDialogProps {
   customer: Customer | null;
@@ -59,10 +60,21 @@ const CustomerDetailsDialog: React.FC<CustomerDetailsDialogProps> = ({
                     <DetailRow icon={MessageSquare} label="WhatsApp Number" value={customer.whatsappNumber} />
                     <DetailRow icon={Mail} label="Email Address" value={customer.email} />
                     <DetailRow icon={Home} label="Address" value={customer.address} />
-                    <DetailRow icon={MapPin} label="Location" value={customer.location ? `${customer.location.latitude.toFixed(5)}, ${customer.location.longitude.toFixed(5)}` : 'Not provided'} />
                     <DetailRow icon={User} label="Registered by Branch" value={customer.branch} />
                     <DetailRow icon={CalendarIcon} label="Registration Date" value={new Date(customer.saleDate).toLocaleString()} />
                 </div>
+
+                {customer.location && (
+                    <div className="pt-4 mt-4">
+                        <h4 className="font-semibold text-lg mb-2 flex items-center gap-2"><MapPin className="h-5 w-5 text-primary" />Location</h4>
+                        <div className="rounded-lg overflow-hidden">
+                           <MapPicker 
+                                isDisplayOnly
+                                initialPosition={{ lat: customer.location.latitude, lng: customer.location.longitude }}
+                            />
+                        </div>
+                    </div>
+                )}
                 
                 <div className="pt-4 mt-4">
                     <h4 className="font-semibold text-lg mb-2 text-primary">Token Information</h4>

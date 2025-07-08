@@ -19,11 +19,12 @@ const defaultCenter = {
 };
 
 interface MapPickerProps {
-  onLocationChange: (location: { lat: number; lng: number }) => void;
+  onLocationChange?: (location: { lat: number; lng: number }) => void;
   initialPosition?: { lat: number; lng: number } | null;
+  isDisplayOnly?: boolean;
 }
 
-const MapPicker: React.FC<MapPickerProps> = ({ onLocationChange, initialPosition }) => {
+const MapPicker: React.FC<MapPickerProps> = ({ onLocationChange, initialPosition, isDisplayOnly = false }) => {
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-map-script',
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
@@ -34,6 +35,7 @@ const MapPicker: React.FC<MapPickerProps> = ({ onLocationChange, initialPosition
 
   const handleMapClick = useCallback(
     (event: google.maps.MapMouseEvent) => {
+      if (isDisplayOnly || !onLocationChange) return;
       if (event.latLng) {
         const newPos = {
           lat: event.latLng.lat(),
@@ -43,10 +45,11 @@ const MapPicker: React.FC<MapPickerProps> = ({ onLocationChange, initialPosition
         onLocationChange(newPos);
       }
     },
-    [onLocationChange]
+    [onLocationChange, isDisplayOnly]
   );
   
   const handleGetCurrentLocation = () => {
+    if (isDisplayOnly || !onLocationChange) return;
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
@@ -97,20 +100,24 @@ const MapPicker: React.FC<MapPickerProps> = ({ onLocationChange, initialPosition
           streetViewControl: false,
           mapTypeControl: false,
           zoomControl: true,
+          clickableIcons: !isDisplayOnly,
+          gestureHandling: isDisplayOnly ? 'cooperative' : 'auto',
         }}
       >
         {markerPosition && <Marker position={markerPosition} />}
       </GoogleMap>
-      <Button 
-        type="button" 
-        variant="secondary"
-        size="icon"
-        onClick={handleGetCurrentLocation}
-        className="absolute bottom-3 right-3 rounded-full shadow-lg"
-        title="Use my current location"
-      >
-        <LocateFixed className="h-5 w-5" />
-      </Button>
+      {!isDisplayOnly && (
+        <Button 
+          type="button" 
+          variant="secondary"
+          size="icon"
+          onClick={handleGetCurrentLocation}
+          className="absolute bottom-3 right-3 rounded-full shadow-lg"
+          title="Use my current location"
+        >
+          <LocateFixed className="h-5 w-5" />
+        </Button>
+      )}
     </div>
   ) : (
     <Skeleton className="h-[300px] w-full rounded-lg" />

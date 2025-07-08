@@ -48,6 +48,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { format } from "date-fns";
 import { Calendar } from "./ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import CustomerDetailsDialog from "./customer-details-dialog";
 
 interface CustomerManagementTableProps {
     data: Customer[];
@@ -60,7 +61,10 @@ const getSalesmanNameById = (salesmanId: string, users: User[]): string => {
 };
 
 
-export const getColumns = (users: User[]): ColumnDef<Customer>[] => [
+export const getColumns = (
+  users: User[],
+  handleViewDetails: (customer: Customer) => void
+): ColumnDef<Customer>[] => [
   {
     accessorKey: "name",
     header: "Customer Name",
@@ -113,6 +117,9 @@ export const getColumns = (users: User[]): ColumnDef<Customer>[] => [
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Actions</DropdownMenuLabel>
+            <DropdownMenuItem onClick={() => handleViewDetails(customer)}>
+                View Details
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => navigator.clipboard.writeText(customer.id)}>
               Copy customer ID
             </DropdownMenuItem>
@@ -130,8 +137,15 @@ export default function CustomerManagementTable({ data, users }: CustomerManagem
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = React.useState(false);
+  const [selectedCustomer, setSelectedCustomer] = React.useState<Customer | null>(null);
+
+  const handleViewDetails = React.useCallback((customer: Customer) => {
+    setSelectedCustomer(customer);
+    setIsDetailsDialogOpen(true);
+  }, []);
   
-  const columns = React.useMemo(() => getColumns(users), [users]);
+  const columns = React.useMemo(() => getColumns(users, handleViewDetails), [users, handleViewDetails]);
 
   const dateFilteredData = React.useMemo(() => {
     if (!dateRange || !dateRange.from) {
@@ -315,10 +329,18 @@ export default function CustomerManagementTable({ data, users }: CustomerManagem
                 <TableRow 
                   key={row.id} 
                   data-state={row.getIsSelected() && "selected"}
-                  className="bg-success/10 hover:bg-success/20"
+                  className="bg-success/10 hover:bg-success/20 cursor-pointer"
+                  onClick={() => handleViewDetails(row.original)}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
+                    <TableCell 
+                      key={cell.id}
+                      onClick={(e) => {
+                        if (cell.column.id === 'actions') {
+                            e.stopPropagation();
+                        }
+                      }}
+                    >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}
@@ -366,9 +388,20 @@ export default function CustomerManagementTable({ data, users }: CustomerManagem
                           <Table>
                               <TableBody>
                                   {unavailableTable.getRowModel().rows.map((row) => (
-                                      <TableRow key={row.id} className="bg-destructive/10 hover:bg-destructive/20">
+                                      <TableRow 
+                                        key={row.id} 
+                                        className="bg-destructive/10 hover:bg-destructive/20 cursor-pointer"
+                                        onClick={() => handleViewDetails(row.original)}
+                                      >
                                           {row.getVisibleCells().map((cell) => (
-                                              <TableCell key={cell.id}>
+                                              <TableCell 
+                                                key={cell.id}
+                                                onClick={(e) => {
+                                                    if (cell.column.id === 'actions') {
+                                                        e.stopPropagation();
+                                                    }
+                                                }}
+                                              >
                                                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
                                               </TableCell>
                                           ))}
@@ -401,7 +434,12 @@ export default function CustomerManagementTable({ data, users }: CustomerManagem
               </AccordionItem>
           </Accordion>
       )}
-
+      
+      <CustomerDetailsDialog
+        isOpen={isDetailsDialogOpen}
+        onOpenChange={setIsDetailsDialogOpen}
+        customer={selectedCustomer}
+      />
     </div>
   );
 }
