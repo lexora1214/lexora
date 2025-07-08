@@ -73,12 +73,13 @@ interface NetworkViewProps {
 }
 
 const NetworkView: React.FC<NetworkViewProps> = ({ allUsers }) => {
-  const rootUsers = allUsers.filter((user) => !user.referrerId);
+  const usersInNetwork = allUsers.filter((user) => user.role !== 'Delivery Boy');
+  const rootUsers = usersInNetwork.filter((user) => !user.referrerId);
 
   return (
     <div className="space-y-4">
       {rootUsers.map((user) => (
-        <TreeNode key={user.id} user={user} allUsers={allUsers} level={0} />
+        <TreeNode key={user.id} user={user} allUsers={usersInNetwork} level={0} />
       ))}
     </div>
   );
