@@ -30,6 +30,22 @@ export interface Customer {
   saleDate: string;
   commissionDistributed: boolean;
   tokenIsAvailable: boolean;
+
+  // New fields from user request
+  whatsappNumber?: string;
+  email?: string;
+  location?: {
+    latitude: number;
+    longitude: number;
+  } | null;
+  branch?: string;
+  purchasingItem?: string;
+  purchasingItemCode?: string;
+  totalValue?: number;
+  discountValue?: number;
+  downPayment?: number;
+  installments?: number;
+  monthlyInstallment?: number;
 }
 
 export interface ProductSale {

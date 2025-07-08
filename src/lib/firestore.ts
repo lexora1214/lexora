@@ -134,6 +134,7 @@ export async function createCustomer(customerData: Omit<Customer, 'id' | 'saleDa
         saleDate: saleDate,
         commissionDistributed: true,
         tokenIsAvailable: true,
+        branch: salesman.branch,
     };
     batch.set(newCustomerRef, newCustomer);
 
