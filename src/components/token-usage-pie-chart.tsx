@@ -47,7 +47,7 @@ const TokenUsagePieChart: React.FC<TokenUsagePieChartProps> = ({ data, totalToke
        <Card className="flex flex-col h-full">
         <CardHeader>
           <CardTitle>Token Status</CardTitle>
-          <CardDescription>Your customer token usage.</CardDescription>
+          <CardDescription>An overview of token status for the selected period.</CardDescription>
         </CardHeader>
         <CardContent className="flex-1 flex items-center justify-center p-6">
             <p className="text-sm text-muted-foreground text-center">No tokens registered in this period.</p>
@@ -60,7 +60,7 @@ const TokenUsagePieChart: React.FC<TokenUsagePieChartProps> = ({ data, totalToke
     <Card className="flex flex-col h-full">
       <CardHeader>
         <CardTitle>Token Status</CardTitle>
-        <CardDescription>Your customer token usage for the selected period.</CardDescription>
+        <CardDescription>An overview of token status for the selected period.</CardDescription>
       </CardHeader>
       <CardContent className="flex-1 pb-0">
         <ChartContainer

@@ -198,8 +198,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
             <p className="text-xs text-muted-foreground">Manage users & settings</p>
           </CardContent>
         </Card>
-        <TokenUsagePieChart data={tokenUsageData} totalTokens={totalTokens} />
       </div>
+
+      <TokenUsagePieChart data={tokenUsageData} totalTokens={totalTokens} />
       
       <Dialog open={isBreakdownOpen} onOpenChange={setIsBreakdownOpen}>
         <DialogContent>
