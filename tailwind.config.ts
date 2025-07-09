@@ -21,7 +21,11 @@ export default {
         headline: ['Space Grotesk', 'sans-serif'],
         code: ['monospace'],
       },
+      backgroundImage: {
+        'auth-gradient': 'radial-gradient(circle at top, hsl(var(--deep-navy)), hsl(var(--background)) 80%)',
+      },
       colors: {
+        'deep-navy': 'hsl(var(--deep-navy))',
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
         card: {

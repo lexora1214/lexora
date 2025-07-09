@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Role } from "@/types";
+import { Role, SalesmanStage } from "@/types";
 
 const ALL_ROLES: Role[] = ["Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Salesman", "Delivery Boy", "Recovery Officer"];
 
@@ -39,8 +39,12 @@ export default function SignupPage() {
   const [loadingRoles, setLoadingRoles] = useState(true);
   const [referralCode, setReferralCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [salesmanStage, setSalesmanStage] = useState<SalesmanStage>("BUSINESS PROMOTER (stage 01)");
+
   const isReferralRequired = role && !['Regional Director', 'Admin'].includes(role);
   const isBranchRequired = role === 'Team Operation Manager';
+  const isSalesman = role === 'Salesman';
+
 
   useEffect(() => {
     const fetchRoles = async () => {
@@ -117,7 +121,7 @@ export default function SignupPage() {
     setIsLoading(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      await createUserProfile(userCredential.user, name, mobileNumber, role, referralCode.toUpperCase(), branch);
+      await createUserProfile(userCredential.user, name, mobileNumber, role, referralCode.toUpperCase(), branch, isSalesman ? salesmanStage : undefined);
       toast({
         title: "Account Created",
         description: "You have been successfully signed up.",
@@ -135,7 +139,7 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
+    <div className="flex min-h-screen items-center justify-center bg-auth-gradient p-4">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
             <div className="mb-4 flex justify-center">
@@ -191,6 +195,20 @@ export default function SignupPage() {
                     </SelectContent>
                   </Select>
                 </div>
+                 {isSalesman && (
+                  <div className="grid gap-2">
+                    <Label htmlFor="salesman-stage">Salesman Stage</Label>
+                    <Select value={salesmanStage} onValueChange={(value) => setSalesmanStage(value as SalesmanStage)}>
+                      <SelectTrigger id="salesman-stage">
+                        <SelectValue placeholder="Select Stage" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="BUSINESS PROMOTER (stage 01)">BUSINESS PROMOTER (stage 01)</SelectItem>
+                        <SelectItem value="MARKETING EXECUTIVE (stage 02)">MARKETING EXECUTIVE (stage 02)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 {isBranchRequired && (
                   <div className="grid gap-2">
                     <Label htmlFor="branch">Branch</Label>
