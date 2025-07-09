@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from "react";
@@ -60,7 +61,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
     return { filteredCustomers, filteredIncomeRecords, filteredUsers };
   }, [allCustomers, allIncomeRecords, allUsers, dateRange]);
 
-  const { filteredCustomers, filteredIncomeRecords } = filteredData;
+  const { filteredCustomers, filteredIncomeRecords, filteredUsers } = filteredData;
 
 
   React.useEffect(() => {
@@ -75,7 +76,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
     fetchSettings();
   }, []);
 
-  const totalRevenue = commissionSettings ? commissionSettings.tokenPrice * filteredCustomers.length : 0;
+  const approvedTokenSales = filteredCustomers.filter(c => c.commissionStatus === 'approved');
+  const totalRevenue = commissionSettings ? commissionSettings.tokenPrice * approvedTokenSales.length : 0;
   
   const adminUserIds = allUsers.filter(u => u.role === 'Admin').map(u => u.id);
   const adminTeamTotalIncome = filteredIncomeRecords
@@ -153,7 +155,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">LKR {totalRevenue.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">Based on {filteredCustomers.length} token sales in period</p>
+            <p className="text-xs text-muted-foreground">Based on {approvedTokenSales.length} approved token sales in period</p>
           </CardContent>
         </Card>
         <Card onClick={() => setIsBreakdownOpen(true)} className="cursor-pointer hover:bg-muted/50 transition-colors">
@@ -190,17 +192,26 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Admin Role</CardTitle>
-            <ShieldCheck className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">New User Registrations</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">Full Control</div>
-            <p className="text-xs text-muted-foreground">Manage users & settings</p>
+            <div className="text-2xl font-bold">
+              {isAllTime ? allUsers.length : `+${filteredUsers.length}`}
+            </div>
+             <p className="text-xs text-muted-foreground">{isAllTime ? "Total users" : "New users in period"}</p>
           </CardContent>
         </Card>
       </div>
 
-      <TokenUsagePieChart data={tokenUsageData} totalTokens={totalTokens} />
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+        <div className="lg:col-span-4">
+            <TokenUsagePieChart data={tokenUsageData} totalTokens={totalTokens} />
+        </div>
+        <div className="lg:col-span-3">
+          {/* You can add another component here if needed */}
+        </div>
+      </div>
       
       <Dialog open={isBreakdownOpen} onOpenChange={setIsBreakdownOpen}>
         <DialogContent>
@@ -231,3 +242,5 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
 };
 
 export default AdminDashboard;
+
+    
