@@ -111,13 +111,13 @@ export interface IncomeRecord {
   amount: number;
   saleDate: string;
   grantedForRole: Role;
-  salesmanId: string; // The salesman who made the original token sale
+  salesmanId: string; // The salesman who made the original token sale OR the user themselves for salary
   salesmanName: string;
   shopManagerName?: string; // The shop manager who made the product sale
   // Source details
-  sourceType: 'token_sale' | 'product_sale';
-  customerId: string;
-  customerName: string;
+  sourceType: 'token_sale' | 'product_sale' | 'salary';
+  customerId?: string; // Optional for salary
+  customerName?: string; // Optional for salary
   tokenSerial?: string;
   // Optional product details
   productName?: string;
@@ -150,4 +150,20 @@ export interface SignupRoleSettings {
   visibleRoles: {
     [key in Role]?: boolean;
   };
+}
+
+export interface SalarySettings {
+  'BUSINESS PROMOTER (stage 01)': number;
+  'MARKETING EXECUTIVE (stage 02)': number;
+  'Team Operation Manager': number;
+  'Group Operation Manager': number;
+  'Head Group Manager': number;
+}
+
+export interface MonthlySalaryPayout {
+    id: string; // YYYY-MM
+    payoutDate: string;
+    processedBy: string; // Admin User ID
+    totalUsersPaid: number;
+    totalAmountPaid: number;
 }

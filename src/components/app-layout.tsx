@@ -71,6 +71,7 @@ import AddRecoveryOfficerView from "./add-recovery-officer-view";
 import ManageRecoveryView from "./manage-recovery-view";
 import RecoveryOfficerDashboard from "./recovery-officer-dashboard";
 import CommissionApprovalView from "./commission-approval-view";
+import SalarySettingsForm from "./salary-settings";
 
 type NavItem = {
   href: string;
@@ -113,6 +114,7 @@ const navItems: NavItem[] = [
     children: [
       { href: "#", icon: DollarSign, label: "Token Commissions", roles: ["Admin"] },
       { href: "#", icon: Briefcase, label: "Product Commissions", roles: ["Admin"] },
+      { href: "#", icon: Wallet, label: "Salary Management", roles: ["Admin"] },
       { href: "#", icon: SlidersHorizontal, label: "Signup Roles", roles: ["Admin"] },
     ]
   },
@@ -348,6 +350,8 @@ const AppLayout = ({ user }: { user: User }) => {
         );
       case "Product Commissions":
         return <ProductCommissionSettings />;
+      case "Salary Management":
+        return <SalarySettingsForm user={user} />;
       case "Signup Roles":
         return <SignupRoleSettingsForm />;
       case "Insights":

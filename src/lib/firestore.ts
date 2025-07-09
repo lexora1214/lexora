@@ -2,7 +2,7 @@ import { doc, getDoc, setDoc, collection, getDocs, query, where, writeBatch, inc
 import { getAuth } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage } from "./firebase";
-import { User, Role, Customer, CommissionSettings, IncomeRecord, ProductSale, ProductCommissionSettings, SignupRoleSettings, CommissionRequest, SalesmanStage } from "@/types";
+import { User, Role, Customer, CommissionSettings, IncomeRecord, ProductSale, ProductCommissionSettings, SignupRoleSettings, CommissionRequest, SalesmanStage, SalarySettings, MonthlySalaryPayout } from "@/types";
 import type { User as FirebaseUser } from 'firebase/auth';
 
 function generateReferralCode(): string {
@@ -726,4 +726,109 @@ export async function markInstallmentPaid(productSaleId: string): Promise<void> 
   }
 
   await batch.commit();
+}
+
+
+// --- Salary Management ---
+
+const DEFAULT_SALARY_SETTINGS: SalarySettings = {
+    "BUSINESS PROMOTER (stage 01)": 21000,
+    "MARKETING EXECUTIVE (stage 02)": 30000,
+    "Team Operation Manager": 40000,
+    "Group Operation Manager": 45000,
+    "Head Group Manager": 55000,
+};
+
+export async function getSalarySettings(): Promise<SalarySettings> {
+    const settingsDocRef = doc(db, "settings", "salaries");
+    const settingsDocSnap = await getDoc(settingsDocRef);
+    if (settingsDocSnap.exists()) {
+        return { ...DEFAULT_SALARY_SETTINGS, ...settingsDocSnap.data() };
+    }
+    await setDoc(settingsDocRef, DEFAULT_SALARY_SETTINGS);
+    return DEFAULT_SALARY_SETTINGS;
+}
+
+export async function updateSalarySettings(data: SalarySettings): Promise<void> {
+    const settingsDocRef = doc(db, "settings", "salaries");
+    await setDoc(settingsDocRef, data, { merge: true });
+}
+
+export async function checkIfSalaryPaidForMonth(year: number, month: number): Promise<boolean> {
+    const monthId = `${year}-${String(month).padStart(2, '0')}`;
+    const payoutDocRef = doc(db, "salaryPayouts", monthId);
+    const payoutDocSnap = await getDoc(payoutDocRef);
+    return payoutDocSnap.exists();
+}
+
+export async function processMonthlySalaries(adminUser: User): Promise<{ usersPaid: number; totalAmount: number; }> {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth() + 1; // JS months are 0-indexed
+    const monthId = `${year}-${String(month).padStart(2, '0')}`;
+
+    const payoutDocRef = doc(db, "salaryPayouts", monthId);
+    const payoutDocSnap = await getDoc(payoutDocRef);
+    if (payoutDocSnap.exists()) {
+        throw new Error(`Salaries for ${now.toLocaleString('default', { month: 'long' })} ${year} have already been processed.`);
+    }
+
+    const allUsers = await getAllUsers();
+    const salarySettings = await getSalarySettings();
+    const batch = writeBatch(db);
+
+    let usersPaid = 0;
+    let totalAmount = 0;
+    const payoutDate = now.toISOString();
+
+    for (const user of allUsers) {
+        let salaryAmount = 0;
+        if (user.role === 'Salesman' && user.salesmanStage) {
+            salaryAmount = salarySettings[user.salesmanStage];
+        } else if (user.role in salarySettings) {
+             const key = user.role as keyof SalarySettings;
+             salaryAmount = salarySettings[key];
+        }
+
+        if (salaryAmount && salaryAmount > 0) {
+            usersPaid++;
+            totalAmount += salaryAmount;
+
+            // Update user's total income
+            const userRef = doc(db, "users", user.id);
+            batch.update(userRef, { totalIncome: increment(salaryAmount) });
+
+            // Create income record
+            const incomeRecordRef = doc(collection(db, "incomeRecords"));
+            const newIncomeRecord: IncomeRecord = {
+                id: incomeRecordRef.id,
+                userId: user.id,
+                amount: salaryAmount,
+                saleDate: payoutDate,
+                grantedForRole: user.role,
+                salesmanId: user.id, // For salary, it's their own record
+                salesmanName: user.name,
+                sourceType: 'salary',
+            };
+            batch.set(incomeRecordRef, newIncomeRecord);
+        }
+    }
+    
+    if (usersPaid === 0) {
+        throw new Error("No users were eligible for a salary payment.");
+    }
+
+    // Mark this month's payout as completed
+    const newPayoutRecord: MonthlySalaryPayout = {
+        id: monthId,
+        payoutDate,
+        processedBy: adminUser.id,
+        totalUsersPaid: usersPaid,
+        totalAmountPaid: totalAmount,
+    };
+    batch.set(payoutDocRef, newPayoutRecord);
+
+    await batch.commit();
+    
+    return { usersPaid, totalAmount };
 }
