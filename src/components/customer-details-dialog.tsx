@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Customer, ProductSale } from "@/types";
-import { CalendarIcon, Hash, Home, Phone, User, CheckCircle2, XCircle, Mail, MessageSquare, MapPin, ShoppingCart, Percent, DollarSign, Repeat, Clock } from "lucide-react";
+import { CalendarIcon, Hash, Home, Phone, User, CheckCircle2, XCircle, Mail, MessageSquare, MapPin, ShoppingCart, Percent, DollarSign, Repeat, Clock, ShieldCheck, ShieldX, ShieldAlert } from "lucide-react";
 import { ScrollArea } from "./ui/scroll-area";
 import MapPicker from "./map-picker";
 import { Progress } from "./ui/progress";
@@ -95,6 +95,23 @@ const CustomerDetailsDialog: React.FC<CustomerDetailsDialogProps> = ({
                             value={
                                 <Badge variant={customer.tokenIsAvailable ? "success" : "destructive"}>
                                     {customer.tokenIsAvailable ? "Available" : "Used"}
+                                </Badge>
+                            }
+                        />
+                         <DetailRow 
+                            icon={
+                                customer.commissionStatus === 'approved' ? ShieldCheck :
+                                customer.commissionStatus === 'rejected' ? ShieldX :
+                                ShieldAlert
+                            } 
+                            label="Commission Status" 
+                            value={
+                                <Badge variant={
+                                    customer.commissionStatus === 'approved' ? "success" :
+                                    customer.commissionStatus === 'rejected' ? "destructive" :
+                                    "secondary"
+                                } className="capitalize">
+                                    {customer.commissionStatus}
                                 </Badge>
                             }
                         />

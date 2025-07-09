@@ -1,6 +1,6 @@
 import { doc, getDoc, setDoc, collection, getDocs, query, where, writeBatch, increment, updateDoc } from "firebase/firestore";
 import { db } from "./firebase";
-import { User, Role, Customer, CommissionSettings, IncomeRecord, ProductSale, ProductCommissionSettings, SignupRoleSettings, ProductCommissionTier } from "@/types";
+import { User, Role, Customer, CommissionSettings, IncomeRecord, ProductSale, ProductCommissionSettings, SignupRoleSettings, ProductCommissionTier, CommissionRequest } from "@/types";
 import type { User as FirebaseUser } from 'firebase/auth';
 
 function generateReferralCode(): string {
@@ -120,10 +120,8 @@ export async function updateCommissionSettings(data: CommissionSettings): Promis
   await setDoc(settingsDocRef, data, { merge: true });
 }
 
-export async function createCustomer(customerData: Omit<Customer, 'id' | 'saleDate' | 'commissionDistributed' | 'salesmanId' | 'tokenIsAvailable'>, salesman: User): Promise<void> {
+export async function createCustomer(customerData: Omit<Customer, 'id' | 'saleDate' | 'commissionStatus' | 'salesmanId' | 'tokenIsAvailable'>, salesman: User): Promise<void> {
     const batch = writeBatch(db);
-    const allUsers = await getAllUsers();
-    const settings = await getCommissionSettings();
     
     const newCustomerRef = doc(collection(db, "customers"));
     const saleDate = new Date().toISOString();
@@ -132,11 +130,55 @@ export async function createCustomer(customerData: Omit<Customer, 'id' | 'saleDa
         id: newCustomerRef.id,
         salesmanId: salesman.id,
         saleDate: saleDate,
-        commissionDistributed: true,
+        commissionStatus: 'pending',
         tokenIsAvailable: true,
         branch: salesman.branch,
     };
     batch.set(newCustomerRef, newCustomer);
+
+    const commissionRequestRef = doc(collection(db, "commissionRequests"));
+    const newRequest: CommissionRequest = {
+        id: commissionRequestRef.id,
+        customerId: newCustomer.id,
+        customerName: newCustomer.name,
+        salesmanId: salesman.id,
+        salesmanName: salesman.name,
+        tokenSerial: newCustomer.tokenSerial,
+        requestDate: saleDate,
+        status: 'pending',
+    };
+    batch.set(commissionRequestRef, newRequest);
+
+    await batch.commit();
+}
+
+
+export async function approveTokenCommission(requestId: string, admin: User): Promise<void> {
+    const batch = writeBatch(db);
+    const requestRef = doc(db, "commissionRequests", requestId);
+    const requestSnap = await getDoc(requestRef);
+
+    if (!requestSnap.exists() || requestSnap.data().status !== 'pending') {
+        throw new Error("Commission request is not valid or has already been processed.");
+    }
+
+    const request = requestSnap.data() as CommissionRequest;
+    const customerRef = doc(db, "customers", request.customerId);
+    const customerSnap = await getDoc(customerRef);
+
+    if (!customerSnap.exists()) {
+        throw new Error("Associated customer not found.");
+    }
+
+    const allUsers = await getAllUsers();
+    const settings = await getCommissionSettings();
+    const salesman = allUsers.find(u => u.id === request.salesmanId);
+
+    if (!salesman) {
+        throw new Error("Original salesman not found.");
+    }
+    
+    const processedDate = new Date().toISOString();
 
     const commissionAmounts: Record<string, number> = {
         "Salesman": settings.salesman,
@@ -160,23 +202,19 @@ export async function createCustomer(customerData: Omit<Customer, 'id' | 'saleDa
                 id: incomeRecordRef.id,
                 userId: currentUser.id,
                 amount: commission,
-                saleDate: saleDate,
+                saleDate: processedDate,
                 grantedForRole: currentUser.role,
                 salesmanId: salesman.id,
                 salesmanName: salesman.name,
                 sourceType: 'token_sale',
-                customerId: newCustomer.id,
-                customerName: newCustomer.name,
-                tokenSerial: newCustomer.tokenSerial,
+                customerId: request.customerId,
+                customerName: request.customerName,
+                tokenSerial: request.tokenSerial,
             };
             batch.set(incomeRecordRef, newIncomeRecord);
         }
         
-        if (currentUser.referrerId) {
-            currentUser = allUsers.find(u => u.id === currentUser!.referrerId);
-        } else {
-            currentUser = undefined;
-        }
+        currentUser = currentUser.referrerId ? allUsers.find(u => u.id === currentUser!.referrerId) : undefined;
     }
 
     const adminCommission = settings.admin;
@@ -191,22 +229,53 @@ export async function createCustomer(customerData: Omit<Customer, 'id' | 'saleDa
                 id: incomeRecordRef.id,
                 userId: adminUser.id,
                 amount: adminCommission,
-                saleDate: saleDate,
+                saleDate: processedDate,
                 grantedForRole: 'Admin',
                 salesmanId: salesman.id,
                 salesmanName: salesman.name,
                 sourceType: 'token_sale',
-                customerId: newCustomer.id,
-                customerName: newCustomer.name,
-                tokenSerial: newCustomer.tokenSerial,
+                customerId: request.customerId,
+                customerName: request.customerName,
+                tokenSerial: request.tokenSerial,
             };
             batch.set(incomeRecordRef, newIncomeRecord);
         }
     }
 
+    batch.update(requestRef, {
+        status: 'approved',
+        approverId: admin.id,
+        approverName: admin.name,
+        processedDate: processedDate,
+    });
+    batch.update(customerRef, { commissionStatus: 'approved' });
+
     await batch.commit();
 }
 
+
+export async function rejectTokenCommission(requestId: string, admin: User): Promise<void> {
+    const batch = writeBatch(db);
+    const requestRef = doc(db, "commissionRequests", requestId);
+    const requestSnap = await getDoc(requestRef);
+     if (!requestSnap.exists() || requestSnap.data().status !== 'pending') {
+        throw new Error("Commission request is not valid or has already been processed.");
+    }
+    const request = requestSnap.data() as CommissionRequest;
+    const customerRef = doc(db, "customers", request.customerId);
+    
+    const processedDate = new Date().toISOString();
+
+    batch.update(requestRef, {
+        status: 'rejected',
+        approverId: admin.id,
+        approverName: admin.name,
+        processedDate: processedDate,
+    });
+    batch.update(customerRef, { commissionStatus: 'rejected' });
+    
+    await batch.commit();
+}
 
 // --- Product Sale and Commission Logic ---
 

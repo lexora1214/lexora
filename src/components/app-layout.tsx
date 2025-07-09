@@ -24,6 +24,7 @@ import {
   Wallet,
   Repeat,
   HandCoins,
+  ShieldCheck,
 } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
@@ -68,6 +69,7 @@ import DeliveryBoyDashboard from "./delivery-boy-dashboard";
 import AddRecoveryOfficerView from "./add-recovery-officer-view";
 import ManageRecoveryView from "./manage-recovery-view";
 import RecoveryOfficerDashboard from "./recovery-officer-dashboard";
+import CommissionApprovalView from "./commission-approval-view";
 
 type NavItem = {
   href: string;
@@ -100,6 +102,7 @@ const navItems: NavItem[] = [
   { href: "#", icon: Repeat, label: "Manage Recovery", roles: ["Team Operation Manager"] },
   { href: "#", icon: Building, label: "User Management", roles: ["Admin"] },
   { href: "#", icon: Briefcase, label: "Customer Management", roles: ["Admin"]},
+  { href: "#", icon: ShieldCheck, label: "Commission Approvals", roles: ["Admin"] },
   { href: "#", icon: Network, label: "Network View", roles: ["Admin"] },
   { 
     href: "#", 
@@ -311,6 +314,8 @@ const AppLayout = ({ user }: { user: User }) => {
             </CardContent>
           </Card>
         );
+      case "Commission Approvals":
+        return <CommissionApprovalView user={user} />;
       case "Network View":
         return (
           <Card>

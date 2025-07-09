@@ -30,7 +30,7 @@ export interface Customer {
   tokenSerial: string;
   salesmanId: string;
   saleDate: string;
-  commissionDistributed: boolean;
+  commissionStatus: 'pending' | 'approved' | 'rejected';
   tokenIsAvailable: boolean;
 
   // New fields from user request
@@ -48,6 +48,20 @@ export interface Customer {
   downPayment?: number;
   installments?: number;
   monthlyInstallment?: number;
+}
+
+export interface CommissionRequest {
+    id: string;
+    customerId: string;
+    customerName: string;
+    salesmanId: string;
+    salesmanName: string;
+    tokenSerial: string;
+    requestDate: string;
+    status: 'pending' | 'approved' | 'rejected';
+    approverId?: string;
+    approverName?: string;
+    processedDate?: string;
 }
 
 export interface ProductSale {

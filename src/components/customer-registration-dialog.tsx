@@ -100,7 +100,7 @@ const CustomerRegistrationDialog: React.FC<CustomerRegistrationDialogProps> = ({
   const onSubmit: SubmitHandler<FormValues> = async (data) => {
     setIsLoading(true);
     try {
-        const customerPayload: Omit<Customer, 'id' | 'saleDate' | 'commissionDistributed' | 'salesmanId' | 'tokenIsAvailable'> = {
+        const customerPayload: Omit<Customer, 'id' | 'saleDate' | 'commissionStatus' | 'salesmanId' | 'tokenIsAvailable'> = {
             name: data.name,
             contactInfo: data.contactInfo,
             address: data.address,
@@ -119,8 +119,8 @@ const CustomerRegistrationDialog: React.FC<CustomerRegistrationDialogProps> = ({
         };
       await createCustomer(customerPayload, salesman);
       toast({
-        title: "Customer Registered",
-        description: `${data.name} has been successfully registered. Commissions distributed.`,
+        title: "Request Submitted",
+        description: `${data.name}'s registration is pending admin approval for commission distribution.`,
         variant: 'default',
         className: 'bg-success text-success-foreground'
       });
