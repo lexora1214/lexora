@@ -1,7 +1,8 @@
 import { doc, getDoc, setDoc, collection, getDocs, query, where, writeBatch, increment, updateDoc } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage } from "./firebase";
-import { User, Role, Customer, CommissionSettings, IncomeRecord, ProductSale, ProductCommissionSettings, SignupRoleSettings, ProductCommissionTier, CommissionRequest } from "@/types";
+import { User, Role, Customer, CommissionSettings, IncomeRecord, ProductSale, ProductCommissionSettings, SignupRoleSettings, CommissionRequest } from "@/types";
 import type { User as FirebaseUser } from 'firebase/auth';
 
 function generateReferralCode(): string {
@@ -162,6 +163,10 @@ export async function approveTokenCommission(requestId: string, admin: User): Pr
     if (!requestSnap.exists() || requestSnap.data().status !== 'pending') {
         throw new Error("Commission request is not valid or has already been processed.");
     }
+    
+    if (!requestSnap.data().depositSlipUrl) {
+        throw new Error("A deposit slip must be uploaded before approving.");
+    }
 
     const request = requestSnap.data() as CommissionRequest;
     const customerRef = doc(db, "customers", request.customerId);
@@ -283,15 +288,42 @@ export async function uploadDepositSlipAndUpdateRequest(requestId: string, file:
         throw new Error("File must be an image.");
     }
 
+    const auth = getAuth();
+    const currentUser = auth.currentUser;
+
+    if (!currentUser) {
+        throw new Error("You must be logged in to upload a file.");
+    }
+    
+    // Pre-flight check: ensure the current user is the salesman for this request
+    const requestRef = doc(db, "commissionRequests", requestId);
+    const requestSnap = await getDoc(requestRef);
+
+    if (!requestSnap.exists()) {
+        throw new Error("The commission request could not be found.");
+    }
+
+    const requestData = requestSnap.data();
+    if (requestData.salesmanId !== currentUser.uid) {
+        throw new Error("You are not authorized to upload a slip for this sale.");
+    }
+    
+    const metadata = {
+        customMetadata: {
+            salesmanId: currentUser.uid,
+            requestId: requestId,
+        }
+    };
+
     const storageRef = ref(storage, `deposit_slips/${requestId}/${file.name}`);
-    const uploadResult = await uploadBytes(storageRef, file);
+    const uploadResult = await uploadBytes(storageRef, file, metadata);
     const downloadURL = await getDownloadURL(uploadResult.ref);
 
-    const requestRef = doc(db, "commissionRequests", requestId);
     await updateDoc(requestRef, {
         depositSlipUrl: downloadURL,
     });
 }
+
 
 // --- Product Sale and Commission Logic ---
 
