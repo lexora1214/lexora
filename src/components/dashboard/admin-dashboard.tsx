@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from "react";
@@ -66,7 +65,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
     return { filteredCustomers, filteredIncomeRecords, filteredUsers };
   }, [allCustomers, allIncomeRecords, allUsers, dateRange]);
 
-  const { filteredCustomers, filteredIncomeRecords, filteredUsers } = filteredData;
+  const { filteredCustomers, filteredIncomeRecords } = filteredData;
 
 
   React.useEffect(() => {
@@ -80,62 +79,62 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
     };
     fetchSettings();
 
-    const processNewUserData = () => {
+    const processNewCustomerData = () => {
       setLoadingChart(true);
       try {
         const isAllTime = !dateRange || !dateRange.from;
 
         if (isAllTime) {
-          if (allUsers.length === 0) {
+          if (allCustomers.length === 0) {
             setChartData([]);
             setLoadingChart(false);
             return;
           }
-          const sortedUsers = [...allUsers].sort((a, b) => parseISO(a.createdAt).getTime() - parseISO(b.createdAt).getTime());
-          const newUsersByMonth: Record<string, number> = {};
-          sortedUsers.forEach(user => {
-            const month = format(parseISO(user.createdAt), 'yyyy-MM');
-            newUsersByMonth[month] = (newUsersByMonth[month] || 0) + 1;
+          const sortedCustomers = [...allCustomers].sort((a, b) => parseISO(a.saleDate).getTime() - parseISO(b.saleDate).getTime());
+          const newCustomersByMonth: Record<string, number> = {};
+          sortedCustomers.forEach(customer => {
+            const month = format(parseISO(customer.saleDate), 'yyyy-MM');
+            newCustomersByMonth[month] = (newCustomersByMonth[month] || 0) + 1;
           });
 
-          const formattedData = Object.keys(newUsersByMonth).sort().map(monthStr => {
+          const formattedData = Object.keys(newCustomersByMonth).sort().map(monthStr => {
             const [year, month] = monthStr.split('-').map(Number);
             const date = new Date(year, month - 1, 15); // Use mid-month to avoid timezone issues
-            return { date: format(date, 'MMM yy'), users: newUsersByMonth[monthStr] };
+            return { date: format(date, 'MMM yy'), customers: newCustomersByMonth[monthStr] };
           });
           setChartData(formattedData);
         } else {
           const startOfRange = dateRange.from!;
           const endOfRange = dateRange.to ?? dateRange.from!;
           
-          const dailyNewUsers: Record<string, number> = {};
-          filteredUsers.forEach(user => {
-              const dayStr = format(parseISO(user.createdAt), 'yyyy-MM-dd');
-              dailyNewUsers[dayStr] = (dailyNewUsers[dayStr] || 0) + 1;
+          const dailyNewCustomers: Record<string, number> = {};
+          filteredCustomers.forEach(customer => {
+              const dayStr = format(parseISO(customer.saleDate), 'yyyy-MM-dd');
+              dailyNewCustomers[dayStr] = (dailyNewCustomers[dayStr] || 0) + 1;
           });
 
           const allDays = eachDayOfInterval({ start: startOfRange, end: endOfRange });
           
           const formattedData = allDays.map(day => {
               const dayStr = format(day, 'yyyy-MM-dd');
-              return { date: format(day, 'MMM d'), users: dailyNewUsers[dayStr] || 0 };
+              return { date: format(day, 'MMM d'), customers: dailyNewCustomers[dayStr] || 0 };
           });
           setChartData(formattedData);
         }
       } catch (error) {
-        console.error("Failed to process new user data:", error);
+        console.error("Failed to process new customer data:", error);
         setChartData([]);
       } finally {
         setLoadingChart(false);
       }
     };
 
-    processNewUserData();
-  }, [allUsers, filteredUsers, dateRange]);
+    processNewCustomerData();
+  }, [allCustomers, filteredCustomers, dateRange]);
   
   const chartConfig = {
-    users: {
-      label: "New Users",
+    customers: {
+      label: "New Customers",
       color: "hsl(var(--primary))",
     },
   };
@@ -256,9 +255,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
       
       <Card className="hidden md:block">
         <CardHeader>
-          <CardTitle>New User Registrations</CardTitle>
+          <CardTitle>New Customer Registrations</CardTitle>
           <CardDescription>
-            {isAllTime ? "Number of new users registered over time." : "Number of new users registered in the selected period."}
+            {isAllTime ? "Number of new customers registered over time." : "Number of new customers registered in the selected period."}
           </CardDescription>
         </CardHeader>
         <CardContent className="pl-2">
@@ -293,7 +292,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
                     content={<ChartTooltipContent indicator="line" />}
                   />
                   <Line
-                    dataKey="users"
+                    dataKey="customers"
                     type="monotone"
                     stroke="hsl(var(--primary))"
                     strokeWidth={2}
@@ -304,7 +303,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
             </ChartContainer>
           ) : (
             <div className="flex h-[350px] items-center justify-center">
-              <p className="text-muted-foreground">No user data available for the selected period.</p>
+              <p className="text-muted-foreground">No customer data available for the selected period.</p>
             </div>
           )}
         </CardContent>
