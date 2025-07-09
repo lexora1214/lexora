@@ -43,7 +43,7 @@ export default function LoginPage() {
        <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
             <div className="mb-4 flex justify-center">
-              <Image src="https://placehold.co/48x48.png" alt="LEXORA Logo" width={48} height={48} data-ai-hint="company logo" />
+              <Image src="/my-logo.png" alt="LEXORA Logo" width={48} height={48} />
             </div>
             <CardTitle className="text-3xl">LEXORA</CardTitle>
             <CardDescription>Welcome back! Please sign in to your account.</CardDescription>

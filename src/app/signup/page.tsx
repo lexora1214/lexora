@@ -139,7 +139,7 @@ export default function SignupPage() {
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
             <div className="mb-4 flex justify-center">
-                <Image src="https://placehold.co/48x48.png" alt="LEXORA Logo" width={48} height={48} data-ai-hint="company logo" />
+                <Image src="/my-logo.png" alt="LEXORA Logo" width={48} height={48} />
             </div>
             <CardTitle className="text-3xl">Create an Account</CardTitle>
             <CardDescription>Enter your details to join the network.</CardDescription>

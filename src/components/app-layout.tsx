@@ -364,7 +364,7 @@ const AppLayout = ({ user }: { user: User }) => {
           <div className="flex h-full max-h-screen flex-col gap-2">
             <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
               <Link href="/" className="flex items-center gap-2 font-headline font-semibold">
-                <Image src="https://placehold.co/32x32.png" alt="LEXORA Logo" width={32} height={32} data-ai-hint="company logo" />
+                <Image src="/my-logo.png" alt="LEXORA Logo" width={32} height={32} />
                 <span className="">LEXORA</span>
               </Link>
               <Button variant="outline" size="icon" className="ml-auto h-8 w-8">
@@ -389,7 +389,7 @@ const AppLayout = ({ user }: { user: User }) => {
               <SheetContent side="left" className="flex flex-col p-0">
                 <div className="flex h-14 items-center border-b px-4">
                   <Link href="/" className="flex items-center gap-2 font-headline font-semibold">
-                    <Image src="https://placehold.co/32x32.png" alt="LEXORA Logo" width={32} height={32} data-ai-hint="company logo" />
+                    <Image src="/my-logo.png" alt="LEXORA Logo" width={32} height={32} />
                     <span className="">LEXORA</span>
                   </Link>
                 </div>
