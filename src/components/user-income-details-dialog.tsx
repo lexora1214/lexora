@@ -62,6 +62,18 @@ const UserIncomeDetailsDialog: React.FC<UserIncomeDetailsDialogProps> = ({ user,
     });
   }, [records, dateRange]);
 
+  const getSourceTypeInfo = (sourceType: 'token_sale' | 'product_sale' | 'salary' | undefined) => {
+    switch (sourceType) {
+        case 'product_sale':
+            return { text: 'Product Sale', variant: 'default' as const };
+        case 'token_sale':
+            return { text: 'Token Sale', variant: 'secondary' as const };
+        case 'salary':
+            return { text: 'Salary', variant: 'success' as const };
+        default:
+            return { text: 'Unknown', variant: 'outline' as const };
+    }
+  };
 
   const handleGeneratePdf = () => {
     if (!user || filteredRecords.length === 0) return;
@@ -74,18 +86,20 @@ const UserIncomeDetailsDialog: React.FC<UserIncomeDetailsDialogProps> = ({ user,
 
     filteredRecords.forEach(record => {
       let detailText = "";
-      if (record.sourceType === 'product_sale') {
+       if (record.sourceType === 'product_sale') {
           detailText = `${record.productName || 'Product'} for ${record.customerName}. Sale by: ${record.shopManagerName || 'N/A'}`;
           if (record.installmentNumber) {
             detailText += ` (Installment #${record.installmentNumber})`;
           }
-      } else {
+      } else if (record.sourceType === 'token_sale') {
           detailText = `Token Sale for ${record.customerName}. Sale by: ${record.salesmanName || 'N/A'}`;
+      } else if (record.sourceType === 'salary') {
+          detailText = `Monthly salary for ${format(new Date(record.saleDate), 'MMMM yyyy')}`;
       }
 
       const recordData = [
         new Date(record.saleDate).toLocaleDateString(),
-        record.sourceType === 'product_sale' ? 'Product' : 'Token',
+        getSourceTypeInfo(record.sourceType).text,
         detailText,
         record.grantedForRole,
         record.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
@@ -194,29 +208,50 @@ const UserIncomeDetailsDialog: React.FC<UserIncomeDetailsDialogProps> = ({ user,
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredRecords.map((record) => (
-                  <TableRow key={record.id}>
-                    <TableCell>{new Date(record.saleDate).toLocaleDateString()}</TableCell>
-                    <TableCell>
-                        <Badge variant={record.sourceType === 'product_sale' ? 'default' : 'secondary'}>
-                            {record.sourceType === 'product_sale' ? 'Product' : 'Token'}
-                        </Badge>
-                    </TableCell>
-                    <TableCell>
-                        <div className="text-sm">
-                            <p className="font-medium">{record.sourceType === 'product_sale' ? record.productName : `Token for ${record.customerName}`}</p>
-                            <p className="text-muted-foreground">Sale by: {record.sourceType === 'product_sale' ? record.shopManagerName : record.salesmanName}</p>
-                            {record.installmentNumber && <Badge variant="default" className="mt-1">Installment #{record.installmentNumber}</Badge>}
-                        </div>
-                    </TableCell>
-                    <TableCell>
-                        <Badge variant="outline">{record.grantedForRole}</Badge>
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      LKR {record.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {filteredRecords.map((record) => {
+                   const sourceTypeInfo = getSourceTypeInfo(record.sourceType);
+                   let detailTitle = '';
+                   let detailSubtitle = '';
+
+                   switch (record.sourceType) {
+                       case 'product_sale':
+                           detailTitle = record.productName || 'Product';
+                           detailSubtitle = `Sale by: ${record.shopManagerName || 'N/A'}`;
+                           break;
+                       case 'token_sale':
+                           detailTitle = `Token for ${record.customerName}`;
+                           detailSubtitle = `Sale by: ${record.salesmanName || 'N/A'}`;
+                           break;
+                       case 'salary':
+                           detailTitle = 'Monthly Salary';
+                           detailSubtitle = `For ${format(new Date(record.saleDate), 'MMMM yyyy')}`;
+                           break;
+                   }
+                  
+                  return (
+                    <TableRow key={record.id}>
+                      <TableCell>{new Date(record.saleDate).toLocaleDateString()}</TableCell>
+                      <TableCell>
+                          <Badge variant={sourceTypeInfo.variant}>
+                              {sourceTypeInfo.text}
+                          </Badge>
+                      </TableCell>
+                      <TableCell>
+                          <div className="text-sm">
+                              <p className="font-medium">{detailTitle}</p>
+                              <p className="text-muted-foreground">{detailSubtitle}</p>
+                              {record.installmentNumber && <Badge variant="default" className="mt-1">Installment #{record.installmentNumber}</Badge>}
+                          </div>
+                      </TableCell>
+                      <TableCell>
+                          <Badge variant="outline">{record.grantedForRole}</Badge>
+                      </TableCell>
+                      <TableCell className="text-right font-medium">
+                        LKR {record.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           ) : (

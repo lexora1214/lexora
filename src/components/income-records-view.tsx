@@ -70,8 +70,27 @@ const columns: ColumnDef<IncomeRecord>[] = [
         accessorKey: 'sourceType',
         header: 'Source',
         cell: ({row}) => {
-            const sourceType = row.original.sourceType;
-            return <Badge variant={sourceType === 'product_sale' ? 'default' : 'secondary'}>{sourceType === 'product_sale' ? 'Product Sale' : 'Token Sale'}</Badge>
+            const record = row.original;
+            let badgeText: string;
+            let badgeVariant: 'default' | 'secondary' | 'success' = 'secondary';
+
+            switch (record.sourceType) {
+                case 'product_sale':
+                    badgeText = 'Product Sale';
+                    badgeVariant = 'default';
+                    break;
+                case 'token_sale':
+                    badgeText = 'Token Sale';
+                    badgeVariant = 'secondary';
+                    break;
+                case 'salary':
+                    badgeText = 'Salary';
+                    badgeVariant = 'success';
+                    break;
+                default:
+                    badgeText = 'Unknown';
+            }
+            return <Badge variant={badgeVariant}>{badgeText}</Badge>
         }
     },
     {
@@ -79,27 +98,38 @@ const columns: ColumnDef<IncomeRecord>[] = [
         header: "Details",
         cell: ({ row }) => {
             const record = row.original;
-            if (record.sourceType === 'product_sale') {
-                return (
-                    <div>
-                        <p className="font-medium">{record.productName}</p>
-                        <p className="text-sm text-muted-foreground">
-                            LKR {record.productPrice?.toLocaleString()} ({record.paymentMethod}) for {record.customerName}
-                        </p>
-                        <div className="flex gap-2 items-center mt-1">
-                          {record.installmentNumber && <Badge variant="default">Installment #{record.installmentNumber}</Badge>}
-                          {record.tokenSerial && <Badge variant="outline" className="font-mono">{record.tokenSerial}</Badge>}
+            switch (record.sourceType) {
+                case 'product_sale':
+                    return (
+                        <div>
+                            <p className="font-medium">{record.productName}</p>
+                            <p className="text-sm text-muted-foreground">
+                                LKR {record.productPrice?.toLocaleString()} ({record.paymentMethod}) for {record.customerName}
+                            </p>
+                            <div className="flex gap-2 items-center mt-1">
+                              {record.installmentNumber && <Badge variant="default">Installment #{record.installmentNumber}</Badge>}
+                              {record.tokenSerial && <Badge variant="outline" className="font-mono">{record.tokenSerial}</Badge>}
+                            </div>
                         </div>
-                    </div>
-                );
+                    );
+                case 'token_sale':
+                    return (
+                         <div>
+                            <p className="font-medium">Token Sale</p>
+                            <p className="text-sm text-muted-foreground">For customer: {record.customerName}</p>
+                            {record.tokenSerial && <Badge variant="outline" className="mt-1 font-mono">{record.tokenSerial}</Badge>}
+                        </div>
+                    )
+                case 'salary':
+                     return (
+                        <div>
+                            <p className="font-medium">Monthly Salary</p>
+                            <p className="text-sm text-muted-foreground">For {format(new Date(record.saleDate), 'MMMM yyyy')}</p>
+                        </div>
+                    );
+                default:
+                    return null;
             }
-            return (
-                 <div>
-                    <p className="font-medium">Token Sale</p>
-                    <p className="text-sm text-muted-foreground">For customer: {record.customerName}</p>
-                    {record.tokenSerial && <Badge variant="outline" className="mt-1 font-mono">{record.tokenSerial}</Badge>}
-                </div>
-            )
         },
     },
     {
@@ -107,10 +137,16 @@ const columns: ColumnDef<IncomeRecord>[] = [
         header: "Original Sale By",
         cell: ({ row }) => {
             const record = row.original;
-            if (record.sourceType === 'product_sale') {
-                return record.shopManagerName || 'N/A';
+            switch(record.sourceType) {
+                case 'product_sale':
+                    return record.shopManagerName || 'N/A';
+                case 'token_sale':
+                    return record.salesmanName;
+                case 'salary':
+                    return 'System Payroll';
+                default:
+                    return 'N/A'
             }
-            return record.salesmanName;
         },
     },
 ];
@@ -160,6 +196,19 @@ const IncomeRecordsView: React.FC<IncomeRecordsViewProps> = ({ user }) => {
       sorting: [{ id: 'saleDate', desc: true }],
     },
   });
+  
+  const getSourceTypeInfo = (sourceType: 'token_sale' | 'product_sale' | 'salary' | undefined) => {
+    switch (sourceType) {
+        case 'product_sale':
+            return { text: 'Product Sale', variant: 'default' as const };
+        case 'token_sale':
+            return { text: 'Token Sale', variant: 'secondary' as const };
+        case 'salary':
+            return { text: 'Salary', variant: 'success' as const };
+        default:
+            return { text: 'Unknown', variant: 'outline' as const };
+    }
+  };
 
   const handleGeneratePdf = () => {
     if (!user || filteredRecords.length === 0) return;
@@ -177,13 +226,15 @@ const IncomeRecordsView: React.FC<IncomeRecordsViewProps> = ({ user }) => {
           if (record.installmentNumber) {
             detailText += ` (Installment #${record.installmentNumber})`;
           }
-      } else {
+      } else if (record.sourceType === 'token_sale') {
           detailText = `Token Sale for ${record.customerName}. Sale by: ${record.salesmanName || 'N/A'}`;
+      } else if (record.sourceType === 'salary') {
+          detailText = `Monthly salary for ${format(new Date(record.saleDate), 'MMMM yyyy')}`;
       }
 
       const recordData = [
         new Date(record.saleDate).toLocaleDateString(),
-        record.sourceType === 'product_sale' ? 'Product' : 'Token',
+        getSourceTypeInfo(record.sourceType).text,
         detailText,
         record.grantedForRole,
         record.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
@@ -327,14 +378,37 @@ const IncomeRecordsView: React.FC<IncomeRecordsViewProps> = ({ user }) => {
             {table.getRowModel().rows?.length ? (
                 table.getRowModel().rows.map((row) => {
                     const record = row.original;
-                    const isProductSale = record.sourceType === 'product_sale';
+                    const sourceTypeInfo = getSourceTypeInfo(record.sourceType);
+                    
+                    let detailTitle = '';
+                    let detailSubtitle = '';
+                    let saleBy = '';
+
+                    switch (record.sourceType) {
+                        case 'product_sale':
+                            detailTitle = record.productName || 'Product';
+                            detailSubtitle = `for ${record.customerName}`;
+                            saleBy = record.shopManagerName || 'N/A';
+                            break;
+                        case 'token_sale':
+                            detailTitle = 'Token Sale';
+                            detailSubtitle = `for ${record.customerName}`;
+                            saleBy = record.salesmanName || 'N/A';
+                            break;
+                        case 'salary':
+                            detailTitle = 'Monthly Salary';
+                            detailSubtitle = `For ${format(new Date(record.saleDate), 'MMMM yyyy')}`;
+                            saleBy = 'System Payroll';
+                            break;
+                    }
+
                     return (
                         <Card key={record.id} className="p-4 flex flex-col gap-3">
                             <div className="flex justify-between items-start">
                                 <div>
                                     <p className="font-bold text-lg text-primary">LKR {record.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-                                    <Badge variant={isProductSale ? 'default' : 'secondary'}>
-                                        {isProductSale ? 'Product Sale' : 'Token Sale'}
+                                    <Badge variant={sourceTypeInfo.variant}>
+                                        {sourceTypeInfo.text}
                                     </Badge>
                                 </div>
                                 <div className="text-sm text-muted-foreground flex items-center gap-1.5">
@@ -345,7 +419,7 @@ const IncomeRecordsView: React.FC<IncomeRecordsViewProps> = ({ user }) => {
                             <div className="border-t pt-3 space-y-2 text-sm text-muted-foreground">
                                 <div className="flex items-center gap-2">
                                     <ShoppingBag className="w-4 h-4 text-primary/80"/>
-                                    <p><span className="font-medium text-card-foreground">{isProductSale ? record.productName : 'Token Sale'}</span> for {record.customerName}</p>
+                                    <p><span className="font-medium text-card-foreground">{detailTitle}</span> {detailSubtitle}</p>
                                 </div>
                                 {record.installmentNumber && (
                                     <div className="flex items-center gap-2">
@@ -360,7 +434,7 @@ const IncomeRecordsView: React.FC<IncomeRecordsViewProps> = ({ user }) => {
                                 )}
                                 <div className="flex items-center gap-2">
                                     <UserIcon className="w-4 h-4 text-primary/80"/>
-                                    <p>Sale by: {isProductSale ? record.shopManagerName : record.salesmanName}</p>
+                                    <p>Sale by: {saleBy}</p>
                                 </div>
                             </div>
                         </Card>
