@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useForm, SubmitHandler } from "react-hook-form";
-import { getSalarySettings, updateSalarySettings, checkIfSalaryPaidForMonth, processMonthlySalaries } from "@/lib/firestore";
+import { processMonthlySalaries, getSalarySettings, updateSalarySettings } from "@/lib/firestore";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,7 +41,6 @@ const SalarySettingsForm: React.FC<SalarySettingsProps> = ({ user }) => {
     const [isLoading, setIsLoading] = useState(false);
     const [isFetching, setIsFetching] = useState(true);
     const [isPaying, setIsPaying] = useState(false);
-    const [isPaidForMonth, setIsPaidForMonth] = useState(false);
     const currentMonthYear = format(new Date(), "MMMM yyyy");
 
     const {
@@ -57,14 +56,11 @@ const SalarySettingsForm: React.FC<SalarySettingsProps> = ({ user }) => {
             try {
                 const settings = await getSalarySettings();
                 reset(settings);
-                const now = new Date();
-                const paid = await checkIfSalaryPaidForMonth(now.getFullYear(), now.getMonth() + 1);
-                setIsPaidForMonth(paid);
             } catch (error) {
                 toast({
                     variant: "destructive",
                     title: "Error fetching data",
-                    description: "Could not load salary settings or payment status.",
+                    description: "Could not load salary settings.",
                 });
             } finally {
                 setIsFetching(false);
@@ -100,7 +96,6 @@ const SalarySettingsForm: React.FC<SalarySettingsProps> = ({ user }) => {
                 variant: 'default',
                 className: 'bg-success text-success-foreground'
             });
-            setIsPaidForMonth(true);
         } catch (error: any) {
              toast({ variant: "destructive", title: "Payment Failed", description: error.message });
         } finally {
@@ -150,30 +145,20 @@ const SalarySettingsForm: React.FC<SalarySettingsProps> = ({ user }) => {
                     <CardDescription>Process the salary payment for all eligible employees for the current month of {currentMonthYear}.</CardDescription>
                 </CardHeader>
                  <CardContent>
-                    {isPaidForMonth ? (
-                        <div className="flex items-center gap-4 p-4 rounded-md bg-success/10 text-success-foreground border border-success/20">
-                           <PartyPopper className="h-10 w-10 text-success" />
-                           <div>
-                                <h3 className="font-semibold">Salaries Paid!</h3>
-                                <p className="text-sm">The salary payout for {currentMonthYear} has already been completed.</p>
-                           </div>
+                    <div className="p-4 rounded-md border border-warning/50 bg-warning/10 text-warning-foreground">
+                        <div className="flex items-start gap-3">
+                            <AlertTriangle className="h-5 w-5 mt-0.5 flex-shrink-0 text-warning" />
+                            <div>
+                                <h3 className="font-semibold">Warning: Handle with Care</h3>
+                                <p className="text-sm">This action can be performed multiple times. Each time you click this button, it will add the defined salary amount to each eligible employee's income. Please ensure you are not making duplicate payments for the same month.</p>
+                            </div>
                         </div>
-                    ) : (
-                        <div className="p-4 rounded-md border border-destructive/50 bg-destructive/10 text-destructive">
-                           <div className="flex items-start gap-3">
-                                <AlertTriangle className="h-5 w-5 mt-0.5 flex-shrink-0" />
-                                <div>
-                                    <h3 className="font-semibold text-destructive-foreground">Important: One-Time Action</h3>
-                                    <p className="text-sm">This action can only be performed **once per month**. Clicking the button will immediately process and record salary payments for all eligible users. Ensure all settings are correct before proceeding.</p>
-                                </div>
-                           </div>
-                        </div>
-                    )}
+                    </div>
                 </CardContent>
                 <CardFooter className="border-t px-6 py-4">
                     <AlertDialog>
                         <AlertDialogTrigger asChild>
-                            <Button variant="destructive" disabled={isPaidForMonth || isPaying}>
+                            <Button variant="destructive" disabled={isPaying}>
                                 {isPaying ? (
                                     <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
                                 ) : (
@@ -186,8 +171,7 @@ const SalarySettingsForm: React.FC<SalarySettingsProps> = ({ user }) => {
                             <AlertDialogHeader>
                                 <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                    You are about to pay salaries for **{currentMonthYear}**. This action is irreversible and can only be done once per month.
-                                    The system will add the defined salary to each eligible employee's total income.
+                                    You are about to pay salaries for **{currentMonthYear}**. This action is irreversible. The system will add the defined salary to each eligible employee's total income.
                                 </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>

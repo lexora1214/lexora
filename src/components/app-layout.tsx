@@ -244,7 +244,7 @@ const AppLayout = ({ user }: { user: User }) => {
   const renderContent = () => {
     if (loading) {
       return (
-        <div className="flex h-screen w-full items-center justify-center bg-background">
+        <div className="flex h-screen w-full items-center justify-center">
           <LoaderCircle className="h-12 w-12 animate-spin text-primary" />
         </div>
       );
@@ -435,7 +435,7 @@ const AppLayout = ({ user }: { user: User }) => {
               </DropdownMenuContent>
             </DropdownMenu>
           </header>
-          <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 bg-background overflow-y-auto">
+          <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 overflow-y-auto">
             {renderContent()}
           </main>
         </div>

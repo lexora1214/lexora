@@ -47,7 +47,7 @@ export default function Home() {
 
   if (loadingAuth || loadingUser || !appUser) {
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-background">
+      <div className="flex h-screen w-full items-center justify-center">
         <LoaderCircle className="h-12 w-12 animate-spin text-primary" />
       </div>
     );

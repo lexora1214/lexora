@@ -310,7 +310,8 @@ export async function uploadDepositSlipAndUpdateRequest(requestId: string, file:
     
     const metadata = {
         customMetadata: {
-            uploaderUid: currentUser.uid
+            uploaderUid: currentUser.uid,
+            requestId: requestId,
         }
     };
 
@@ -754,24 +755,11 @@ export async function updateSalarySettings(data: SalarySettings): Promise<void> 
     await setDoc(settingsDocRef, data, { merge: true });
 }
 
-export async function checkIfSalaryPaidForMonth(year: number, month: number): Promise<boolean> {
-    const monthId = `${year}-${String(month).padStart(2, '0')}`;
-    const payoutDocRef = doc(db, "salaryPayouts", monthId);
-    const payoutDocSnap = await getDoc(payoutDocRef);
-    return payoutDocSnap.exists();
-}
-
 export async function processMonthlySalaries(adminUser: User): Promise<{ usersPaid: number; totalAmount: number; }> {
     const now = new Date();
     const year = now.getFullYear();
-    const month = now.getMonth() + 1; // JS months are 0-indexed
-    const monthId = `${year}-${String(month).padStart(2, '0')}`;
-
-    const payoutDocRef = doc(db, "salaryPayouts", monthId);
-    const payoutDocSnap = await getDoc(payoutDocRef);
-    if (payoutDocSnap.exists()) {
-        throw new Error(`Salaries for ${now.toLocaleString('default', { month: 'long' })} ${year} have already been processed.`);
-    }
+    const month = now.getMonth() + 1;
+    const monthId = `${year}-${String(month).padStart(2, '0')}-${now.getTime()}`; // Make ID unique for multiple payouts
 
     const allUsers = await getAllUsers();
     const salarySettings = await getSalarySettings();
@@ -819,6 +807,7 @@ export async function processMonthlySalaries(adminUser: User): Promise<{ usersPa
     }
 
     // Mark this month's payout as completed
+    const payoutDocRef = doc(db, "salaryPayouts", monthId);
     const newPayoutRecord: MonthlySalaryPayout = {
         id: monthId,
         payoutDate,
