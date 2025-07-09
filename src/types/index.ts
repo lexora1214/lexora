@@ -62,6 +62,7 @@ export interface CommissionRequest {
     approverId?: string;
     approverName?: string;
     processedDate?: string;
+    depositSlipUrl?: string;
 }
 
 export interface ProductSale {

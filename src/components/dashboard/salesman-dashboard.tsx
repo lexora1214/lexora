@@ -2,7 +2,7 @@
 "use client";
 
 import React from "react";
-import { User, Customer as CustomerType, IncomeRecord, CommissionRequest, CommissionSettings } from "@/types";
+import { User, Customer as CustomerType, IncomeRecord, CommissionRequest } from "@/types";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { DollarSign, Users, UserPlus, Calendar as CalendarIcon, Hourglass, LoaderCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import TokenUsagePieChart from "../token-usage-pie-chart";
 import { getCommissionSettings } from "@/lib/firestore";
+import PendingApprovalsDialog from "../pending-approvals-dialog";
 
 interface SalesmanDashboardProps {
   user: User;
@@ -24,18 +25,20 @@ interface SalesmanDashboardProps {
 
 const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ user, allCustomers, allIncomeRecords, allCommissionRequests }) => {
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+  const [isPendingApprovalsOpen, setIsPendingApprovalsOpen] = React.useState(false);
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
   const [pendingIncome, setPendingIncome] = React.useState(0);
   const [loadingPending, setLoadingPending] = React.useState(true);
+
+  const pendingRequests = allCommissionRequests.filter(
+    req => req.salesmanId === user.id && req.status === 'pending'
+  );
 
   React.useEffect(() => {
     const calculatePendingIncome = async () => {
       setLoadingPending(true);
       try {
         const settings = await getCommissionSettings();
-        const pendingRequests = allCommissionRequests.filter(
-          req => req.salesmanId === user.id && req.status === 'pending'
-        );
         const totalPending = pendingRequests.length * settings.salesman;
         setPendingIncome(totalPending);
       } catch (error) {
@@ -47,7 +50,7 @@ const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ user, allCustomer
     };
     
     calculatePendingIncome();
-  }, [allCommissionRequests, user.id]);
+  }, [allCommissionRequests, user.id, pendingRequests.length]);
 
   const filteredData = React.useMemo(() => {
     const myCustomers = allCustomers.filter(c => c.salesmanId === user.id);
@@ -133,7 +136,10 @@ const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ user, allCustomer
           </Popover>
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <Card>
+          <Card 
+            className={pendingRequests.length > 0 ? "cursor-pointer hover:bg-muted/50 transition-colors" : ""}
+            onClick={() => pendingRequests.length > 0 && setIsPendingApprovalsOpen(true)}
+          >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Personal Income</CardTitle>
               <DollarSign className="h-4 w-4 text-muted-foreground" />
@@ -151,7 +157,7 @@ const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ user, allCustomer
                       <Hourglass className="h-4 w-4" />
                       <div>
                         <p className="font-semibold">LKR {pendingIncome.toLocaleString()}</p>
-                        <p className="text-xs">Pending from {allCommissionRequests.filter(req => req.salesmanId === user.id && req.status === 'pending').length} sales</p>
+                        <p className="text-xs">Pending from {pendingRequests.length} sales. Click to upload slips.</p>
                       </div>
                   </div>
               )}
@@ -183,6 +189,11 @@ const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ user, allCustomer
         onRegistrationSuccess={() => {
           // Data is updated via the top-level snapshot listener in AppLayout
         }} 
+      />
+      <PendingApprovalsDialog
+        isOpen={isPendingApprovalsOpen}
+        onOpenChange={setIsPendingApprovalsOpen}
+        requests={pendingRequests}
       />
     </>
   );

@@ -1,5 +1,6 @@
 import { doc, getDoc, setDoc, collection, getDocs, query, where, writeBatch, increment, updateDoc } from "firebase/firestore";
-import { db } from "./firebase";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { db, storage } from "./firebase";
 import { User, Role, Customer, CommissionSettings, IncomeRecord, ProductSale, ProductCommissionSettings, SignupRoleSettings, ProductCommissionTier, CommissionRequest } from "@/types";
 import type { User as FirebaseUser } from 'firebase/auth';
 
@@ -275,6 +276,21 @@ export async function rejectTokenCommission(requestId: string, admin: User): Pro
     batch.update(customerRef, { commissionStatus: 'rejected' });
     
     await batch.commit();
+}
+
+export async function uploadDepositSlipAndUpdateRequest(requestId: string, file: File): Promise<void> {
+    if (!file.type.startsWith("image/")) {
+        throw new Error("File must be an image.");
+    }
+
+    const storageRef = ref(storage, `deposit_slips/${requestId}/${file.name}`);
+    const uploadResult = await uploadBytes(storageRef, file);
+    const downloadURL = await getDownloadURL(uploadResult.ref);
+
+    const requestRef = doc(db, "commissionRequests", requestId);
+    await updateDoc(requestRef, {
+        depositSlipUrl: downloadURL,
+    });
 }
 
 // --- Product Sale and Commission Logic ---
