@@ -18,7 +18,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { updateUser } from "@/lib/firestore";
-import { User, Role } from "@/types";
+import { User, Role, SalesmanStage } from "@/types";
 import { LoaderCircle } from "lucide-react";
 import {
   Select,
@@ -34,6 +34,7 @@ const formSchema = z.object({
   mobileNumber: z.string().regex(/^0\d{9}$/, { message: "Please enter a valid 10-digit mobile number." }),
   role: z.enum(["Salesman", "Team Operation Manager", "Group Operation Manager", "Head Group Manager", "Regional Director", "Admin", "Delivery Boy", "Recovery Officer"]),
   branch: z.string().optional(),
+  salesmanStage: z.enum(["BUSINESS PROMOTER (stage 01)", "MARKETING EXECUTIVE (stage 02)"]).optional().nullable(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -73,6 +74,7 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({
         role: user.role,
         mobileNumber: user.mobileNumber || "",
         branch: user.branch || "",
+        salesmanStage: user.salesmanStage,
       });
     }
   }, [user, reset]);
@@ -91,7 +93,13 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({
       if (data.role === 'Team Operation Manager') {
         updateData.branch = data.branch;
       } else {
-        updateData.branch = ""; // Clear branch if role is not TOM
+        updateData.branch = "";
+      }
+
+      if (data.role === 'Salesman') {
+        updateData.salesmanStage = data.salesmanStage;
+      } else {
+        updateData.salesmanStage = null;
       }
 
       await updateUser(user.id, updateData);
@@ -177,6 +185,28 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({
                   <Input id="branch" {...register("branch")} />
                   {errors.branch && <p className="text-xs text-destructive mt-1">{errors.branch.message}</p>}
                 </div>
+              </div>
+            )}
+             {selectedRole === 'Salesman' && (
+              <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="salesmanStage" className="text-right">Stage</Label>
+                  <div className="col-span-3">
+                      <Controller
+                          control={control}
+                          name="salesmanStage"
+                          render={({ field }) => (
+                              <Select onValueChange={field.onChange} value={field.value || ""}>
+                                  <SelectTrigger>
+                                      <SelectValue placeholder="Select a stage" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                      <SelectItem value="BUSINESS PROMOTER (stage 01)">BUSINESS PROMOTER (stage 01)</SelectItem>
+                                      <SelectItem value="MARKETING EXECUTIVE (stage 02)">MARKETING EXECUTIVE (stage 02)</SelectItem>
+                                  </SelectContent>
+                              </Select>
+                          )}
+                      />
+                  </div>
               </div>
             )}
           </div>

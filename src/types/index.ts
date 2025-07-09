@@ -8,6 +8,8 @@ export type Role =
   | "Delivery Boy"
   | "Recovery Officer";
 
+export type SalesmanStage = "BUSINESS PROMOTER (stage 01)" | "MARKETING EXECUTIVE (stage 02)";
+
 export interface User {
   id: string;
   name: string;
@@ -20,6 +22,7 @@ export interface User {
   avatar: string;
   createdAt: string;
   branch?: string;
+  salesmanStage?: SalesmanStage | null;
 }
 
 export interface Customer {

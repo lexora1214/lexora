@@ -2,7 +2,7 @@
 "use client";
 
 import React from "react";
-import { User, Customer } from "@/types";
+import { User, Customer, SalesmanStage } from "@/types";
 import {
   Table,
   TableBody,
@@ -28,6 +28,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ArrowUpDown, Wallet, Users } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { updateUser } from "@/lib/firestore";
+import { useToast } from "@/hooks/use-toast";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
+
 
 interface TeamViewProps {
   downlineUsers: User[];
@@ -36,91 +46,134 @@ interface TeamViewProps {
 
 type UserWithCustomerCount = User & { customerCount: number };
 
-const columns: ColumnDef<UserWithCustomerCount>[] = [
-    {
-        accessorKey: "name",
-        header: ({ column }) => (
-             <Button
-                variant="ghost"
-                onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            >
-                Member
-                <ArrowUpDown className="ml-2 h-4 w-4" />
-            </Button>
-        ),
-        cell: ({ row }) => {
-            const user = row.original;
-            return (
-                <div className="flex items-center gap-3">
-                    <Avatar className="h-9 w-9">
-                    <AvatarImage src={user.avatar} alt={user.name} data-ai-hint="profile avatar" />
-                    <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <div className="grid gap-0.5">
-                    <p className="font-medium">{user.name}</p>
-                    <p className="text-xs text-muted-foreground">{user.email}</p>
-                    </div>
-                </div>
-            );
-        },
-        filterFn: (row, id, value) => {
-            const name = row.original.name;
-            return name.toLowerCase().includes(value.toLowerCase());
-        },
-    },
-    {
-        accessorKey: "role",
-        header: ({ column }) => (
-             <Button
-                variant="ghost"
-                onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            >
-                Role
-                <ArrowUpDown className="ml-2 h-4 w-4" />
-            </Button>
-        ),
-        cell: ({ row }) => <Badge variant="outline">{row.getValue("role")}</Badge>,
-    },
-    {
-        accessorKey: "totalIncome",
-        header: ({ column }) => (
-            <div className="text-right w-full">
-                <Button
-                    variant="ghost"
-                    className="w-full justify-end"
-                    onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-                >
-                    Income
-                    <ArrowUpDown className="ml-2 h-4 w-4" />
-                </Button>
-            </div>
-        ),
-        cell: ({ row }) => {
-            const amount = row.getValue("totalIncome") as number;
-            return <div className="text-right font-medium">LKR {amount.toLocaleString()}</div>;
-        },
-    },
-    {
-        accessorKey: "customerCount",
-        header: ({ column }) => (
-            <div className="text-right w-full">
-                <Button
-                    variant="ghost"
-                    className="w-full justify-end"
-                    onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-                >
-                    Customers
-                    <ArrowUpDown className="ml-2 h-4 w-4" />
-                </Button>
-            </div>
-        ),
-        cell: ({ row }) => <div className="text-right font-medium">{row.getValue("customerCount")}</div>,
-    }
-];
-
 const TeamView: React.FC<TeamViewProps> = ({ downlineUsers, allCustomers }) => {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
+  const { toast } = useToast();
+
+  const handleStageChange = async (userId: string, newStage: SalesmanStage) => {
+    try {
+        await updateUser(userId, { salesmanStage: newStage });
+        toast({
+            title: "Stage Updated",
+            description: "The salesman's stage has been updated successfully.",
+            variant: "default",
+            className: "bg-success text-success-foreground",
+        });
+    } catch (error) {
+        toast({
+            variant: "destructive",
+            title: "Update Failed",
+            description: "Could not update the salesman's stage.",
+        });
+    }
+  };
+
+  const columns: ColumnDef<UserWithCustomerCount>[] = [
+      {
+          accessorKey: "name",
+          header: ({ column }) => (
+              <Button
+                  variant="ghost"
+                  onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+              >
+                  Member
+                  <ArrowUpDown className="ml-2 h-4 w-4" />
+              </Button>
+          ),
+          cell: ({ row }) => {
+              const user = row.original;
+              return (
+                  <div className="flex items-center gap-3">
+                      <Avatar className="h-9 w-9">
+                      <AvatarImage src={user.avatar} alt={user.name} data-ai-hint="profile avatar" />
+                      <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <div className="grid gap-0.5">
+                      <p className="font-medium">{user.name}</p>
+                      <p className="text-xs text-muted-foreground">{user.email}</p>
+                      </div>
+                  </div>
+              );
+          },
+          filterFn: (row, id, value) => {
+              const name = row.original.name;
+              return name.toLowerCase().includes(value.toLowerCase());
+          },
+      },
+      {
+          accessorKey: "role",
+          header: ({ column }) => (
+              <Button
+                  variant="ghost"
+                  onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+              >
+                  Role
+                  <ArrowUpDown className="ml-2 h-4 w-4" />
+              </Button>
+          ),
+          cell: ({ row }) => <Badge variant="outline">{row.getValue("role")}</Badge>,
+      },
+      {
+        accessorKey: "salesmanStage",
+        header: "Stage",
+        cell: ({ row }) => {
+            const user = row.original;
+            if (user.role !== "Salesman") {
+              return <div className="text-center">-</div>;
+            }
+            return (
+                <Select
+                    defaultValue={user.salesmanStage || undefined}
+                    onValueChange={(newStage) => handleStageChange(user.id, newStage as SalesmanStage)}
+                >
+                    <SelectTrigger className="w-[240px]">
+                        <SelectValue placeholder="Select Stage" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="BUSINESS PROMOTER (stage 01)">BUSINESS PROMOTER (stage 01)</SelectItem>
+                        <SelectItem value="MARKETING EXECUTIVE (stage 02)">MARKETING EXECUTIVE (stage 02)</SelectItem>
+                    </SelectContent>
+                </Select>
+            );
+        },
+    },
+      {
+          accessorKey: "totalIncome",
+          header: ({ column }) => (
+              <div className="text-right w-full">
+                  <Button
+                      variant="ghost"
+                      className="w-full justify-end"
+                      onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+                  >
+                      Income
+                      <ArrowUpDown className="ml-2 h-4 w-4" />
+                  </Button>
+              </div>
+          ),
+          cell: ({ row }) => {
+              const amount = row.getValue("totalIncome") as number;
+              return <div className="text-right font-medium">LKR {amount.toLocaleString()}</div>;
+          },
+      },
+      {
+          accessorKey: "customerCount",
+          header: ({ column }) => (
+              <div className="text-right w-full">
+                  <Button
+                      variant="ghost"
+                      className="w-full justify-end"
+                      onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+                  >
+                      Customers
+                      <ArrowUpDown className="ml-2 h-4 w-4" />
+                  </Button>
+              </div>
+          ),
+          cell: ({ row }) => <div className="text-right font-medium">{row.getValue("customerCount")}</div>,
+      }
+  ];
 
   const data: UserWithCustomerCount[] = React.useMemo(() => {
     const salesmanCustomerCounts = new Map<string, number>();

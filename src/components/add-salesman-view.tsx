@@ -8,11 +8,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { LoaderCircle, UserPlus } from "lucide-react";
-import { User } from "@/types";
+import { User, SalesmanStage } from "@/types";
 import { createUserProfile } from "@/lib/firestore";
 import { firebaseConfig } from "@/lib/firebase";
 import { initializeApp, deleteApp } from "firebase/app";
 import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface AddSalesmanViewProps {
   manager: User;
@@ -25,6 +32,8 @@ export default function AddSalesmanView({ manager }: AddSalesmanViewProps) {
   const [mobileNumber, setMobileNumber] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [salesmanStage, setSalesmanStage] = useState<SalesmanStage>("BUSINESS PROMOTER (stage 01)");
+
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,7 +60,8 @@ export default function AddSalesmanView({ manager }: AddSalesmanViewProps) {
         mobileNumber,
         "Salesman",
         manager.referralCode,
-        manager.branch
+        manager.branch,
+        salesmanStage
       );
       toast({
         title: "Salesman Registered",
@@ -63,6 +73,7 @@ export default function AddSalesmanView({ manager }: AddSalesmanViewProps) {
       setEmail("");
       setMobileNumber("");
       setPassword("");
+      setSalesmanStage("BUSINESS PROMOTER (stage 01)");
     } catch (error: any) {
       let errorMessage = error.message;
       if (error.code === 'auth/email-already-in-use') {
@@ -102,6 +113,18 @@ export default function AddSalesmanView({ manager }: AddSalesmanViewProps) {
             <div className="grid gap-2">
               <Label htmlFor="password">Password</Label>
               <Input id="password" type="password" placeholder="Create a password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="salesman-stage">Salesman Stage</Label>
+              <Select value={salesmanStage} onValueChange={(value) => setSalesmanStage(value as SalesmanStage)}>
+                <SelectTrigger id="salesman-stage">
+                  <SelectValue placeholder="Select Stage" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="BUSINESS PROMOTER (stage 01)">BUSINESS PROMOTER (stage 01)</SelectItem>
+                  <SelectItem value="MARKETING EXECUTIVE (stage 02)">MARKETING EXECUTIVE (stage 02)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">

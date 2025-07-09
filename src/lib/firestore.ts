@@ -2,7 +2,7 @@ import { doc, getDoc, setDoc, collection, getDocs, query, where, writeBatch, inc
 import { getAuth } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage } from "./firebase";
-import { User, Role, Customer, CommissionSettings, IncomeRecord, ProductSale, ProductCommissionSettings, SignupRoleSettings, CommissionRequest } from "@/types";
+import { User, Role, Customer, CommissionSettings, IncomeRecord, ProductSale, ProductCommissionSettings, SignupRoleSettings, CommissionRequest, SalesmanStage } from "@/types";
 import type { User as FirebaseUser } from 'firebase/auth';
 
 function generateReferralCode(): string {
@@ -14,7 +14,7 @@ function generateReferralCode(): string {
   return result;
 }
 
-export async function createUserProfile(firebaseUser: FirebaseUser, name: string, mobileNumber: string, role: Role, referralCodeInput: string, branch?: string): Promise<User> {
+export async function createUserProfile(firebaseUser: FirebaseUser, name: string, mobileNumber: string, role: Role, referralCodeInput: string, branch?: string, salesmanStage?: SalesmanStage): Promise<User> {
   let referrerId: string | null = null;
   const isReferralNeeded = role && !['Regional Director', 'Admin'].includes(role);
 
@@ -61,7 +61,8 @@ export async function createUserProfile(firebaseUser: FirebaseUser, name: string
     totalIncome: 0,
     avatar: `https://placehold.co/100x100.png`,
     createdAt: new Date().toISOString(),
-    ...(role === 'Team Operation Manager' && branch && { branch }),
+    ...(role === 'Team Operation Manager' && { branch }),
+    ...(role === 'Salesman' && { salesmanStage }),
   };
 
   await setDoc(doc(db, "users", firebaseUser.uid), newUser);
@@ -295,7 +296,6 @@ export async function uploadDepositSlipAndUpdateRequest(requestId: string, file:
         throw new Error("You must be logged in to upload a file.");
     }
     
-    // Pre-flight check: ensure the current user is the salesman for this request
     const requestRef = doc(db, "commissionRequests", requestId);
     const requestSnap = await getDoc(requestRef);
 
@@ -310,8 +310,7 @@ export async function uploadDepositSlipAndUpdateRequest(requestId: string, file:
     
     const metadata = {
         customMetadata: {
-            salesmanId: currentUser.uid,
-            requestId: requestId,
+            uploaderUid: currentUser.uid
         }
     };
 

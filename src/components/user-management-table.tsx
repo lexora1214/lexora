@@ -172,6 +172,14 @@ export default function UserManagementTable({ data, allIncomeRecords }: UserMana
         return roleA - roleB;
       },
     },
+    {
+      accessorKey: "salesmanStage",
+      header: "Salesman Stage",
+      cell: ({ row }) => {
+          const stage = row.original.salesmanStage;
+          return stage ? <Badge variant="outline" className="whitespace-nowrap">{stage}</Badge> : 'N/A';
+      },
+    },
      {
       accessorKey: "branch",
       header: "Branch",
@@ -464,6 +472,7 @@ export default function UserManagementTable({ data, allIncomeRecords }: UserMana
                     if (column.id === 'role') displayName = 'Role';
                     if (column.id === 'mobileNumber') displayName = 'Mobile Number';
                     if (column.id === 'branch') displayName = 'Branch';
+                    if (column.id === 'salesmanStage') displayName = 'Salesman Stage';
 
                     return (
                     <DropdownMenuCheckboxItem
