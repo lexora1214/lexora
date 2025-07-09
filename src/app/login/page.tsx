@@ -1,8 +1,10 @@
+
 "use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
@@ -10,7 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { DollarSign, LoaderCircle } from "lucide-react";
+import { LoaderCircle } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -41,7 +43,7 @@ export default function LoginPage() {
        <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
             <div className="mb-4 flex justify-center">
-              <DollarSign className="h-12 w-12 text-primary" />
+              <Image src="https://placehold.co/48x48.png" alt="LEXORA Logo" width={48} height={48} data-ai-hint="company logo" />
             </div>
             <CardTitle className="text-3xl">LEXORA</CardTitle>
             <CardDescription>Welcome back! Please sign in to your account.</CardDescription>

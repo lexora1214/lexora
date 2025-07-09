@@ -4,6 +4,7 @@
 import React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import {
   Bell,
   Briefcase,
@@ -363,7 +364,7 @@ const AppLayout = ({ user }: { user: User }) => {
           <div className="flex h-full max-h-screen flex-col gap-2">
             <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
               <Link href="/" className="flex items-center gap-2 font-headline font-semibold">
-                <DollarSign className="h-6 w-6 text-primary" />
+                <Image src="https://placehold.co/32x32.png" alt="LEXORA Logo" width={32} height={32} data-ai-hint="company logo" />
                 <span className="">LEXORA</span>
               </Link>
               <Button variant="outline" size="icon" className="ml-auto h-8 w-8">
@@ -388,7 +389,7 @@ const AppLayout = ({ user }: { user: User }) => {
               <SheetContent side="left" className="flex flex-col p-0">
                 <div className="flex h-14 items-center border-b px-4">
                   <Link href="/" className="flex items-center gap-2 font-headline font-semibold">
-                    <DollarSign className="h-6 w-6 text-primary" />
+                    <Image src="https://placehold.co/32x32.png" alt="LEXORA Logo" width={32} height={32} data-ai-hint="company logo" />
                     <span className="">LEXORA</span>
                   </Link>
                 </div>

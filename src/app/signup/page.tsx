@@ -1,9 +1,11 @@
 
+
 "use client";
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { createUserProfile, getSignupRoleSettings } from "@/lib/firestore";
@@ -12,7 +14,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { DollarSign, LoaderCircle } from "lucide-react";
+import { LoaderCircle } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -137,7 +139,7 @@ export default function SignupPage() {
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
             <div className="mb-4 flex justify-center">
-                <DollarSign className="h-12 w-12 text-primary" />
+                <Image src="https://placehold.co/48x48.png" alt="LEXORA Logo" width={48} height={48} data-ai-hint="company logo" />
             </div>
             <CardTitle className="text-3xl">Create an Account</CardTitle>
             <CardDescription>Enter your details to join the network.</CardDescription>
