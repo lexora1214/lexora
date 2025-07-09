@@ -39,7 +39,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { User, IncomeRecord, Role } from "@/types";
+import { User, IncomeRecord, Role, SalesmanStage } from "@/types";
 import { Badge } from "./ui/badge";
 import EditUserDialog from "./edit-user-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
@@ -53,6 +53,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { updateUser } from "@/lib/firestore";
+import { useToast } from "@/hooks/use-toast";
 
 
 interface UserManagementTableProps {
@@ -81,6 +83,7 @@ export default function UserManagementTable({ data, allIncomeRecords }: UserMana
   const [isIncomeDialogOpen, setIsIncomeDialogOpen] = React.useState(false);
   const [selectedUser, setSelectedUser] = React.useState<User | null>(null);
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
+  const { toast } = useToast();
 
   const branches = React.useMemo(() => {
     const branchSet = new Set<string>();
@@ -101,6 +104,24 @@ export default function UserManagementTable({ data, allIncomeRecords }: UserMana
     setSelectedUser(user);
     setIsIncomeDialogOpen(true);
   }, []);
+
+  const handleStageChange = async (userId: string, newStage: SalesmanStage) => {
+    try {
+        await updateUser(userId, { salesmanStage: newStage });
+        toast({
+            title: "Stage Updated",
+            description: "The salesman's stage has been updated successfully.",
+            variant: "default",
+            className: "bg-success text-success-foreground",
+        });
+    } catch (error) {
+        toast({
+            variant: "destructive",
+            title: "Update Failed",
+            description: "Could not update the salesman's stage.",
+        });
+    }
+  };
 
   const tableData = React.useMemo(() => {
     if (!dateRange || !dateRange.from) {
@@ -176,8 +197,24 @@ export default function UserManagementTable({ data, allIncomeRecords }: UserMana
       accessorKey: "salesmanStage",
       header: "Salesman Stage",
       cell: ({ row }) => {
-          const stage = row.original.salesmanStage;
-          return stage ? <Badge variant="outline" className="whitespace-nowrap">{stage}</Badge> : 'N/A';
+          const user = row.original;
+          if (user.role !== "Salesman") {
+            return <div className="text-center">-</div>;
+          }
+          return (
+              <Select
+                  defaultValue={user.salesmanStage || undefined}
+                  onValueChange={(newStage) => handleStageChange(user.id, newStage as SalesmanStage)}
+              >
+                  <SelectTrigger className="w-[240px]">
+                      <SelectValue placeholder="Select Stage" />
+                  </SelectTrigger>
+                  <SelectContent>
+                      <SelectItem value="BUSINESS PROMOTER (stage 01)">BUSINESS PROMOTER (stage 01)</SelectItem>
+                      <SelectItem value="MARKETING EXECUTIVE (stage 02)">MARKETING EXECUTIVE (stage 02)</SelectItem>
+                  </SelectContent>
+              </Select>
+          );
       },
     },
      {
@@ -252,7 +289,7 @@ export default function UserManagementTable({ data, allIncomeRecords }: UserMana
         );
       },
     },
-  ], [handleEditClick, handleViewIncomesClick]);
+  ], [handleEditClick, handleViewIncomesClick, handleStageChange]);
 
   const table = useReactTable({
     data: tableData,
@@ -414,14 +451,16 @@ export default function UserManagementTable({ data, allIncomeRecords }: UserMana
         </Popover>
         {branches.length > 0 && (
           <Select
-            value={(table.getColumn("branch")?.getFilterValue() as string) ?? ""}
-            onValueChange={(value) => table.getColumn("branch")?.setFilterValue(value)}
+            value={(table.getColumn("branch")?.getFilterValue() as string) || "all-branches"}
+            onValueChange={(value) =>
+              table.getColumn("branch")?.setFilterValue(value === "all-branches" ? "" : value)
+            }
           >
             <SelectTrigger className="w-full md:w-[200px]">
               <SelectValue placeholder="Filter by branch..." />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Branches</SelectItem>
+              <SelectItem value="all-branches">All Branches</SelectItem>
               {branches.map((branch) => (
                 <SelectItem key={branch} value={branch}>
                   {branch}
