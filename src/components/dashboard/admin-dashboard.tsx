@@ -6,14 +6,12 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { DollarSign, Users, Briefcase, ShieldCheck, LoaderCircle, Landmark, Calendar as CalendarIcon } from "lucide-react";
 import { getCommissionSettings } from "@/lib/firestore";
-import { Line, LineChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer } from "recharts";
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { DateRange } from "react-day-picker";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { format, eachDayOfInterval, parseISO } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
-import { useIsMobile } from "@/hooks/use-mobile";
+import TokenUsagePieChart from "../token-usage-pie-chart";
 
 import {
     Dialog,
@@ -32,9 +30,6 @@ interface AdminDashboardProps {
 }
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCustomers, allIncomeRecords, setActiveView }) => {
-  const isMobile = useIsMobile();
-  const [chartData, setChartData] = React.useState<any[]>([]);
-  const [loadingChart, setLoadingChart] = React.useState(true);
   const [commissionSettings, setCommissionSettings] = React.useState<CommissionSettings | null>(null);
   const [isBreakdownOpen, setIsBreakdownOpen] = React.useState(false);
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
@@ -78,66 +73,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
       }
     };
     fetchSettings();
-
-    const processNewCustomerData = () => {
-      setLoadingChart(true);
-      try {
-        const isAllTime = !dateRange || !dateRange.from;
-
-        if (isAllTime) {
-          if (allCustomers.length === 0) {
-            setChartData([]);
-            setLoadingChart(false);
-            return;
-          }
-          const sortedCustomers = [...allCustomers].sort((a, b) => parseISO(a.saleDate).getTime() - parseISO(b.saleDate).getTime());
-          const newCustomersByMonth: Record<string, number> = {};
-          sortedCustomers.forEach(customer => {
-            const month = format(parseISO(customer.saleDate), 'yyyy-MM');
-            newCustomersByMonth[month] = (newCustomersByMonth[month] || 0) + 1;
-          });
-
-          const formattedData = Object.keys(newCustomersByMonth).sort().map(monthStr => {
-            const [year, month] = monthStr.split('-').map(Number);
-            const date = new Date(year, month - 1, 15); // Use mid-month to avoid timezone issues
-            return { date: format(date, 'MMM yy'), customers: newCustomersByMonth[monthStr] };
-          });
-          setChartData(formattedData);
-        } else {
-          const startOfRange = dateRange.from!;
-          const endOfRange = dateRange.to ?? dateRange.from!;
-          
-          const dailyNewCustomers: Record<string, number> = {};
-          filteredCustomers.forEach(customer => {
-              const dayStr = format(parseISO(customer.saleDate), 'yyyy-MM-dd');
-              dailyNewCustomers[dayStr] = (dailyNewCustomers[dayStr] || 0) + 1;
-          });
-
-          const allDays = eachDayOfInterval({ start: startOfRange, end: endOfRange });
-          
-          const formattedData = allDays.map(day => {
-              const dayStr = format(day, 'yyyy-MM-dd');
-              return { date: format(day, 'MMM d'), customers: dailyNewCustomers[dayStr] || 0 };
-          });
-          setChartData(formattedData);
-        }
-      } catch (error) {
-        console.error("Failed to process new customer data:", error);
-        setChartData([]);
-      } finally {
-        setLoadingChart(false);
-      }
-    };
-
-    processNewCustomerData();
-  }, [allCustomers, filteredCustomers, dateRange]);
-  
-  const chartConfig = {
-    customers: {
-      label: "New Customers",
-      color: "hsl(var(--primary))",
-    },
-  };
+  }, []);
 
   const totalRevenue = commissionSettings ? commissionSettings.tokenPrice * filteredCustomers.length : 0;
   
@@ -153,6 +89,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
   const adminTeamProductCommission = adminTeamTotalIncome - adminTeamTokenCommission;
 
   const isAllTime = !dateRange || !dateRange.from;
+
+  // Data for the pie chart
+  const usedTokens = filteredCustomers.filter(c => !c.tokenIsAvailable).length;
+  const availableTokens = filteredCustomers.length - usedTokens;
+  const totalTokens = filteredCustomers.length;
+
+  const tokenUsageData = [
+    { status: 'Used' as const, count: usedTokens, fill: 'var(--color-Used)' },
+    { status: 'Available' as const, count: availableTokens, fill: 'var(--color-Available)' },
+  ].filter(item => item.count > 0);
+
 
   return (
     <div className="flex flex-col gap-4">
@@ -251,64 +198,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
             <p className="text-xs text-muted-foreground">Manage users & settings</p>
           </CardContent>
         </Card>
+        <TokenUsagePieChart data={tokenUsageData} totalTokens={totalTokens} />
       </div>
       
-      <Card className="hidden md:block">
-        <CardHeader>
-          <CardTitle>New Customer Registrations</CardTitle>
-          <CardDescription>
-            {isAllTime ? "Number of new customers registered over time." : "Number of new customers registered in the selected period."}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="pl-2">
-          {loadingChart ? (
-            <div className="flex h-[350px] items-center justify-center">
-              <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
-            </div>
-          ) : chartData.length > 0 ? (
-            <ChartContainer config={chartConfig} className="h-[350px] w-full">
-              <ResponsiveContainer>
-                <LineChart data={chartData} margin={{ top: 5, right: 20, left: isMobile ? -10 : 10, bottom: 5 }}>
-                  <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                  <XAxis
-                    dataKey="date"
-                    stroke="hsl(var(--muted-foreground))"
-                    fontSize={12}
-                    tickLine={false}
-                    axisLine={false}
-                    tickMargin={8}
-                  />
-                  <YAxis
-                    stroke="hsl(var(--muted-foreground))"
-                    fontSize={12}
-                    tickLine={false}
-                    axisLine={false}
-                    tickFormatter={(value) => `${value}`}
-                    domain={['auto', 'auto']}
-                    allowDecimals={false}
-                  />
-                  <ChartTooltip
-                    cursor={true}
-                    content={<ChartTooltipContent indicator="line" />}
-                  />
-                  <Line
-                    dataKey="customers"
-                    type="monotone"
-                    stroke="hsl(var(--primary))"
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </ChartContainer>
-          ) : (
-            <div className="flex h-[350px] items-center justify-center">
-              <p className="text-muted-foreground">No customer data available for the selected period.</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
       <Dialog open={isBreakdownOpen} onOpenChange={setIsBreakdownOpen}>
         <DialogContent>
           <DialogHeader>
