@@ -1,9 +1,10 @@
+
 "use client";
 
 import React from "react";
-import { User, Customer as CustomerType, IncomeRecord } from "@/types";
+import { User, Customer as CustomerType, IncomeRecord, CommissionRequest, CommissionSettings } from "@/types";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
-import { DollarSign, Users, UserPlus, Calendar as CalendarIcon } from "lucide-react";
+import { DollarSign, Users, UserPlus, Calendar as CalendarIcon, Hourglass, LoaderCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import CustomerRegistrationDialog from "@/components/customer-registration-dialog";
 import { DateRange } from "react-day-picker";
@@ -12,16 +13,41 @@ import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import TokenUsagePieChart from "../token-usage-pie-chart";
+import { getCommissionSettings } from "@/lib/firestore";
 
 interface SalesmanDashboardProps {
   user: User;
   allCustomers: CustomerType[];
   allIncomeRecords: IncomeRecord[];
+  allCommissionRequests: CommissionRequest[];
 }
 
-const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ user, allCustomers, allIncomeRecords }) => {
+const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ user, allCustomers, allIncomeRecords, allCommissionRequests }) => {
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
+  const [pendingIncome, setPendingIncome] = React.useState(0);
+  const [loadingPending, setLoadingPending] = React.useState(true);
+
+  React.useEffect(() => {
+    const calculatePendingIncome = async () => {
+      setLoadingPending(true);
+      try {
+        const settings = await getCommissionSettings();
+        const pendingRequests = allCommissionRequests.filter(
+          req => req.salesmanId === user.id && req.status === 'pending'
+        );
+        const totalPending = pendingRequests.length * settings.salesman;
+        setPendingIncome(totalPending);
+      } catch (error) {
+        console.error("Error calculating pending income:", error);
+        setPendingIncome(0);
+      } finally {
+        setLoadingPending(false);
+      }
+    };
+    
+    calculatePendingIncome();
+  }, [allCommissionRequests, user.id]);
 
   const filteredData = React.useMemo(() => {
     const myCustomers = allCustomers.filter(c => c.salesmanId === user.id);
@@ -115,6 +141,20 @@ const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ user, allCustomer
             <CardContent>
               <div className="text-2xl font-bold">LKR {personalIncome.toLocaleString()}</div>
               <p className="text-xs text-muted-foreground">Your accumulated commission for the period</p>
+               {loadingPending ? (
+                  <div className="flex items-center gap-2 mt-2">
+                    <LoaderCircle className="h-4 w-4 animate-spin text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">Loading pending...</span>
+                  </div>
+              ) : pendingIncome > 0 && (
+                  <div className="mt-2 text-sm text-amber-600 flex items-center gap-2 border-t pt-2">
+                      <Hourglass className="h-4 w-4" />
+                      <div>
+                        <p className="font-semibold">LKR {pendingIncome.toLocaleString()}</p>
+                        <p className="text-xs">Pending from {allCommissionRequests.filter(req => req.salesmanId === user.id && req.status === 'pending').length} sales</p>
+                      </div>
+                  </div>
+              )}
             </CardContent>
           </Card>
           <Card className="flex flex-col">

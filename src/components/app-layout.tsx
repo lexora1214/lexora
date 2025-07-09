@@ -42,7 +42,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import type { User, Role, Customer, IncomeRecord, ProductSale } from "@/types";
+import type { User, Role, Customer, IncomeRecord, ProductSale, CommissionRequest } from "@/types";
 import { getDownlineIdsAndUsers } from "@/lib/hierarchy";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -191,6 +191,7 @@ const AppLayout = ({ user }: { user: User }) => {
   const [allCustomers, setAllCustomers] = React.useState<Customer[]>([]);
   const [allIncomeRecords, setAllIncomeRecords] = React.useState<IncomeRecord[]>([]);
   const [allProductSales, setAllProductSales] = React.useState<ProductSale[]>([]);
+  const [allCommissionRequests, setAllCommissionRequests] = React.useState<CommissionRequest[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [isMobileSheetOpen, setIsMobileSheetOpen] = React.useState(false);
   const [isProfileSettingsOpen, setIsProfileSettingsOpen] = React.useState(false);
@@ -217,11 +218,17 @@ const AppLayout = ({ user }: { user: User }) => {
         setAllProductSales(salesData);
     });
 
+    const commissionRequestsUnsub = onSnapshot(collection(db, "commissionRequests"), (snapshot) => {
+      const requestsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as CommissionRequest));
+      setAllCommissionRequests(requestsData);
+    });
+
     return () => {
       usersUnsub();
       customersUnsub();
       incomeRecordsUnsub();
       productSalesUnsub();
+      commissionRequestsUnsub();
     };
   }, []);
 
@@ -246,7 +253,7 @@ const AppLayout = ({ user }: { user: User }) => {
           case "Admin":
             return <AdminDashboard user={user} allUsers={allUsers} allCustomers={allCustomers} allIncomeRecords={allIncomeRecords} setActiveView={setActiveView} />;
           case "Salesman":
-            return <SalesmanDashboard user={user} allCustomers={allCustomers} allIncomeRecords={allIncomeRecords} />;
+            return <SalesmanDashboard user={user} allCustomers={allCustomers} allIncomeRecords={allIncomeRecords} allCommissionRequests={allCommissionRequests} />;
           case "Team Operation Manager":
             return <ManagerDashboard user={user} allUsers={allUsers} allIncomeRecords={allIncomeRecords} />;
           case "Delivery Boy":
