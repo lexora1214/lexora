@@ -759,7 +759,8 @@ export async function processMonthlySalaries(adminUser: User): Promise<{ usersPa
     const now = new Date();
     const year = now.getFullYear();
     const month = now.getMonth() + 1;
-    const monthId = `${year}-${String(month).padStart(2, '0')}-${now.getTime()}`; // Make ID unique for multiple payouts
+    // Make ID unique for every payout by including the timestamp
+    const payoutId = `${year}-${String(month).padStart(2, '0')}-${now.getTime()}`;
 
     const allUsers = await getAllUsers();
     const salarySettings = await getSalarySettings();
@@ -806,10 +807,10 @@ export async function processMonthlySalaries(adminUser: User): Promise<{ usersPa
         throw new Error("No users were eligible for a salary payment.");
     }
 
-    // Mark this month's payout as completed
-    const payoutDocRef = doc(db, "salaryPayouts", monthId);
+    // Log this specific payout transaction
+    const payoutDocRef = doc(db, "salaryPayouts", payoutId);
     const newPayoutRecord: MonthlySalaryPayout = {
-        id: monthId,
+        id: payoutId,
         payoutDate,
         processedBy: adminUser.id,
         totalUsersPaid: usersPaid,
