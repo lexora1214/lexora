@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -45,6 +46,14 @@ import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Calendar } from "./ui/calendar";
 import { cn } from "@/lib/utils";
 import UserIncomeDetailsDialog from "./user-income-details-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
 
 interface UserManagementTableProps {
   data: User[];
@@ -61,6 +70,7 @@ const roleOrderMap: Record<Role, number> = {
   'Team Operation Manager': 5,
   'Salesman': 6,
   'Delivery Boy': 7,
+  'Recovery Officer': 8,
 };
 
 export default function UserManagementTable({ data, allIncomeRecords }: UserManagementTableProps) {
@@ -71,6 +81,16 @@ export default function UserManagementTable({ data, allIncomeRecords }: UserMana
   const [isIncomeDialogOpen, setIsIncomeDialogOpen] = React.useState(false);
   const [selectedUser, setSelectedUser] = React.useState<User | null>(null);
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
+
+  const branches = React.useMemo(() => {
+    const branchSet = new Set<string>();
+    data.forEach(user => {
+      if (user.branch && user.branch.trim() !== "") {
+        branchSet.add(user.branch);
+      }
+    });
+    return Array.from(branchSet).sort();
+  }, [data]);
 
   const handleEditClick = React.useCallback((user: User) => {
     setSelectedUser(user);
@@ -127,6 +147,7 @@ export default function UserManagementTable({ data, allIncomeRecords }: UserMana
       accessorKey: "email",
       header: "Email",
       cell: ({ row }) => <div className="lowercase">{row.getValue("email")}</div>,
+      filterFn: (row, id, value) => (row.getValue(id) as string).toLowerCase().includes(String(value).toLowerCase()),
     },
     {
       accessorKey: "mobileNumber",
@@ -155,6 +176,7 @@ export default function UserManagementTable({ data, allIncomeRecords }: UserMana
       accessorKey: "branch",
       header: "Branch",
       cell: ({ row }) => row.original.branch || 'N/A',
+      filterFn: (row, id, value) => ((row.getValue(id) as string) || '').toLowerCase().includes(String(value).toLowerCase()),
     },
     {
       accessorKey: "createdAt",
@@ -368,7 +390,7 @@ export default function UserManagementTable({ data, allIncomeRecords }: UserMana
               )}
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="end">
+          <PopoverContent className="w-auto p-0" align="start">
             <Calendar
               initialFocus
               mode="range"
@@ -382,6 +404,24 @@ export default function UserManagementTable({ data, allIncomeRecords }: UserMana
             </div>
           </PopoverContent>
         </Popover>
+        {branches.length > 0 && (
+          <Select
+            value={(table.getColumn("branch")?.getFilterValue() as string) ?? ""}
+            onValueChange={(value) => table.getColumn("branch")?.setFilterValue(value)}
+          >
+            <SelectTrigger className="w-full md:w-[200px]">
+              <SelectValue placeholder="Filter by branch..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All Branches</SelectItem>
+              {branches.map((branch) => (
+                <SelectItem key={branch} value={branch}>
+                  {branch}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         <div className="ml-auto flex items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
