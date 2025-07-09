@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from "react";
@@ -11,7 +12,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 import { DateRange } from "react-day-picker";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { format, eachDayOfInterval } from "date-fns";
+import { format, eachDayOfInterval, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -48,12 +49,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
     to.setHours(23, 59, 59, 999);
 
     const filteredCustomers = allCustomers.filter(customer => {
-        const saleDate = new Date(customer.saleDate);
+        const saleDate = parseISO(customer.saleDate);
         return saleDate >= from && saleDate <= to;
     });
 
     const filteredIncomeRecords = allIncomeRecords.filter(record => {
-        const saleDate = new Date(record.saleDate);
+        const saleDate = parseISO(record.saleDate);
         return saleDate >= from && saleDate <= to;
     });
 
@@ -82,18 +83,19 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
         if (isAllTime) {
           if (allCustomers.length === 0) {
             setChartData([]);
+            setLoadingChart(false);
             return;
           }
-          const sortedCustomers = [...allCustomers].sort((a, b) => new Date(a.saleDate).getTime() - new Date(b.saleDate).getTime());
+          const sortedCustomers = [...allCustomers].sort((a, b) => parseISO(a.saleDate).getTime() - parseISO(b.saleDate).getTime());
           const newCustomersByMonth: Record<string, number> = {};
           sortedCustomers.forEach(customer => {
-            const month = format(new Date(customer.saleDate), 'yyyy-MM');
+            const month = format(parseISO(customer.saleDate), 'yyyy-MM');
             newCustomersByMonth[month] = (newCustomersByMonth[month] || 0) + 1;
           });
 
           const formattedData = Object.keys(newCustomersByMonth).sort().map(monthStr => {
             const [year, month] = monthStr.split('-').map(Number);
-            const date = new Date(year, month - 1, 2); // Use 2nd to avoid timezone issues with month changes
+            const date = new Date(year, month - 1, 15); // Use mid-month to avoid timezone issues
             return { date: format(date, 'MMM yy'), customers: newCustomersByMonth[monthStr] };
           });
           setChartData(formattedData);
@@ -103,7 +105,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
           
           const dailyNewCustomers: Record<string, number> = {};
           filteredCustomers.forEach(customer => {
-              const dayStr = format(new Date(customer.saleDate), 'yyyy-MM-dd');
+              const dayStr = format(parseISO(customer.saleDate), 'yyyy-MM-dd');
               dailyNewCustomers[dayStr] = (dailyNewCustomers[dayStr] || 0) + 1;
           });
 
