@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from "react";
@@ -75,7 +74,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
     };
     fetchSettings();
 
-    const processCustomerGrowthData = () => {
+    const processNewCustomerData = () => {
       setLoadingChart(true);
       try {
         const isAllTime = !dateRange || !dateRange.from;
@@ -86,54 +85,50 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
             return;
           }
           const sortedCustomers = [...allCustomers].sort((a, b) => new Date(a.saleDate).getTime() - new Date(b.saleDate).getTime());
-          const growthByMonth: Record<string, number> = {};
+          const newCustomersByMonth: Record<string, number> = {};
           sortedCustomers.forEach(customer => {
             const month = format(new Date(customer.saleDate), 'yyyy-MM');
-            growthByMonth[month] = (growthByMonth[month] || 0) + 1;
+            newCustomersByMonth[month] = (newCustomersByMonth[month] || 0) + 1;
           });
 
-          let cumulativeCount = 0;
-          const formattedData = Object.keys(growthByMonth).sort().map(monthStr => {
-            cumulativeCount += growthByMonth[monthStr];
+          const formattedData = Object.keys(newCustomersByMonth).sort().map(monthStr => {
             const [year, month] = monthStr.split('-').map(Number);
-            const date = new Date(year, month - 1, 2);
-            return { date: format(date, 'MMM yy'), customers: cumulativeCount };
+            const date = new Date(year, month - 1, 2); // Use 2nd to avoid timezone issues with month changes
+            return { date: format(date, 'MMM yy'), customers: newCustomersByMonth[monthStr] };
           });
           setChartData(formattedData);
         } else {
           const startOfRange = dateRange.from!;
           const endOfRange = dateRange.to ?? dateRange.from!;
           
-          const dailyIncrements: Record<string, number> = {};
+          const dailyNewCustomers: Record<string, number> = {};
           filteredCustomers.forEach(customer => {
               const dayStr = format(new Date(customer.saleDate), 'yyyy-MM-dd');
-              dailyIncrements[dayStr] = (dailyIncrements[dayStr] || 0) + 1;
+              dailyNewCustomers[dayStr] = (dailyNewCustomers[dayStr] || 0) + 1;
           });
 
           const allDays = eachDayOfInterval({ start: startOfRange, end: endOfRange });
           
-          let cumulativeCount = 0; // Start count from 0 for the period
           const formattedData = allDays.map(day => {
               const dayStr = format(day, 'yyyy-MM-dd');
-              cumulativeCount += (dailyIncrements[dayStr] || 0);
-              return { date: format(day, 'MMM d'), customers: cumulativeCount };
+              return { date: format(day, 'MMM d'), customers: dailyNewCustomers[dayStr] || 0 };
           });
           setChartData(formattedData);
         }
       } catch (error) {
-        console.error("Failed to process customer growth data:", error);
+        console.error("Failed to process new customer data:", error);
         setChartData([]);
       } finally {
         setLoadingChart(false);
       }
     };
 
-    processCustomerGrowthData();
+    processNewCustomerData();
   }, [allCustomers, filteredCustomers, dateRange]);
   
   const chartConfig = {
     customers: {
-      label: "Customers",
+      label: "New Customers",
       color: "hsl(var(--primary))",
     },
   };
@@ -254,9 +249,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
       
       <Card className="hidden md:block">
         <CardHeader>
-          <CardTitle>Customer Growth</CardTitle>
+          <CardTitle>New Customer Registrations</CardTitle>
           <CardDescription>
-            {isAllTime ? "Total cumulative customer growth over time." : "Cumulative new customers added during the selected period."}
+            {isAllTime ? "Number of new customers registered over time." : "Number of new customers registered in the selected period."}
           </CardDescription>
         </CardHeader>
         <CardContent className="pl-2">
