@@ -413,6 +413,9 @@ const AppLayout = ({ user }: { user: User }) => {
                 <DropdownMenuLabel className="font-normal">
                   <p className="font-semibold">{user.name}</p>
                   <p className="text-xs text-muted-foreground">{user.role}</p>
+                  {user.role === 'Salesman' && user.salesmanStage && (
+                    <p className="text-xs text-muted-foreground capitalize pt-1">{user.salesmanStage.toLowerCase()}</p>
+                  )}
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => setIsProfileSettingsOpen(true)}>
@@ -443,3 +446,5 @@ const AppLayout = ({ user }: { user: User }) => {
 };
 
 export default AppLayout;
+
+    
