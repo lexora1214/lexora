@@ -7,7 +7,7 @@
     --background: 0 0% 7%; /* #121212 */
     --foreground: 0 0% 95%; /* #F1F1F1 */
 
-    --card: 0 0% 10%; /* #1A1A1A */
+    --card: 0 0% 100% / 0.1; /* #FFFFFF with 10% opacity */
     --card-foreground: 0 0% 95%; /* #F1F1F1 */
 
     --popover: 0 0% 10%; /* #1A1A1A */
@@ -36,7 +36,7 @@
     --warning: 48 96% 53%;
     --warning-foreground: 240 5.9% 10%;
 
-    --border: 0 0% 69%; /* #B0B0B0 */
+    --border: 0 0% 69% / 0.3; /* #B0B0B0 with 30% opacity */
     --input: 0 0% 69%; /* #B0B0B0 */
     --ring: 193 100% 42%; /* #00B4D8 */
 
@@ -51,7 +51,7 @@
     --background: 0 0% 7%; /* #121212 */
     --foreground: 0 0% 95%; /* #F1F1F1 */
 
-    --card: 0 0% 10%; /* #1A1A1A */
+    --card: 0 0% 100% / 0.1; /* #FFFFFF with 10% opacity */
     --card-foreground: 0 0% 95%; /* #F1F1F1 */
 
     --popover: 0 0% 10%; /* #1A1A1A */
@@ -80,7 +80,7 @@
     --warning: 48 96% 63%;
     --warning-foreground: 240 5.9% 10%;
 
-    --border: 0 0% 69%; /* #B0B0B0 */
+    --border: 0 0% 69% / 0.3; /* #B0B0B0 with 30% opacity */
     --input: 0 0% 69%; /* #B0B0B0 */
     --ring: 193 100% 42%; /* #00B4D8 */
 
@@ -98,5 +98,11 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply backdrop-blur-md;
   }
 }
