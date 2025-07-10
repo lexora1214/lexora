@@ -124,6 +124,8 @@ export interface IncomeRecord {
   productPrice?: number;
   paymentMethod?: 'cash' | 'installments';
   installmentNumber?: number;
+  // Payout ID for salaries
+  payoutId?: string;
 }
 
 
@@ -161,7 +163,7 @@ export interface SalarySettings {
 }
 
 export interface MonthlySalaryPayout {
-    id: string; // YYYY-MM
+    id: string; // A unique ID for the payout transaction, e.g., timestamp or ISO date string
     payoutDate: string;
     processedBy: string; // Admin User ID
     totalUsersPaid: number;

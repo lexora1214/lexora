@@ -2,14 +2,14 @@
 
 import React, { useEffect, useState } from "react";
 import { useForm, SubmitHandler } from "react-hook-form";
-import { processMonthlySalaries, getSalarySettings, updateSalarySettings } from "@/lib/firestore";
+import { processMonthlySalaries, getSalarySettings, updateSalarySettings, getSalaryPayouts, reverseSalaryPayout } from "@/lib/firestore";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { LoaderCircle, AlertTriangle, PartyPopper } from "lucide-react";
-import { SalarySettings, User } from "@/types";
+import { LoaderCircle, AlertTriangle, History, Undo2 } from "lucide-react";
+import { SalarySettings, User, MonthlySalaryPayout } from "@/types";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -23,6 +23,14 @@ import {
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 const SALARY_ROLES: (keyof SalarySettings)[] = [
   "BUSINESS PROMOTER (stage 01)",
@@ -41,6 +49,8 @@ const SalarySettingsForm: React.FC<SalarySettingsProps> = ({ user }) => {
     const [isLoading, setIsLoading] = useState(false);
     const [isFetching, setIsFetching] = useState(true);
     const [isPaying, setIsPaying] = useState(false);
+    const [isReversing, setIsReversing] = useState<string | null>(null);
+    const [payouts, setPayouts] = useState<MonthlySalaryPayout[]>([]);
     const currentMonthYear = format(new Date(), "MMMM yyyy");
 
     const {
@@ -50,22 +60,27 @@ const SalarySettingsForm: React.FC<SalarySettingsProps> = ({ user }) => {
         formState: { errors },
     } = useForm<SalarySettings>();
 
+    const fetchInitialData = async () => {
+        setIsFetching(true);
+        try {
+            const [settings, payoutsData] = await Promise.all([
+                getSalarySettings(),
+                getSalaryPayouts(),
+            ]);
+            reset(settings);
+            setPayouts(payoutsData);
+        } catch (error) {
+            toast({
+                variant: "destructive",
+                title: "Error fetching data",
+                description: "Could not load salary settings or payout history.",
+            });
+        } finally {
+            setIsFetching(false);
+        }
+    };
+
     useEffect(() => {
-        const fetchInitialData = async () => {
-            setIsFetching(true);
-            try {
-                const settings = await getSalarySettings();
-                reset(settings);
-            } catch (error) {
-                toast({
-                    variant: "destructive",
-                    title: "Error fetching data",
-                    description: "Could not load salary settings.",
-                });
-            } finally {
-                setIsFetching(false);
-            }
-        };
         fetchInitialData();
     }, [reset, toast]);
     
@@ -96,12 +111,31 @@ const SalarySettingsForm: React.FC<SalarySettingsProps> = ({ user }) => {
                 variant: 'default',
                 className: 'bg-success text-success-foreground'
             });
+            await fetchInitialData(); // Refresh history
         } catch (error: any) {
              toast({ variant: "destructive", title: "Payment Failed", description: error.message });
         } finally {
             setIsPaying(false);
         }
     };
+
+    const handleReversePayout = async (payoutId: string) => {
+        setIsReversing(payoutId);
+        try {
+            await reverseSalaryPayout(payoutId);
+            toast({
+                title: "Payout Reversed",
+                description: "The selected salary payout has been successfully undone.",
+                variant: "default",
+                className: "bg-success text-success-foreground",
+            });
+            await fetchInitialData(); // Refresh history
+        } catch (error: any) {
+            toast({ variant: "destructive", title: "Reversal Failed", description: error.message });
+        } finally {
+            setIsReversing(null);
+        }
+    }
 
 
     if (isFetching) {
@@ -188,6 +222,78 @@ const SalarySettingsForm: React.FC<SalarySettingsProps> = ({ user }) => {
                         </AlertDialogContent>
                     </AlertDialog>
                 </CardFooter>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2"><History /> Payout History</CardTitle>
+                    <CardDescription>A log of all salary payouts. You can reverse a payout if it was made in error.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                   <div className="rounded-md border">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Payout Date</TableHead>
+                                    <TableHead>Users Paid</TableHead>
+                                    <TableHead className="text-right">Total Amount</TableHead>
+                                    <TableHead className="text-center">Actions</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {payouts.length > 0 ? (
+                                    payouts.map(payout => (
+                                        <TableRow key={payout.id}>
+                                            <TableCell>
+                                                <div className="font-medium">{format(new Date(payout.payoutDate), "PPP p")}</div>
+                                                <div className="text-xs text-muted-foreground">{payout.id}</div>
+                                            </TableCell>
+                                            <TableCell>{payout.totalUsersPaid}</TableCell>
+                                            <TableCell className="text-right font-mono">LKR {payout.totalAmountPaid.toLocaleString()}</TableCell>
+                                            <TableCell className="text-center">
+                                                <AlertDialog>
+                                                    <AlertDialogTrigger asChild>
+                                                        <Button variant="outline" size="sm" disabled={!!isReversing}>
+                                                             {isReversing === payout.id ? (
+                                                                <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+                                                            ) : (
+                                                                <Undo2 className="mr-2 h-4 w-4" />
+                                                            )}
+                                                            Reverse
+                                                        </Button>
+                                                    </AlertDialogTrigger>
+                                                    <AlertDialogContent>
+                                                        <AlertDialogHeader>
+                                                            <AlertDialogTitle>Reverse this payout?</AlertDialogTitle>
+                                                            <AlertDialogDescription>
+                                                                This will permanently delete this payout record and subtract the salary amounts from all respective employees' income. This action cannot be undone.
+                                                            </AlertDialogDescription>
+                                                        </AlertDialogHeader>
+                                                        <AlertDialogFooter>
+                                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                            <AlertDialogAction
+                                                                disabled={!!isReversing}
+                                                                onClick={() => handleReversePayout(payout.id)}
+                                                                className={cn(buttonVariants({ variant: "destructive" }))}
+                                                            >
+                                                                 {isReversing === payout.id && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
+                                                                Yes, reverse payout
+                                                            </AlertDialogAction>
+                                                        </AlertDialogFooter>
+                                                    </AlertDialogContent>
+                                                </AlertDialog>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                ) : (
+                                    <TableRow>
+                                        <TableCell colSpan={4} className="h-24 text-center">No payout history found.</TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                   </div>
+                </CardContent>
             </Card>
         </div>
     );

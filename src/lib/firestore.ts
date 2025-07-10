@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc, collection, getDocs, query, where, writeBatch, increment, updateDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, collection, getDocs, query, where, writeBatch, increment, updateDoc, deleteDoc } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage } from "./firebase";
@@ -757,10 +757,8 @@ export async function updateSalarySettings(data: SalarySettings): Promise<void> 
 
 export async function processMonthlySalaries(adminUser: User): Promise<{ usersPaid: number; totalAmount: number; }> {
     const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth() + 1;
     // Make ID unique for every payout by including the timestamp
-    const payoutId = `${year}-${String(month).padStart(2, '0')}-${now.getTime()}`;
+    const payoutId = `${now.toISOString()}`;
 
     const allUsers = await getAllUsers();
     const salarySettings = await getSalarySettings();
@@ -772,22 +770,25 @@ export async function processMonthlySalaries(adminUser: User): Promise<{ usersPa
 
     for (const user of allUsers) {
         let salaryAmount = 0;
+        let roleOrStage: keyof SalarySettings | undefined;
+
         if (user.role === 'Salesman' && user.salesmanStage) {
-            salaryAmount = salarySettings[user.salesmanStage];
-        } else if (user.role in salarySettings) {
-             const key = user.role as keyof SalarySettings;
-             salaryAmount = salarySettings[key];
+            roleOrStage = user.salesmanStage;
+        } else if (Object.keys(DEFAULT_SALARY_SETTINGS).includes(user.role)) {
+            roleOrStage = user.role as keyof SalarySettings;
         }
 
-        if (salaryAmount && salaryAmount > 0) {
+        if (roleOrStage) {
+            salaryAmount = salarySettings[roleOrStage] ?? 0;
+        }
+
+        if (salaryAmount > 0) {
             usersPaid++;
             totalAmount += salaryAmount;
 
-            // Update user's total income
             const userRef = doc(db, "users", user.id);
             batch.update(userRef, { totalIncome: increment(salaryAmount) });
 
-            // Create income record
             const incomeRecordRef = doc(collection(db, "incomeRecords"));
             const newIncomeRecord: IncomeRecord = {
                 id: incomeRecordRef.id,
@@ -795,9 +796,10 @@ export async function processMonthlySalaries(adminUser: User): Promise<{ usersPa
                 amount: salaryAmount,
                 saleDate: payoutDate,
                 grantedForRole: user.role,
-                salesmanId: user.id, // For salary, it's their own record
+                salesmanId: user.id,
                 salesmanName: user.name,
                 sourceType: 'salary',
+                payoutId: payoutId, // Tag the income record with the payout ID
             };
             batch.set(incomeRecordRef, newIncomeRecord);
         }
@@ -807,7 +809,6 @@ export async function processMonthlySalaries(adminUser: User): Promise<{ usersPa
         throw new Error("No users were eligible for a salary payment.");
     }
 
-    // Log this specific payout transaction
     const payoutDocRef = doc(db, "salaryPayouts", payoutId);
     const newPayoutRecord: MonthlySalaryPayout = {
         id: payoutId,
@@ -821,4 +822,42 @@ export async function processMonthlySalaries(adminUser: User): Promise<{ usersPa
     await batch.commit();
     
     return { usersPaid, totalAmount };
+}
+
+export async function getSalaryPayouts(): Promise<MonthlySalaryPayout[]> {
+    const payoutsCol = collection(db, "salaryPayouts");
+    const q = query(payoutsCol);
+    const payoutsSnap = await getDocs(q);
+    const payouts = payoutsSnap.docs.map(doc => doc.data() as MonthlySalaryPayout);
+    return payouts.sort((a, b) => new Date(b.payoutDate).getTime() - new Date(a.payoutDate).getTime());
+}
+
+export async function reverseSalaryPayout(payoutId: string): Promise<void> {
+    const batch = writeBatch(db);
+    const payoutDocRef = doc(db, "salaryPayouts", payoutId);
+    
+    const incomeQuery = query(collection(db, "incomeRecords"), where("payoutId", "==", payoutId));
+    const incomeRecordsSnap = await getDocs(incomeQuery);
+    
+    if (incomeRecordsSnap.empty) {
+        // If no records found, maybe it was already reversed. Just delete the log.
+        await deleteDoc(payoutDocRef);
+        return;
+    }
+
+    for (const recordDoc of incomeRecordsSnap.docs) {
+        const record = recordDoc.data() as IncomeRecord;
+        
+        // Decrement user's total income
+        const userRef = doc(db, "users", record.userId);
+        batch.update(userRef, { totalIncome: increment(-record.amount) });
+        
+        // Delete the income record
+        batch.delete(recordDoc.ref);
+    }
+    
+    // Delete the original payout log
+    batch.delete(payoutDocRef);
+    
+    await batch.commit();
 }
