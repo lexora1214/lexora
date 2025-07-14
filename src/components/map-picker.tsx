@@ -78,17 +78,8 @@ const SriLankaMapSVG = ({ markerPosition }: { markerPosition: { lat: number; lng
 
 
 const MapPicker: React.FC<MapPickerProps> = ({ onLocationChange, initialPosition, isDisplayOnly = false }) => {
-  const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
-  const { isLoaded, loadError } = useJsApiLoader({
-    id: 'google-map-script',
-    googleMapsApiKey: googleMapsApiKey,
-  });
-
-  const [map, setMap] = React.useState<google.maps.Map | null>(null)
-  const [markerPosition, setMarkerPosition] = useState(initialPosition || null);
   const [isOnline, setIsOnline] = useState(true);
-  const { toast } = useToast();
-
+  
   useEffect(() => {
     // Check network status on component mount and listen for changes
     const updateOnlineStatus = () => {
@@ -103,6 +94,33 @@ const MapPicker: React.FC<MapPickerProps> = ({ onLocationChange, initialPosition
         window.removeEventListener('offline', updateOnlineStatus);
     };
   }, []);
+  
+  // Conditionally render the map loader hook
+  return isOnline ? (
+    <OnlineMapPicker 
+      onLocationChange={onLocationChange} 
+      initialPosition={initialPosition} 
+      isDisplayOnly={isDisplayOnly}
+    />
+  ) : (
+    <OfflineMapPicker 
+      onLocationChange={onLocationChange} 
+      initialPosition={initialPosition} 
+      isDisplayOnly={isDisplayOnly}
+    />
+  );
+};
+
+const OnlineMapPicker: React.FC<MapPickerProps> = ({ onLocationChange, initialPosition, isDisplayOnly = false }) => {
+  const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
+  const { isLoaded, loadError } = useJsApiLoader({
+    id: 'google-map-script',
+    googleMapsApiKey: googleMapsApiKey,
+  });
+
+  const [map, setMap] = React.useState<google.maps.Map | null>(null)
+  const [markerPosition, setMarkerPosition] = useState(initialPosition || null);
+  const { toast } = useToast();
 
   const handleMapClick = useCallback(
     (event: google.maps.MapMouseEvent) => {
@@ -134,7 +152,7 @@ const MapPicker: React.FC<MapPickerProps> = ({ onLocationChange, initialPosition
             title: "Location Captured",
             description: "Your current location has been set.",
           });
-          if (map && isOnline) {
+          if (map) {
             map.panTo(newPos);
             map.setZoom(15);
           }
@@ -164,21 +182,16 @@ const MapPicker: React.FC<MapPickerProps> = ({ onLocationChange, initialPosition
   const onMapUnmount = React.useCallback(function callback(mapInstance: google.maps.Map) {
     setMap(null)
   }, [])
-
+  
   if (loadError) {
-    return (
-        <div className="text-destructive text-center text-sm p-4 border border-destructive/50 rounded-md bg-destructive/10 h-[300px] flex items-center justify-center">
-            Error loading map. Please ensure the Google Maps API key is configured correctly and you are online.
-        </div>
-    );
+    return <OfflineMapPicker onLocationChange={onLocationChange} initialPosition={initialPosition} isDisplayOnly={isDisplayOnly} />;
   }
 
-  const renderContent = () => {
-    if (!isLoaded) {
-      return <Skeleton className="h-[300px] w-full rounded-lg" />;
-    }
-    if (isOnline) {
-      return (
+  return (
+    <div className="relative">
+      {!isLoaded ? (
+         <Skeleton className="h-[300px] w-full rounded-lg" />
+      ) : (
         <GoogleMap
           mapContainerStyle={containerStyle}
           center={markerPosition || defaultCenter}
@@ -197,15 +210,7 @@ const MapPicker: React.FC<MapPickerProps> = ({ onLocationChange, initialPosition
         >
           {markerPosition && <Marker position={markerPosition} />}
         </GoogleMap>
-      );
-    }
-    // Offline: Show SVG map
-    return <SriLankaMapSVG markerPosition={markerPosition} />;
-  };
-
-  return (
-    <div className="relative">
-      {renderContent()}
+      )}
       {!isDisplayOnly && (
         <Button 
           type="button" 
@@ -222,4 +227,64 @@ const MapPicker: React.FC<MapPickerProps> = ({ onLocationChange, initialPosition
   );
 };
 
+const OfflineMapPicker: React.FC<MapPickerProps> = ({ onLocationChange, initialPosition, isDisplayOnly = false }) => {
+  const [markerPosition, setMarkerPosition] = useState(initialPosition || null);
+  const { toast } = useToast();
+
+  const handleGetCurrentLocation = () => {
+    if (isDisplayOnly || !onLocationChange) return;
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const newPos = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          };
+          setMarkerPosition(newPos);
+          onLocationChange(newPos);
+          toast({
+            title: "Location Captured (Offline)",
+            description: "Your current location has been set.",
+          });
+        },
+        (error) => {
+          console.error("Geolocation error:", error);
+          toast({
+            variant: "destructive",
+            title: "Location Error",
+            description: `Could not get your location: ${error.message}`,
+          });
+        }
+      );
+    } else {
+        toast({
+            variant: "destructive",
+            title: "Location Error",
+            description: "Geolocation is not supported by this browser.",
+        });
+    }
+  };
+
+  return (
+    <div className="relative">
+      <SriLankaMapSVG markerPosition={markerPosition} />
+      {!isDisplayOnly && (
+        <Button 
+          type="button" 
+          variant="secondary"
+          size="icon"
+          onClick={handleGetCurrentLocation}
+          className="absolute bottom-3 right-3 rounded-full shadow-lg z-20"
+          title="Use my current location"
+        >
+          <LocateFixed className="h-5 w-5" />
+        </Button>
+      )}
+    </div>
+  );
+};
+
+
 export default MapPicker;
+
+    
