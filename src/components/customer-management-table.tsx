@@ -162,16 +162,23 @@ export default function CustomerManagementTable({ data, users, allProductSales }
         return saleDate >= from && saleDate <= to;
     });
   }, [data, dateRange]);
+  
+  const sortedData = React.useMemo(() => {
+    return [...dateFilteredData].sort((a, b) => new Date(b.saleDate).getTime() - new Date(a.saleDate).getTime());
+  }, [dateFilteredData]);
 
-  const availableData = React.useMemo(() => dateFilteredData.filter(c => c.tokenIsAvailable), [dateFilteredData]);
-  const unavailableData = React.useMemo(() => dateFilteredData.filter(c => !c.tokenIsAvailable), [dateFilteredData]);
+
+  const availableData = React.useMemo(() => sortedData.filter(c => c.tokenIsAvailable), [sortedData]);
+  const unavailableData = React.useMemo(() => sortedData.filter(c => !c.tokenIsAvailable), [sortedData]);
 
   const totalTokens = dateFilteredData.length;
   const usedTokens = unavailableData.length;
   const percentageUsed = totalTokens > 0 ? (usedTokens / totalTokens) * 100 : 0;
 
   const useTable = (tableData: Customer[]) => {
-      const [sorting, setSorting] = React.useState<SortingState>([]);
+      const [sorting, setSorting] = React.useState<SortingState>([
+        { id: "saleDate", desc: true }
+      ]);
       return useReactTable({
           data: tableData,
           columns,
@@ -393,6 +400,22 @@ export default function CustomerManagementTable({ data, users, allProductSales }
                   <AccordionContent className="pt-4">
                       <div className="rounded-md border">
                           <Table>
+                              <TableHeader>
+                                {unavailableTable.getHeaderGroups().map((headerGroup) => (
+                                <TableRow key={headerGroup.id}>
+                                    {headerGroup.headers.map((header) => (
+                                    <TableHead key={header.id}>
+                                        {header.isPlaceholder
+                                        ? null
+                                        : flexRender(
+                                            header.column.columnDef.header,
+                                            header.getContext()
+                                        )}
+                                    </TableHead>
+                                    ))}
+                                </TableRow>
+                                ))}
+                            </TableHeader>
                               <TableBody>
                                   {unavailableTable.getRowModel().rows.map((row) => (
                                       <TableRow 
