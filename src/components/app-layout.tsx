@@ -26,6 +26,9 @@ import {
   Repeat,
   HandCoins,
   ShieldCheck,
+  Signal,
+  SignalLow,
+  SignalZero,
 } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
@@ -72,6 +75,8 @@ import ManageRecoveryView from "./manage-recovery-view";
 import RecoveryOfficerDashboard from "./recovery-officer-dashboard";
 import CommissionApprovalView from "./commission-approval-view";
 import SalarySettingsForm from "./salary-settings";
+import { useOfflineSync } from "@/hooks/use-offline-sync";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 
 type NavItem = {
   href: string;
@@ -187,6 +192,56 @@ const SidebarNav = ({ user, activeView, setActiveView, onLinkClick }: { user: Us
   </nav>
 );
 
+const OfflineIndicator = () => {
+  const { isOffline, hasPendingWrites } = useOfflineSync();
+
+  if (!isOffline && !hasPendingWrites) return null;
+
+  const getIndicator = () => {
+    if (isOffline) {
+      return {
+        Icon: SignalZero,
+        text: "You are currently offline.",
+        tooltip: "Data is being saved locally and will sync when you're back online.",
+        color: "text-amber-500",
+      };
+    }
+    if (hasPendingWrites) {
+      return {
+        Icon: SignalLow,
+        text: "Syncing pending data...",
+        tooltip: "Your locally saved data is being uploaded to the server.",
+        color: "text-blue-500 animate-pulse",
+      };
+    }
+    return {
+      Icon: Signal,
+      text: "Online & Synced",
+      tooltip: "Your data is up to date.",
+      color: "text-success",
+    };
+  };
+
+  const { Icon, text, tooltip, color } = getIndicator();
+
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className={cn("flex items-center gap-2", color)}>
+            <Icon className="h-4 w-4" />
+            <span className="hidden sm:inline text-xs">{text}</span>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>{tooltip}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+};
+
+
 const AppLayout = ({ user }: { user: User }) => {
   const router = useRouter();
   const [activeView, setActiveView] = React.useState("Dashboard");
@@ -200,28 +255,28 @@ const AppLayout = ({ user }: { user: User }) => {
   const [isProfileSettingsOpen, setIsProfileSettingsOpen] = React.useState(false);
 
   React.useEffect(() => {
-    const usersUnsub = onSnapshot(collection(db, "users"), (snapshot) => {
+    const usersUnsub = onSnapshot(collection(db, "users"), { includeMetadataChanges: true }, (snapshot) => {
       const usersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
       setAllUsers(usersData);
       setLoading(false);
     });
 
-    const customersUnsub = onSnapshot(collection(db, "customers"), (snapshot) => {
+    const customersUnsub = onSnapshot(collection(db, "customers"), { includeMetadataChanges: true }, (snapshot) => {
       const customersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
       setAllCustomers(customersData);
     });
 
-    const incomeRecordsUnsub = onSnapshot(collection(db, "incomeRecords"), (snapshot) => {
+    const incomeRecordsUnsub = onSnapshot(collection(db, "incomeRecords"), { includeMetadataChanges: true }, (snapshot) => {
         const incomeRecordsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as IncomeRecord));
         setAllIncomeRecords(incomeRecordsData);
     });
 
-    const productSalesUnsub = onSnapshot(collection(db, "productSales"), (snapshot) => {
+    const productSalesUnsub = onSnapshot(collection(db, "productSales"), { includeMetadataChanges: true }, (snapshot) => {
         const salesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProductSale));
         setAllProductSales(salesData);
     });
 
-    const commissionRequestsUnsub = onSnapshot(collection(db, "commissionRequests"), (snapshot) => {
+    const commissionRequestsUnsub = onSnapshot(collection(db, "commissionRequests"), { includeMetadataChanges: true }, (snapshot) => {
       const requestsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as CommissionRequest));
       setAllCommissionRequests(requestsData);
     });
@@ -403,6 +458,7 @@ const AppLayout = ({ user }: { user: User }) => {
             <div className="w-full flex-1">
               <h1 className="font-headline text-xl">{activeView}</h1>
             </div>
+            <OfflineIndicator />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="secondary" size="icon" className="rounded-full">
