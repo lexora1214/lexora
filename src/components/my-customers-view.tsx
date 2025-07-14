@@ -36,7 +36,9 @@ const MyCustomersView: React.FC<MyCustomersViewProps> = ({ user, allCustomers, a
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
 
   const myCustomers = React.useMemo(() => {
-    return allCustomers.filter(c => c.salesmanId === user.id);
+    return allCustomers
+      .filter(c => c.salesmanId === user.id)
+      .sort((a, b) => new Date(b.saleDate).getTime() - new Date(a.saleDate).getTime());
   }, [allCustomers, user.id]);
 
   const filteredCustomers = React.useMemo(() => {
