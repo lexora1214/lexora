@@ -1,109 +1,110 @@
-// A robust service worker for a Next.js PWA
 
 const CACHE_NAME = 'lexora-cache-v1';
-const PRECACHE_ASSETS = [
-    '/',
-    '/login',
-    '/signup',
-    '/manifest.json',
-    '/my-logo.png',
-    '/icons/icon-192x192.png',
-    '/icons/icon-512x512.png',
-    'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap',
-    'https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap',
-    'https://fonts.gstatic.com/s/inter/v13/UcC73FwrK3iLTeHuS_fvQtMwCp50KnMa1ZL7.woff2',
-    'https://fonts.gstatic.com/s/spacegrotesk/v16/V8mQoQDjQtsPqBpqh_-9_hVdkLZeHfen92g.woff2'
+const DYNAMIC_CACHE_NAME = 'lexora-dynamic-cache-v1';
+
+// URLs to cache on installation
+const urlsToCache = [
+  '/',
+  '/manifest.json',
+  '/my-logo.png',
+  // Note: Next.js build files are added dynamically below
 ];
 
-// 1. Installation: Pre-cache the main shell and static assets
+// URLs to always fetch from the network first
+const networkFirstUrls = [
+    '/login',
+    '/signup',
+    '/'
+];
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => {
-        console.log('[Service Worker] Pre-caching offline assets');
-        return cache.addAll(PRECACHE_ASSETS);
-      })
-      .then(() => {
-        // Force the waiting service worker to become the active service worker.
-        self.skipWaiting(); 
-      })
-  );
-});
-
-// 2. Activation: Clean up old caches
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
-            console.log('[Service Worker] Clearing old cache:', cacheName);
-            return caches.delete(cacheName);
-          }
+    caches.open(CACHE_NAME).then((cache) => {
+      // Fetch the asset manifest from Next.js build
+      return fetch('/_next/static/asset-manifest.json')
+        .then(response => response.json())
+        .then(assets => {
+          const toCache = [
+            '/',
+            '/manifest.json',
+            '/my-logo.png',
+            'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap',
+            'https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap',
+            'https://fonts.gstatic.com/s/inter/v13/UcC73FwrK3iLTeHuS_fvQtMwCp50KnMa1ZL7.woff2',
+            'https://fonts.gstatic.com/s/spacegrotesk/v16/V8mQoQDjQSkFtoMM3T6r8E7mF71Q-gOoraIAEj62UUsjNsFjTDJK.woff2',
+            ...Object.values(assets)
+          ];
+          console.log('[Service Worker] Caching app shell', toCache);
+          return cache.addAll(toCache);
         })
-      );
-    }).then(() => {
-        // Tell the active service worker to take control of the page immediately.
-        return self.clients.claim();
+        .catch(err => {
+            console.error('[Service Worker] Failed to fetch asset manifest. Caching default URLs.', err);
+            return cache.addAll(urlsToCache);
+        });
     })
   );
 });
 
-// 3. Fetch: Intercept network requests and serve from cache if necessary
-self.addEventListener('fetch', (event) => {
-  const { request } = event;
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames
+          .filter(name => name !== CACHE_NAME && name !== DYNAMIC_CACHE_NAME)
+          .map(name => caches.delete(name))
+      );
+    })
+  );
+});
 
-  // For navigation requests (pages), use a network-first strategy.
-  if (request.mode === 'navigate') {
+self.addEventListener('fetch', (event) => {
+    const { request } = event;
+    const url = new URL(request.url);
+
+    // Always try network first for navigation requests (HTML pages)
+    if (request.mode === 'navigate') {
+        event.respondWith(
+            fetch(request)
+                .then(response => {
+                    // If successful, cache the response in the dynamic cache
+                    return caches.open(DYNAMIC_CACHE_NAME).then(cache => {
+                        cache.put(request.url, response.clone());
+                        return response;
+                    });
+                })
+                .catch(() => {
+                    // If network fails, try to serve from cache
+                    return caches.match(request);
+                })
+        );
+        return;
+    }
+    
+    // For other requests (CSS, JS, images), use cache-first strategy
     event.respondWith(
-      fetch(request)
-        .then((response) => {
-          // If the network request is successful, clone it and cache it.
-          const responseToCache = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(request, responseToCache);
-          });
-          return response;
-        })
-        .catch(() => {
-          // If the network fails, serve the cached version of the page.
-          return caches.match(request)
-            .then((cachedResponse) => {
-              // If we have a cached version, serve it.
-              if (cachedResponse) {
-                return cachedResponse;
-              }
-              // If the specific page isn't cached, fall back to the main offline page.
-              return caches.match('/'); 
+        caches.match(request).then((response) => {
+            if (response) {
+                return response; // Serve from cache
+            }
+
+            // If not in cache, fetch from network
+            return fetch(request).then((networkResponse) => {
+                // Cache the new response for future use
+                return caches.open(DYNAMIC_CACHE_NAME).then((cache) => {
+                    // Don't cache chrome-extension requests
+                    if (request.url.startsWith('chrome-extension://')) {
+                        return networkResponse;
+                    }
+                    cache.put(request.url, networkResponse.clone());
+                    return networkResponse;
+                });
             });
+        }).catch(error => {
+            // This will be triggered for things like failed API calls when offline.
+            // The app's logic (e.g., Firestore offline persistence) will handle this.
+            console.warn(`[Service Worker] Fetch failed for ${request.url}; relying on app logic.`, error);
+            // We can't really return a meaningful response here for API calls,
+            // so we let the request fail, which is the expected behavior.
         })
     );
-    return;
-  }
-
-  // For all other requests (CSS, JS, images), use a cache-first strategy.
-  event.respondWith(
-    caches.match(request)
-      .then((cachedResponse) => {
-        if (cachedResponse) {
-          // If we have a cached response, return it immediately.
-          return cachedResponse;
-        }
-
-        // If it's not in the cache, fetch it from the network.
-        return fetch(request).then((networkResponse) => {
-          // Clone the response and cache it for next time.
-          const responseToCache = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(request, responseToCache);
-          });
-          return networkResponse;
-        });
-      })
-      .catch((error) => {
-        // This catch handles errors from both caches.match and fetch.
-        console.error('[Service Worker] Fetch failed:', error);
-        // You could return a fallback asset here if needed, e.g., an offline placeholder image.
-      })
-  );
 });
