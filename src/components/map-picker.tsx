@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
 import { Skeleton } from './ui/skeleton';
 import { Button } from './ui/button';
-import { LocateFixed } from 'lucide-react';
+import { LocateFixed, WifiOff } from 'lucide-react';
 
 const containerStyle = {
   width: '100%',
@@ -32,6 +32,22 @@ const MapPicker: React.FC<MapPickerProps> = ({ onLocationChange, initialPosition
 
   const [map, setMap] = React.useState<google.maps.Map | null>(null)
   const [markerPosition, setMarkerPosition] = useState(initialPosition || null);
+  const [isOnline, setIsOnline] = useState(true);
+
+  useEffect(() => {
+    // Check network status on component mount and listen for changes
+    const updateOnlineStatus = () => {
+        setIsOnline(navigator.onLine);
+    };
+    window.addEventListener('online', updateOnlineStatus);
+    window.addEventListener('offline', updateOnlineStatus);
+    updateOnlineStatus(); // Set initial status
+
+    return () => {
+        window.removeEventListener('online', updateOnlineStatus);
+        window.removeEventListener('offline', updateOnlineStatus);
+    };
+  }, []);
 
   const handleMapClick = useCallback(
     (event: google.maps.MapMouseEvent) => {
@@ -59,8 +75,10 @@ const MapPicker: React.FC<MapPickerProps> = ({ onLocationChange, initialPosition
           };
           setMarkerPosition(newPos);
           onLocationChange(newPos);
-          map?.panTo(newPos);
-          map?.setZoom(15);
+          if (map) {
+            map.panTo(newPos);
+            map.setZoom(15);
+          }
         },
         () => {
           // Handle location error if needed
@@ -77,7 +95,6 @@ const MapPicker: React.FC<MapPickerProps> = ({ onLocationChange, initialPosition
     setMap(null)
   }, [])
 
-
   if (loadError) {
     return (
         <div className="text-destructive text-center text-sm p-4 border border-destructive/50 rounded-md bg-destructive/10 h-[300px] flex items-center justify-center">
@@ -88,6 +105,13 @@ const MapPicker: React.FC<MapPickerProps> = ({ onLocationChange, initialPosition
 
   return isLoaded ? (
     <div className="relative">
+      {!isOnline && (
+         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm rounded-lg">
+            <WifiOff className="h-10 w-10 text-muted-foreground mb-2"/>
+            <p className="text-muted-foreground text-center font-semibold">Map view is unavailable offline.</p>
+            <p className="text-muted-foreground text-center text-sm">You can still capture your location.</p>
+        </div>
+      )}
       <GoogleMap
         mapContainerStyle={containerStyle}
         center={markerPosition || defaultCenter}
@@ -112,7 +136,7 @@ const MapPicker: React.FC<MapPickerProps> = ({ onLocationChange, initialPosition
           variant="secondary"
           size="icon"
           onClick={handleGetCurrentLocation}
-          className="absolute bottom-3 right-3 rounded-full shadow-lg"
+          className="absolute bottom-3 right-3 rounded-full shadow-lg z-20"
           title="Use my current location"
         >
           <LocateFixed className="h-5 w-5" />
