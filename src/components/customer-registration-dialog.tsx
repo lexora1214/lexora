@@ -101,7 +101,7 @@ const CustomerRegistrationDialog: React.FC<CustomerRegistrationDialogProps> = ({
     toast({ title: "Location Updated", description: `Set to: ${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}`});
   }, [setValue, toast]);
 
-  const onSubmit: SubmitHandler<FormValues> = async (data) => {
+  const onSubmit: SubmitHandler<FormValues> = (data) => {
     setIsLoading(true);
     
     const customerPayload: Omit<Customer, 'id' | 'saleDate' | 'commissionStatus' | 'salesmanId' | 'tokenIsAvailable'> = {
@@ -122,20 +122,21 @@ const CustomerRegistrationDialog: React.FC<CustomerRegistrationDialogProps> = ({
         monthlyInstallment: data.monthlyInstallment
     };
 
-    // Call the createCustomer function but don't wait for it to complete online.
-    // The Firestore SDK handles the offline queue.
+    // This is a "fire-and-forget" call from the UI's perspective.
+    // Firestore's offline persistence handles the rest automatically.
+    // We only catch immediate validation errors from the function itself.
     createCustomer(customerPayload, salesman).catch((error: any) => {
-      // We only need to catch potential validation errors here, not network errors.
-      // The SDK handles network issues.
       toast({
           variant: "destructive",
           title: "Registration Failed",
           description: error.message,
       });
-      setIsLoading(false); // Only stop loading on a true error.
+      // In case of a critical error, stop the loading state.
+      setIsLoading(false);
     });
 
-    // Provide immediate feedback to the user.
+    // Provide immediate feedback to the user, regardless of network status.
+    // This is the key change to make the UI feel responsive.
     toast({
       title: isOffline ? "Customer Queued" : "Request Submitted",
       description: isOffline
@@ -145,6 +146,7 @@ const CustomerRegistrationDialog: React.FC<CustomerRegistrationDialogProps> = ({
       className: 'bg-success text-success-foreground'
     });
     
+    // Close the dialog and reset the form immediately.
     onRegistrationSuccess();
     reset({ branch: salesman?.branch || "N/A" });
     onOpenChange(false);
