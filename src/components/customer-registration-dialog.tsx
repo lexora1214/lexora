@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useCallback } from "react";
@@ -21,6 +22,8 @@ import { User, Customer } from "@/types";
 import { LoaderCircle } from "lucide-react";
 import { ScrollArea } from "./ui/scroll-area";
 import MapPicker from "./map-picker";
+import { useOfflineSync } from "@/hooks/use-offline-sync";
+
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
@@ -58,6 +61,7 @@ const CustomerRegistrationDialog: React.FC<CustomerRegistrationDialogProps> = ({
 }) => {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = React.useState(false);
+  const { isOffline } = useOfflineSync();
   
   const {
     register,
@@ -99,43 +103,52 @@ const CustomerRegistrationDialog: React.FC<CustomerRegistrationDialogProps> = ({
 
   const onSubmit: SubmitHandler<FormValues> = async (data) => {
     setIsLoading(true);
-    try {
-        const customerPayload: Omit<Customer, 'id' | 'saleDate' | 'commissionStatus' | 'salesmanId' | 'tokenIsAvailable'> = {
-            name: data.name,
-            contactInfo: data.contactInfo,
-            address: data.address,
-            tokenSerial: data.tokenSerial,
-            whatsappNumber: data.whatsappNumber,
-            email: data.email,
-            location: data.latitude && data.longitude ? { latitude: data.latitude, longitude: data.longitude } : null,
-            branch: salesman.branch,
-            purchasingItem: data.purchasingItem,
-            purchasingItemCode: data.purchasingItemCode,
-            totalValue: data.totalValue,
-            discountValue: data.discountValue,
-            downPayment: data.downPayment,
-            installments: data.installments,
-            monthlyInstallment: data.monthlyInstallment
-        };
-      await createCustomer(customerPayload, salesman);
+    
+    const customerPayload: Omit<Customer, 'id' | 'saleDate' | 'commissionStatus' | 'salesmanId' | 'tokenIsAvailable'> = {
+        name: data.name,
+        contactInfo: data.contactInfo,
+        address: data.address,
+        tokenSerial: data.tokenSerial,
+        whatsappNumber: data.whatsappNumber,
+        email: data.email,
+        location: data.latitude && data.longitude ? { latitude: data.latitude, longitude: data.longitude } : null,
+        branch: salesman.branch,
+        purchasingItem: data.purchasingItem,
+        purchasingItemCode: data.purchasingItemCode,
+        totalValue: data.totalValue,
+        discountValue: data.discountValue,
+        downPayment: data.downPayment,
+        installments: data.installments,
+        monthlyInstallment: data.monthlyInstallment
+    };
+
+    // Call the createCustomer function but don't wait for it to complete online.
+    // The Firestore SDK handles the offline queue.
+    createCustomer(customerPayload, salesman).catch((error: any) => {
+      // We only need to catch potential validation errors here, not network errors.
+      // The SDK handles network issues.
       toast({
-        title: "Request Submitted",
-        description: `${data.name}'s registration is pending admin approval for commission distribution.`,
-        variant: 'default',
-        className: 'bg-success text-success-foreground'
+          variant: "destructive",
+          title: "Registration Failed",
+          description: error.message,
       });
-      onRegistrationSuccess();
-      reset({ branch: salesman?.branch || "N/A" });
-      onOpenChange(false);
-    } catch (error: any) {
-        toast({
-            variant: "destructive",
-            title: "Registration Failed",
-            description: error.message,
-        });
-    } finally {
-        setIsLoading(false);
-    }
+      setIsLoading(false); // Only stop loading on a true error.
+    });
+
+    // Provide immediate feedback to the user.
+    toast({
+      title: isOffline ? "Customer Queued" : "Request Submitted",
+      description: isOffline
+        ? "Customer queued for registration. It will sync automatically when you're online."
+        : `${data.name}'s registration is pending admin approval for commission distribution.`,
+      variant: 'default',
+      className: 'bg-success text-success-foreground'
+    });
+    
+    onRegistrationSuccess();
+    reset({ branch: salesman?.branch || "N/A" });
+    onOpenChange(false);
+    setIsLoading(false);
   };
 
   return (
