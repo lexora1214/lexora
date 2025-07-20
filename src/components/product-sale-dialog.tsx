@@ -24,6 +24,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn } from "@/lib/utils";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { ScrollArea } from "./ui/scroll-area";
+import { Badge } from "./ui/badge";
 
 const formSchema = z.object({
   customerToken: z.string({ required_error: "Please select a customer token." }),
@@ -195,11 +196,9 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
                         <Command>
                           <CommandInput placeholder="Search customer or token..." />
                           <CommandList>
-                              <CommandEmpty>No available tokens found.</CommandEmpty>
+                              <CommandEmpty>No tokens found.</CommandEmpty>
                               <CommandGroup>
-                              {customers
-                                  .filter((customer) => customer.tokenIsAvailable)
-                                  .map((customer) => (
+                              {customers.map((customer) => (
                                   <CommandItem
                                   key={customer.tokenSerial}
                                   value={`${customer.name} ${customer.tokenSerial}`}
@@ -221,7 +220,8 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
                                       field.value === customer.tokenSerial ? "opacity-100" : "opacity-0"
                                       )}
                                   />
-                                  {customer.name} - <span className="text-muted-foreground ml-2">{customer.tokenSerial}</span>
+                                  <div className="flex-grow">{customer.name} - <span className="text-muted-foreground">{customer.tokenSerial}</span></div>
+                                  {!customer.tokenIsAvailable && <Badge variant="destructive" className="ml-auto">Used</Badge>}
                                   </CommandItem>
                               ))}
                               </CommandGroup>
