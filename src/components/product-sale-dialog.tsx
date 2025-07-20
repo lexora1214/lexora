@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -158,6 +159,8 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
       setIsLoading(false);
     }
   };
+  
+  const customerList = customers.sort((a,b) => b.saleDate.localeCompare(a.saleDate));
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -198,19 +201,30 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
                           <CommandList>
                               <CommandEmpty>No tokens found.</CommandEmpty>
                               <CommandGroup>
-                              {customers.map((customer) => (
+                              {customerList.map((customer) => (
                                   <CommandItem
-                                  key={customer.tokenSerial}
+                                  key={customer.id}
                                   value={`${customer.name} ${customer.tokenSerial}`}
                                   onSelect={() => {
                                       field.onChange(customer.tokenSerial);
-                                      setValue('productName', customer.purchasingItem || '');
-                                      setValue('productCode', customer.purchasingItemCode || '');
-                                      setValue('totalValue', customer.totalValue || 0);
-                                      setValue('discountValue', customer.discountValue || undefined);
-                                      setValue('downPayment', customer.downPayment || undefined);
-                                      setValue('installments', customer.installments || undefined);
-                                      setValue('paymentMethod', customer.installments ? 'installments' : 'cash');
+                                      if (customer.tokenIsAvailable) {
+                                        setValue('productName', customer.purchasingItem || '');
+                                        setValue('productCode', customer.purchasingItemCode || '');
+                                        setValue('totalValue', customer.totalValue || 0);
+                                        setValue('discountValue', customer.discountValue || undefined);
+                                        setValue('downPayment', customer.downPayment || undefined);
+                                        setValue('installments', customer.installments || undefined);
+                                        setValue('paymentMethod', customer.installments ? 'installments' : 'cash');
+                                      } else {
+                                        // If token is used, do not auto-fill. Let manager enter new details.
+                                        setValue('productName', '');
+                                        setValue('productCode', '');
+                                        setValue('totalValue', 0);
+                                        setValue('discountValue', undefined);
+                                        setValue('downPayment', undefined);
+                                        setValue('installments', undefined);
+                                        setValue('paymentMethod', 'cash'); // Default to cash
+                                      }
                                       setIsPopoverOpen(false);
                                   }}
                                   >
@@ -258,7 +272,7 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
               
               <div>
                   <Label htmlFor="downPayment">Down Payment (LKR)</Label>
-                  <Input id="downPayment" type="number" {...register("downPayment")} disabled />
+                  <Input id="downPayment" type="number" {...register("downPayment")} />
                   {errors.downPayment && <p className="text-xs text-destructive mt-1">{errors.downPayment.message}</p>}
               </div>
 
