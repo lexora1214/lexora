@@ -5,7 +5,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { User, ProductSale, Customer } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { LoaderCircle, Phone, HandCoins, Package, CheckCircle2, DollarSign } from "lucide-react";
+import { LoaderCircle, Phone, HandCoins, Package, CheckCircle2, DollarSign, Navigation } from "lucide-react";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { markInstallmentPaid } from "@/lib/firestore";
@@ -127,6 +127,20 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
       }
   };
 
+  const handleStartRide = (customer: Customer) => {
+    if (!customer.location) {
+        toast({
+            variant: "destructive",
+            title: "Navigation Failed",
+            description: "No location is available for this customer.",
+        });
+        return;
+    }
+    const { latitude, longitude } = customer.location;
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}&travelmode=driving`;
+    window.open(url, '_blank');
+  };
+
   const getDayLabel = (dateString: string) => {
       const date = new Date(dateString);
       const today = new Date();
@@ -214,6 +228,16 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
                                             <p className="flex items-center gap-2">
                                                 <Phone className="h-4 w-4" /> {customer?.contactInfo}
                                             </p>
+                                            {customer.location && (
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="mt-2"
+                                                    onClick={() => handleStartRide(customer)}
+                                                >
+                                                    <Navigation className="mr-2 h-4 w-4" /> Start Ride
+                                                </Button>
+                                            )}
                                         </div>
                                         <div>
                                             <p className="font-semibold text-sm mb-2">Delivery Location</p>
