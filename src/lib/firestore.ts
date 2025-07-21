@@ -2,6 +2,8 @@
 
 
 
+
+
 import { doc, getDoc, setDoc, collection, getDocs, query, where, writeBatch, increment, updateDoc, deleteDoc, addDoc, runTransaction } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -128,8 +130,8 @@ export async function getCommissionSettings(): Promise<CommissionSettings> {
 }
 
 export async function updateCommissionSettings(data: CommissionSettings): Promise<void> {
-  const settingsDocRef = doc(db, "settings", "commissions");
-  await setDoc(settingsDocRef, data, { merge: true });
+    const settingsDocRef = doc(db, "settings", "commissions");
+    await updateDoc(settingsDocRef, data);
 }
 
 export async function createCustomer(customerData: Omit<Customer, 'id' | 'saleDate' | 'commissionStatus' | 'salesmanId' | 'tokenIsAvailable'>, salesman: User): Promise<void> {
@@ -381,18 +383,24 @@ export async function createProductSaleAndDistributeCommissions(
 ): Promise<void> {
 
     await runTransaction(db, async (transaction) => {
+        // --- ALL READS MUST HAPPEN FIRST ---
         const allUsers = await getAllUsers();
-        
-        // 1. Decrement stock
+
+        // READ 1: Stock Item
         const stockItemRef = doc(db, "stock", formData.productId);
         const stockItemDoc = await transaction.get(stockItemRef);
+        
+        // READ 2: Customer
+        const customerDocRef = doc(db, "customers", customerId);
+        const customerDoc = await transaction.get(customerDocRef);
+        
+        // READ 3: Commission Settings
+        const productSettings = await getProductCommissionSettings();
+
+        // --- VALIDATION AND DATA PREP ---
         if (!stockItemDoc.exists() || stockItemDoc.data().quantity < 1) {
             throw new Error("This product is out of stock.");
         }
-        transaction.update(stockItemRef, { quantity: increment(-1), lastUpdatedAt: new Date().toISOString() });
-        
-        const customerDocRef = doc(db, "customers", customerId);
-        const customerDoc = await transaction.get(customerDocRef);
         if (!customerDoc.exists()) {
             throw new Error(`No customer found with token: ${formData.customerToken}`);
         }
@@ -425,6 +433,12 @@ export async function createProductSaleAndDistributeCommissions(
             newSale.recoveryStatus = 'pending';
         }
         
+        // --- ALL WRITES HAPPEN LAST ---
+        
+        // WRITE 1: Update stock
+        transaction.update(stockItemRef, { quantity: increment(-1), lastUpdatedAt: new Date().toISOString() });
+        
+        // WRITE 2: Update customer if token was available
         if (customer.tokenIsAvailable) {
             transaction.update(customerDocRef, {
                 tokenIsAvailable: false,
@@ -438,15 +452,16 @@ export async function createProductSaleAndDistributeCommissions(
             });
         }
 
+        // WRITE 3: Create the new product sale record
         transaction.set(newSaleRef, newSale);
 
+        // WRITE 4+: Distribute commissions if it's a cash payment
         if (formData.paymentMethod === 'cash') {
             const salesman = allUsers.find(u => u.id === customer.salesmanId);
             if (!salesman) {
                 throw new Error(`Could not find the original salesman (ID: ${customer.salesmanId}) for this token.`);
             }
-
-            const productSettings = await getProductCommissionSettings();
+            
             const applicableTier = productSettings.tiers.find(tier => 
                 newSale.price >= tier.minPrice && (tier.maxPrice === null || newSale.price <= tier.maxPrice)
             );
