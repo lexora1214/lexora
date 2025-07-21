@@ -401,6 +401,7 @@ export async function createProductSaleAndDistributeCommissions(
         shopManagerId: shopManager.id,
         shopManagerName: shopManager.name,
         deliveryStatus: 'pending',
+        requestedDeliveryDate: customer.requestedDeliveryDate,
     };
 
     if (formData.paymentMethod === 'installments') {

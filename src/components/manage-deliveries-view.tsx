@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
@@ -27,6 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { format } from "date-fns";
 
 interface ManageDeliveriesViewProps {
   manager: User;
@@ -174,6 +176,12 @@ const ManageDeliveriesView: React.FC<ManageDeliveriesViewProps> = ({ manager, al
               <TableCell>
                 <div className="font-medium">{sale.productName}</div>
                 <div className="text-sm text-muted-foreground">{new Date(sale.saleDate).toLocaleDateString()}</div>
+                {sale.requestedDeliveryDate && (
+                    <div className="text-xs text-primary font-medium mt-1 flex items-center gap-1.5">
+                        <Calendar className="h-3 w-3" />
+                        Req: {format(new Date(sale.requestedDeliveryDate), "PPP")}
+                    </div>
+                )}
               </TableCell>
               <TableCell>
                  <div className="font-medium">{sale.customer?.name}</div>

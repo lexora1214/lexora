@@ -53,6 +53,7 @@ export interface Customer {
   downPayment?: number;
   installments?: number;
   monthlyInstallment?: number;
+  requestedDeliveryDate?: string;
 }
 
 export interface CommissionRequest {
@@ -91,6 +92,7 @@ export interface ProductSale {
   assignedToName?: string; // Delivery Boy Name
   assignedAt?: string;
   deliveredAt?: string;
+  requestedDeliveryDate?: string;
   // Recovery fields
   recoveryStatus?: 'pending' | 'assigned';
   recoveryOfficerId?: string;

@@ -13,16 +13,20 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useForm, SubmitHandler } from "react-hook-form";
+import { useForm, SubmitHandler, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { createCustomer } from "@/lib/firestore";
 import { User, Customer } from "@/types";
-import { LoaderCircle } from "lucide-react";
+import { Calendar as CalendarIcon, LoaderCircle } from "lucide-react";
 import { ScrollArea } from "./ui/scroll-area";
 import MapPicker from "./map-picker";
 import { useOfflineSync } from "@/hooks/use-offline-sync";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
+import { Calendar } from "./ui/calendar";
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
@@ -42,6 +46,7 @@ const formSchema = z.object({
   installments: z.coerce.number().min(1, "Number of installments must be at least 1.").optional(),
   monthlyInstallment: z.coerce.number().optional(),
   branch: z.string().optional(),
+  requestedDeliveryDate: z.date().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -71,6 +76,7 @@ const CustomerRegistrationDialog: React.FC<CustomerRegistrationDialogProps> = ({
     watch,
     setValue,
     getValues,
+    control,
   } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -120,7 +126,8 @@ const CustomerRegistrationDialog: React.FC<CustomerRegistrationDialogProps> = ({
         discountValue: data.discountValue,
         downPayment: data.downPayment,
         installments: data.installments,
-        monthlyInstallment: data.monthlyInstallment
+        monthlyInstallment: data.monthlyInstallment,
+        requestedDeliveryDate: data.requestedDeliveryDate?.toISOString(),
     };
 
     // This is a "fire-and-forget" call from the UI's perspective.
@@ -219,7 +226,7 @@ const CustomerRegistrationDialog: React.FC<CustomerRegistrationDialogProps> = ({
               </div>
 
               <div className="border-t pt-4 mt-2">
-                <h3 className="text-lg font-medium mb-2">Purchase Details</h3>
+                <h3 className="text-lg font-medium mb-2">Purchase & Delivery Details</h3>
                 <div className="grid md:grid-cols-2 gap-4">
                     <div>
                         <Label htmlFor="purchasingItem">Purchasing Item</Label>
@@ -256,6 +263,34 @@ const CustomerRegistrationDialog: React.FC<CustomerRegistrationDialogProps> = ({
                         <Label htmlFor="tokenSerial">Token Serial</Label>
                         <Input id="tokenSerial" {...register("tokenSerial")} />
                         {errors.tokenSerial && <p className="text-xs text-destructive mt-1">{errors.tokenSerial.message}</p>}
+                    </div>
+                     <div className="md:col-span-2">
+                        <Label htmlFor="requestedDeliveryDate">Requested Delivery Date (Optional)</Label>
+                        <Controller
+                            control={control}
+                            name="requestedDeliveryDate"
+                            render={({ field }) => (
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            variant={"outline"}
+                                            className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}
+                                        >
+                                            <CalendarIcon className="mr-2 h-4 w-4" />
+                                            {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0">
+                                        <Calendar
+                                            mode="single"
+                                            selected={field.value}
+                                            onSelect={field.onChange}
+                                            initialFocus
+                                        />
+                                    </PopoverContent>
+                                </Popover>
+                            )}
+                        />
                     </div>
                 </div>
               </div>
