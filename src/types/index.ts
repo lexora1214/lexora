@@ -120,6 +120,7 @@ export interface IncomeRecord {
   customerName?: string; // Optional for salary
   tokenSerial?: string;
   // Optional product details
+  productSaleId?: string;
   productName?: string;
   productPrice?: number;
   paymentMethod?: 'cash' | 'installments';

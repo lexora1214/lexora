@@ -470,6 +470,7 @@ export default function CustomerManagementTable({ data, users, allProductSales }
         onOpenChange={setIsDetailsDialogOpen}
         customer={selectedCustomer}
         productSale={productSaleForSelectedCustomer}
+        allUsers={users}
       />
     </div>
   );

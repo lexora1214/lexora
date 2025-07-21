@@ -15,6 +15,7 @@ function generateReferralCode(): string {
 }
 
 export async function createUserProfile(firebaseUser: FirebaseUser, name: string, mobileNumber: string, role: Role, referralCodeInput: string, branch?: string, salesmanStage?: SalesmanStage): Promise<User> {
+  const batch = writeBatch(db);
   let referrerId: string | null = null;
   const isReferralNeeded = role && !['Regional Director', 'Admin'].includes(role);
 
@@ -59,13 +60,17 @@ export async function createUserProfile(firebaseUser: FirebaseUser, name: string
     referralCode: newReferralCode,
     referrerId: referrerId,
     totalIncome: 0,
-    avatar: `https://placehold.co/100x100.png`,
+    avatar: ``,
     createdAt: new Date().toISOString(),
     ...(role === 'Team Operation Manager' && { branch }),
     ...(role === 'Salesman' && { salesmanStage }),
   };
 
-  await setDoc(doc(db, "users", firebaseUser.uid), newUser);
+  const userDocRef = doc(db, "users", firebaseUser.uid);
+  batch.set(userDocRef, newUser);
+  
+  await batch.commit();
+
   return newUser;
 }
 
@@ -379,20 +384,20 @@ export async function createProductSaleAndDistributeCommissions(
     }
     const customer = { ...customerDoc.data(), id: customerDoc.id } as Customer;
 
-    if (!customer.tokenIsAvailable) {
-        throw new Error(`Token ${formData.customerToken} has already been used to purchase a product.`);
+    // A token can be used for multiple product sales, but the first one uses up its "availability" status
+    // and updates the customer record with the purchase details. Subsequent sales are just new sales.
+    if (customer.tokenIsAvailable) {
+      batch.update(customerDocRef, {
+        tokenIsAvailable: false,
+        purchasingItem: formData.productName,
+        purchasingItemCode: formData.productCode ?? null,
+        totalValue: formData.totalValue,
+        discountValue: formData.discountValue ?? null,
+        downPayment: formData.downPayment ?? null,
+        installments: formData.installments ?? null,
+        monthlyInstallment: formData.monthlyInstallment ?? null,
+      });
     }
-
-    batch.update(customerDocRef, {
-      tokenIsAvailable: false,
-      purchasingItem: formData.productName,
-      purchasingItemCode: formData.productCode ?? null,
-      totalValue: formData.totalValue,
-      discountValue: formData.discountValue ?? null,
-      downPayment: formData.downPayment ?? null,
-      installments: formData.installments ?? null,
-      monthlyInstallment: formData.monthlyInstallment ?? null,
-    });
 
     const newSaleRef = doc(collection(db, "productSales"));
     const saleDate = new Date().toISOString();
@@ -455,6 +460,7 @@ export async function createProductSaleAndDistributeCommissions(
                             salesmanName: salesman.name,
                             shopManagerName: shopManager.name,
                             sourceType: 'product_sale',
+                            productSaleId: newSale.id, // Link to the product sale
                             customerId: customer.id,
                             customerName: customer.name,
                             tokenSerial: newSale.tokenSerial,
@@ -488,6 +494,7 @@ export async function createProductSaleAndDistributeCommissions(
                             salesmanName: salesman.name,
                             shopManagerName: shopManager.name,
                             sourceType: 'product_sale',
+                            productSaleId: newSale.id, // Link to the product sale
                             customerId: customer.id,
                             customerName: customer.name,
                             tokenSerial: newSale.tokenSerial,
@@ -676,6 +683,7 @@ export async function markInstallmentPaid(productSaleId: string): Promise<void> 
               salesmanName: salesman.name,
               shopManagerName: saleData.shopManagerName,
               sourceType: 'product_sale',
+              productSaleId: saleData.id, // Link to the product sale
               customerId: saleData.customerId,
               customerName: saleData.customerName,
               tokenSerial: saleData.tokenSerial,
@@ -712,6 +720,7 @@ export async function markInstallmentPaid(productSaleId: string): Promise<void> 
             salesmanName: salesman.name,
             shopManagerName: saleData.shopManagerName,
             sourceType: 'product_sale',
+            productSaleId: saleData.id, // Link to the product sale
             customerId: saleData.customerId,
             customerName: saleData.customerName,
             tokenSerial: saleData.tokenSerial,
