@@ -149,10 +149,32 @@ const ManageDeliveriesView: React.FC<ManageDeliveriesViewProps> = ({ manager, al
       return { ...sale, customer };
     }).filter(sale => sale.customer?.branch === manager.branch); // Filter sales from the manager's branch
   }, [productSales, customers, manager.branch]);
+  
+  const sortSalesByRequestedDate = (
+    a: ProductSale,
+    b: ProductSale
+  ) => {
+    const aDate = a.requestedDeliveryDate ? new Date(a.requestedDeliveryDate) : null;
+    const bDate = b.requestedDeliveryDate ? new Date(b.requestedDeliveryDate) : null;
 
-  const pendingDeliveries = salesWithCustomerInfo.filter(sale => sale.deliveryStatus === 'pending');
-  const assignedDeliveries = salesWithCustomerInfo.filter(sale => sale.deliveryStatus === 'assigned');
-  const deliveredDeliveries = salesWithCustomerInfo.filter(sale => sale.deliveryStatus === 'delivered');
+    if (aDate && bDate) return aDate.getTime() - bDate.getTime();
+    if (aDate) return -1; // a has date, b doesn't, so a comes first
+    if (bDate) return 1;  // b has date, a doesn't, so b comes first
+    return new Date(b.saleDate).getTime() - new Date(a.saleDate).getTime(); // fallback to sale date
+  };
+
+  const pendingDeliveries = salesWithCustomerInfo
+    .filter(sale => sale.deliveryStatus === 'pending')
+    .sort(sortSalesByRequestedDate);
+
+  const assignedDeliveries = salesWithCustomerInfo
+    .filter(sale => sale.deliveryStatus === 'assigned')
+    .sort(sortSalesByRequestedDate);
+
+  const deliveredDeliveries = salesWithCustomerInfo
+    .filter(sale => sale.deliveryStatus === 'delivered')
+    .sort((a,b) => new Date(b.saleDate).getTime() - new Date(a.saleDate).getTime());
+
 
   const handleAssignClick = (sale: ProductSale) => {
     setSelectedSale(sale);
@@ -266,3 +288,4 @@ const ManageDeliveriesView: React.FC<ManageDeliveriesViewProps> = ({ manager, al
 };
 
 export default ManageDeliveriesView;
+
