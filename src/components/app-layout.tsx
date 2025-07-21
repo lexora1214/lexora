@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React from "react";
@@ -29,6 +30,8 @@ import {
   Signal,
   SignalLow,
   SignalZero,
+  Package,
+  Boxes,
 } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
@@ -46,7 +49,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import type { User, Role, Customer, IncomeRecord, ProductSale, CommissionRequest } from "@/types";
+import type { User, Role, Customer, IncomeRecord, ProductSale, CommissionRequest, StockItem } from "@/types";
 import { getDownlineIdsAndUsers } from "@/lib/hierarchy";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -77,6 +80,8 @@ import CommissionApprovalView from "./commission-approval-view";
 import SalarySettingsForm from "./salary-settings";
 import { useOfflineSync } from "@/hooks/use-offline-sync";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
+import StockManagementView from "./stock-management-view";
+import AdminStockView from "./admin-stock-view";
 
 type NavItem = {
   href: string;
@@ -88,6 +93,16 @@ type NavItem = {
 
 const navItems: NavItem[] = [
   { href: "#", icon: LayoutDashboard, label: "Dashboard", roles: ["Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Salesman", "Delivery Boy", "Recovery Officer"] },
+  { 
+    href: "#", 
+    icon: Package, 
+    label: "Stock", 
+    roles: ["Admin", "Team Operation Manager"],
+    children: [
+      { href: "#", icon: Boxes, label: "Stock Management", roles: ["Team Operation Manager"] },
+      { href: "#", icon: Package, label: "Global Stock View", roles: ["Admin"] },
+    ]
+  },
   { href: "#", icon: ShoppingCart, label: "Record Product Sale", roles: ["Team Operation Manager"] },
   { href: "#", icon: Wallet, label: "Income Records", roles: ["Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Salesman"] },
   { href: "#", icon: Users, label: "My Customers", roles: ["Salesman"] },
@@ -132,7 +147,10 @@ const SidebarNav = ({ user, activeView, setActiveView, onLinkClick }: { user: Us
       .filter(item => item.roles.includes(user.role))
       .map((item) => {
         if (item.children && item.roles.includes(user.role)) {
-          const isGroupActive = item.children.some(child => child.label === activeView);
+          const groupChildren = item.children.filter(child => child.roles.includes(user.role));
+          if (groupChildren.length === 0) return null;
+
+          const isGroupActive = groupChildren.some(child => child.label === activeView);
           return (
             <Accordion key={item.label} type="single" collapsible className="w-full" defaultValue={isGroupActive ? item.label : undefined}>
               <AccordionItem value={item.label} className="border-b-0">
@@ -146,7 +164,7 @@ const SidebarNav = ({ user, activeView, setActiveView, onLinkClick }: { user: Us
                   <span>{item.label}</span>
                 </AccordionTrigger>
                 <AccordionContent className="space-y-1 pt-1">
-                  {item.children.map((child) => (
+                  {groupChildren.map((child) => (
                     <a
                       key={child.label}
                       href="#"
@@ -250,6 +268,7 @@ const AppLayout = ({ user }: { user: User }) => {
   const [allIncomeRecords, setAllIncomeRecords] = React.useState<IncomeRecord[]>([]);
   const [allProductSales, setAllProductSales] = React.useState<ProductSale[]>([]);
   const [allCommissionRequests, setAllCommissionRequests] = React.useState<CommissionRequest[]>([]);
+  const [allStockItems, setAllStockItems] = React.useState<StockItem[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [isMobileSheetOpen, setIsMobileSheetOpen] = React.useState(false);
   const [isProfileSettingsOpen, setIsProfileSettingsOpen] = React.useState(false);
@@ -281,12 +300,18 @@ const AppLayout = ({ user }: { user: User }) => {
       setAllCommissionRequests(requestsData);
     });
 
+    const stockItemsUnsub = onSnapshot(collection(db, "stock"), { includeMetadataChanges: true }, (snapshot) => {
+        const stockData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StockItem));
+        setAllStockItems(stockData);
+    });
+
     return () => {
       usersUnsub();
       customersUnsub();
       incomeRecordsUnsub();
       productSalesUnsub();
       commissionRequestsUnsub();
+      stockItemsUnsub();
     };
   }, []);
 
@@ -321,6 +346,10 @@ const AppLayout = ({ user }: { user: User }) => {
           default:
             return <ManagerDashboard user={user} allUsers={allUsers} allIncomeRecords={allIncomeRecords} />;
         }
+      case "Stock Management":
+        return <StockManagementView manager={user} />;
+      case "Global Stock View":
+        return <AdminStockView allStockItems={allStockItems} />;
       case "Record Product Sale":
         return <ShopManagerDashboard user={user} openDialogOnLoad />;
       case "Income Records":

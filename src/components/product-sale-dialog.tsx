@@ -1,8 +1,9 @@
 
+
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { User, Customer } from "@/types";
+import { User, Customer, StockItem } from "@/types";
 import {
   Dialog,
   DialogContent,
@@ -29,8 +30,9 @@ import { Badge } from "./ui/badge";
 
 const formSchema = z.object({
   customerToken: z.string({ required_error: "Please select a customer token." }),
-  productName: z.string().min(2, "Product name is required."),
-  productCode: z.string().optional(),
+  productId: z.string({ required_error: "Please select a product." }),
+  productName: z.string(), // Auto-filled
+  productCode: z.string().optional(), // Auto-filled
   totalValue: z.coerce.number().min(0, "Total value must be a positive number."),
   discountValue: z.coerce.number().min(0, "Discount must be a positive number.").optional(),
   paymentMethod: z.enum(["cash", "installments"], {
@@ -64,6 +66,7 @@ interface ProductSaleDialogProps {
   onOpenChange: (isOpen: boolean) => void;
   shopManager: User;
   customers: Customer[];
+  stockItems: StockItem[];
   onSaleSuccess: () => void;
 }
 
@@ -72,11 +75,13 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
   onOpenChange,
   shopManager,
   customers,
+  stockItems,
   onSaleSuccess,
 }) => {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+  const [isCustomerPopoverOpen, setIsCustomerPopoverOpen] = useState(false);
+  const [isProductPopoverOpen, setIsProductPopoverOpen] = useState(false);
   const [remainingToPay, setRemainingToPay] = useState<number | null>(null);
   
   const {
@@ -169,7 +174,7 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
           <DialogHeader>
             <DialogTitle>Record Product Sale</DialogTitle>
             <DialogDescription>
-              Fill in the details for the new product sale. Select a customer to auto-fill their details.
+              Fill in the details for the new product sale.
             </DialogDescription>
           </DialogHeader>
           <ScrollArea className="h-[60vh] p-1">
@@ -181,12 +186,12 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
                   control={control}
                   name="customerToken"
                   render={({ field }) => (
-                    <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+                    <Popover open={isCustomerPopoverOpen} onOpenChange={setIsCustomerPopoverOpen}>
                       <PopoverTrigger asChild>
                         <Button
                           variant="outline"
                           role="combobox"
-                          aria-expanded={isPopoverOpen}
+                          aria-expanded={isCustomerPopoverOpen}
                           className="w-full justify-between"
                         >
                           {field.value
@@ -207,25 +212,7 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
                                   value={`${customer.name} ${customer.tokenSerial} ${customer.nic || ''}`}
                                   onSelect={() => {
                                       field.onChange(customer.tokenSerial);
-                                      if (customer.tokenIsAvailable) {
-                                        setValue('productName', customer.purchasingItem || '');
-                                        setValue('productCode', customer.purchasingItemCode || '');
-                                        setValue('totalValue', customer.totalValue || 0);
-                                        setValue('discountValue', customer.discountValue || undefined);
-                                        setValue('downPayment', customer.downPayment || undefined);
-                                        setValue('installments', customer.installments || undefined);
-                                        setValue('paymentMethod', customer.installments ? 'installments' : 'cash');
-                                      } else {
-                                        // If token is used, do not auto-fill. Let manager enter new details.
-                                        setValue('productName', '');
-                                        setValue('productCode', '');
-                                        setValue('totalValue', 0);
-                                        setValue('discountValue', undefined);
-                                        setValue('downPayment', undefined);
-                                        setValue('installments', undefined);
-                                        setValue('paymentMethod', 'cash'); // Default to cash
-                                      }
-                                      setIsPopoverOpen(false);
+                                      setIsCustomerPopoverOpen(false);
                                   }}
                                   >
                                   <Check
@@ -251,16 +238,69 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
                 {errors.customerToken && <p className="text-xs text-destructive mt-1">{errors.customerToken.message}</p>}
               </div>
 
-              <div>
-                <Label htmlFor="productName">Product Name</Label>
-                <Input id="productName" {...register("productName")} />
-                {errors.productName && <p className="text-xs text-destructive mt-1">{errors.productName.message}</p>}
+               <div>
+                <Label>Product</Label>
+                <Controller
+                  control={control}
+                  name="productId"
+                  render={({ field }) => (
+                    <Popover open={isProductPopoverOpen} onOpenChange={setIsProductPopoverOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={isProductPopoverOpen}
+                          className="w-full justify-between"
+                        >
+                          {field.value
+                            ? stockItems.find((item) => item.id === field.value)?.productName
+                            : "Select product..."}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[375px] p-0">
+                        <Command>
+                          <CommandInput placeholder="Search product name or code..." />
+                           <CommandList>
+                              <CommandEmpty>No products in stock.</CommandEmpty>
+                              <CommandGroup>
+                              {stockItems.map((item) => (
+                                  <CommandItem
+                                  key={item.id}
+                                  value={`${item.productName} ${item.productCode || ''}`}
+                                  onSelect={() => {
+                                      field.onChange(item.id);
+                                      setValue('productName', item.productName);
+                                      setValue('productCode', item.productCode);
+                                      setIsProductPopoverOpen(false);
+                                  }}
+                                  disabled={item.quantity === 0}
+                                  >
+                                  <Check
+                                      className={cn(
+                                      "mr-2 h-4 w-4",
+                                      field.value === item.id ? "opacity-100" : "opacity-0"
+                                      )}
+                                  />
+                                   <div className="flex-grow">
+                                      <p>{item.productName}</p>
+                                      {item.productCode && <p className="text-xs text-muted-foreground">{item.productCode}</p>}
+                                  </div>
+                                  <Badge variant={item.quantity > 0 ? "success" : "destructive"}>
+                                    {item.quantity} in stock
+                                  </Badge>
+                                  </CommandItem>
+                              ))}
+                              </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  )}
+                />
+                 {errors.productId && <p className="text-xs text-destructive mt-1">{errors.productId.message}</p>}
               </div>
 
-              <div>
-                <Label htmlFor="productCode">Product Code (Optional)</Label>
-                <Input id="productCode" {...register("productCode")} />
-              </div>
 
               <div>
                 <Label htmlFor="totalValue">Total Value (LKR)</Label>
@@ -329,7 +369,7 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
           <DialogFooter className="border-t pt-6 px-6 pb-0">
             <Button type="submit" disabled={isLoading}>
               {isLoading && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
-              Save Sale & Update Customer
+              Save Sale & Update Stock
             </Button>
           </DialogFooter>
         </form>

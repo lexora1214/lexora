@@ -1,4 +1,5 @@
 
+
 export type Role =
   | "Salesman"
   | "Team Operation Manager"
@@ -73,6 +74,7 @@ export interface CommissionRequest {
 
 export interface ProductSale {
   id: string;
+  productId: string; // Link to the StockItem ID
   productName: string;
   productCode?: string;
   price: number;
@@ -178,4 +180,14 @@ export interface MonthlySalaryPayout {
     reversedBy?: string;
     reversedByName?: string;
     reversalDate?: string;
+}
+
+export interface StockItem {
+  id: string;
+  productName: string;
+  productCode?: string;
+  quantity: number;
+  branch: string;
+  managedBy: string; // Team Operation Manager's ID
+  lastUpdatedAt: string;
 }

@@ -1,8 +1,9 @@
 
+
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { User, ProductSale, Customer } from "@/types";
+import { User, ProductSale, Customer, StockItem } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ShoppingCart, LoaderCircle, Calendar as CalendarIcon, User as UserIcon } from "lucide-react";
@@ -33,19 +34,16 @@ const ShopManagerDashboard: React.FC<ShopManagerDashboardProps> = ({ user, openD
   const [isDialogOpen, setIsDialogOpen] = useState(openDialogOnLoad);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [sales, setSales] = useState<ProductSale[]>([]);
+  const [stockItems, setStockItems] = useState<StockItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
 
   useEffect(() => {
-    // Listener for all customers to get real-time token availability
     const customersUnsub = onSnapshot(collection(db, "customers"), (snapshot) => {
       const customersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
       setCustomers(customersData);
-    }, (error) => {
-        console.error("Failed to fetch customers:", error);
     });
 
-    // Listener for sales recorded by this shop manager
     const salesQuery = query(collection(db, "productSales"), where("shopManagerId", "==", user.id));
     const salesUnsub = onSnapshot(salesQuery, (querySnapshot) => {
       const salesData = querySnapshot.docs.map(doc => doc.data() as ProductSale)
@@ -53,15 +51,23 @@ const ShopManagerDashboard: React.FC<ShopManagerDashboardProps> = ({ user, openD
       setSales(salesData);
       setLoading(false);
     });
+    
+    // Listen to stock items for the manager's branch
+    const stockQuery = query(collection(db, "stock"), where("branch", "==", user.branch));
+    const stockUnsub = onSnapshot(stockQuery, (snapshot) => {
+        const items = snapshot.docs.map(doc => ({id: doc.id, ...doc.data()} as StockItem));
+        setStockItems(items);
+    });
 
     return () => {
       customersUnsub();
       salesUnsub();
+      stockUnsub();
     };
-  }, [user.id]);
+  }, [user.id, user.branch]);
 
   const handleSuccess = () => {
-    // The onSnapshot listeners will automatically update the sales list and customer data
+    // onSnapshot listeners will update data automatically
   };
 
   const filteredSales = React.useMemo(() => {
@@ -207,6 +213,7 @@ const ShopManagerDashboard: React.FC<ShopManagerDashboardProps> = ({ user, openD
         onOpenChange={setIsDialogOpen}
         shopManager={user}
         customers={customers}
+        stockItems={stockItems}
         onSaleSuccess={handleSuccess}
       />
     </>
