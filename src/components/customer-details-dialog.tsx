@@ -19,10 +19,11 @@ import { Button } from "./ui/button";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import CommissionBreakdownDialog from "./commission-breakdown-dialog";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./ui/accordion";
 
 interface CustomerDetailsDialogProps {
   customer: Customer | null;
-  productSale?: ProductSale | null;
+  productSales: ProductSale[];
   allUsers: User[];
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
@@ -44,7 +45,7 @@ const DetailRow: React.FC<{ icon: React.ElementType, label: string, value?: Reac
 
 const CustomerDetailsDialog: React.FC<CustomerDetailsDialogProps> = ({
   customer,
-  productSale,
+  productSales,
   allUsers,
   isOpen,
   onOpenChange,
@@ -72,28 +73,23 @@ const CustomerDetailsDialog: React.FC<CustomerDetailsDialogProps> = ({
     setIsBreakdownOpen(true);
   };
   
-  const handleViewProductCommissions = async () => {
-    if (!productSale) return;
+  const handleViewProductCommissions = async (productSaleId: string, productName: string) => {
     const q = query(
         collection(db, "incomeRecords"),
-        where("productSaleId", "==", productSale.id)
+        where("productSaleId", "==", productSaleId)
     );
     const querySnapshot = await getDocs(q);
     const records = querySnapshot.docs.map(doc => doc.data() as IncomeRecord);
     const total = records.reduce((sum, record) => sum + record.amount, 0);
 
     setBreakdownProps({
-        title: `Product Sale: ${productSale.productName}`,
+        title: `Product Sale: ${productName}`,
         records,
         total
     });
     setIsBreakdownOpen(true);
   };
 
-  const hasInstallments = productSale?.paymentMethod === 'installments' && productSale.installments;
-  const remainingBalance = hasInstallments && productSale.paidInstallments !== undefined && productSale.monthlyInstallment
-    ? (productSale.installments! - productSale.paidInstallments) * productSale.monthlyInstallment
-    : 0;
   
   const salesmanName = allUsers?.find(u => u.id === customer.salesmanId)?.name || 'Unknown User';
 
@@ -111,7 +107,7 @@ const CustomerDetailsDialog: React.FC<CustomerDetailsDialogProps> = ({
               </DialogDescription>
             </DialogHeader>
             <ScrollArea className="h-[60vh] p-1">
-              <div className="grid gap-2 py-4 px-4 divide-y">
+              <div className="grid gap-2 py-4 px-4 divide-y divide-border/50">
                   <div className="grid md:grid-cols-2 gap-x-8">
                       <DetailRow icon={UserIcon} label="Full Name" value={customer.name} />
                       <DetailRow icon={Fingerprint} label="NIC Number" value={customer.nic} />
@@ -178,41 +174,62 @@ const CustomerDetailsDialog: React.FC<CustomerDetailsDialogProps> = ({
                       </div>
                   </div>
 
-                  {productSale && (
+                 {productSales && productSales.length > 0 && (
                     <div className="pt-4 mt-4">
-                      <div className="flex justify-between items-center mb-2">
-                        <h4 className="font-semibold text-lg text-primary">Product Purchase Information</h4>
-                        <Button variant="outline" size="sm" onClick={handleViewProductCommissions}>
-                          <Users className="mr-2 h-4 w-4"/> View Commissions
-                        </Button>
-                      </div>
-                      <div className="grid md:grid-cols-2 gap-x-8">
-                          <DetailRow icon={ShoppingCart} label="Purchasing Item" value={productSale.productName} />
-                          <DetailRow icon={Hash} label="Item Code" value={productSale.productCode} />
-                          <DetailRow icon={DollarSign} label="Total Value" value={`LKR ${productSale.price?.toLocaleString()}`} />
-                          <DetailRow icon={Percent} label="Payment Method" value={<Badge variant="outline" className="capitalize">{productSale.paymentMethod}</Badge>} />
-                      </div>
+                        <h4 className="font-semibold text-lg text-primary mb-2">Purchase History ({productSales.length})</h4>
+                        <Accordion type="single" collapsible className="w-full" defaultValue={productSales.length > 0 ? productSales[0].id : undefined}>
+                            {productSales.map(sale => {
+                                const hasInstallments = sale.paymentMethod === 'installments' && sale.installments;
+                                const remainingBalance = hasInstallments && sale.paidInstallments !== undefined && sale.monthlyInstallment
+                                    ? (sale.installments! - sale.paidInstallments) * sale.monthlyInstallment
+                                    : 0;
+                                return (
+                                    <AccordionItem value={sale.id} key={sale.id}>
+                                        <AccordionTrigger>
+                                            <div className="flex flex-col items-start text-left">
+                                                <p className="font-semibold">{sale.productName}</p>
+                                                <p className="text-xs text-muted-foreground">{new Date(sale.saleDate).toLocaleDateString()}</p>
+                                            </div>
+                                        </AccordionTrigger>
+                                        <AccordionContent>
+                                            <div className="space-y-4">
+                                                <div className="flex justify-end">
+                                                    <Button variant="outline" size="sm" onClick={() => handleViewProductCommissions(sale.id, sale.productName)}>
+                                                        <Users className="mr-2 h-4 w-4"/> View Commissions
+                                                    </Button>
+                                                </div>
+                                                <div className="grid md:grid-cols-2 gap-x-8">
+                                                    <DetailRow icon={ShoppingCart} label="Purchasing Item" value={sale.productName} />
+                                                    <DetailRow icon={Hash} label="Item Code" value={sale.productCode} />
+                                                    <DetailRow icon={DollarSign} label="Total Value" value={`LKR ${sale.price?.toLocaleString()}`} />
+                                                    <DetailRow icon={Percent} label="Payment Method" value={<Badge variant="outline" className="capitalize">{sale.paymentMethod}</Badge>} />
+                                                </div>
+                                                {hasInstallments && sale.paidInstallments !== undefined && (
+                                                    <div className="pt-4 border-t">
+                                                        <h4 className="font-semibold text-md mb-4 text-primary/90">Installment Status</h4>
+                                                        <div className="space-y-4">
+                                                            <div>
+                                                                <div className="flex justify-between text-sm mb-1">
+                                                                    <span className="font-medium">Paid Installments</span>
+                                                                    <span>{sale.paidInstallments} / {sale.installments}</span>
+                                                                </div>
+                                                                <Progress value={(sale.paidInstallments / sale.installments!) * 100} className="h-2" />
+                                                            </div>
+                                                            <div className="grid md:grid-cols-2 gap-x-8">
+                                                                <DetailRow icon={Repeat} label="Remaining Installments" value={`${sale.installments! - sale.paidInstallments}`} />
+                                                                <DetailRow icon={DollarSign} label="Remaining Balance" value={`LKR ${remainingBalance.toLocaleString()}`} />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </AccordionContent>
+                                    </AccordionItem>
+                                );
+                            })}
+                        </Accordion>
                     </div>
-                  )}
-
-                  {hasInstallments && productSale.paidInstallments !== undefined && (
-                      <div className="pt-4 mt-4">
-                          <h4 className="font-semibold text-lg mb-4 text-primary">Installment Status</h4>
-                          <div className="space-y-4">
-                              <div>
-                                  <div className="flex justify-between text-sm mb-1">
-                                      <span className="font-medium">Paid Installments</span>
-                                      <span>{productSale.paidInstallments} / {productSale.installments}</span>
-                                  </div>
-                                  <Progress value={(productSale.paidInstallments / productSale.installments!) * 100} className="h-2" />
-                              </div>
-                              <div className="grid md:grid-cols-2 gap-x-8">
-                                <DetailRow icon={Repeat} label="Remaining Installments" value={`${productSale.installments! - productSale.paidInstallments}`} />
-                                <DetailRow icon={DollarSign} label="Remaining Balance" value={`LKR ${remainingBalance.toLocaleString()}`} />
-                              </div>
-                          </div>
-                      </div>
-                  )}
+                 )}
               </div>
             </ScrollArea>
         </DialogContent>

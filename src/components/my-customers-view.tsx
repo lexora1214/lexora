@@ -61,12 +61,11 @@ const MyCustomersView: React.FC<MyCustomersViewProps> = ({ user, allCustomers, a
     setIsDetailsDialogOpen(true);
   };
 
-  const productSaleForSelectedCustomer = React.useMemo(() => {
-    if (!selectedCustomer) return undefined;
-    const sales = allProductSales
+  const productSalesForSelectedCustomer = React.useMemo(() => {
+    if (!selectedCustomer) return [];
+    return allProductSales
       .filter(p => p.customerId === selectedCustomer.id)
       .sort((a, b) => new Date(b.saleDate).getTime() - new Date(a.saleDate).getTime());
-    return sales[0];
   }, [selectedCustomer, allProductSales]);
   
   return (
@@ -202,7 +201,7 @@ const MyCustomersView: React.FC<MyCustomersViewProps> = ({ user, allCustomers, a
         isOpen={isDetailsDialogOpen}
         onOpenChange={setIsDetailsDialogOpen}
         customer={selectedCustomer}
-        productSale={productSaleForSelectedCustomer}
+        productSales={productSalesForSelectedCustomer}
         allUsers={allUsers}
       />
     </>

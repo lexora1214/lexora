@@ -216,12 +216,11 @@ export default function CustomerManagementTable({ data, allUsers, allProductSale
     });
   }
 
-  const productSaleForSelectedCustomer = React.useMemo(() => {
-    if (!selectedCustomer) return undefined;
-    const sales = allProductSales
+  const productSalesForSelectedCustomer = React.useMemo(() => {
+    if (!selectedCustomer) return [];
+    return allProductSales
       .filter(p => p.customerId === selectedCustomer.id)
       .sort((a, b) => new Date(b.saleDate).getTime() - new Date(a.saleDate).getTime());
-    return sales[0];
   }, [selectedCustomer, allProductSales]);
 
   return (
@@ -472,7 +471,7 @@ export default function CustomerManagementTable({ data, allUsers, allProductSale
         isOpen={isDetailsDialogOpen}
         onOpenChange={setIsDetailsDialogOpen}
         customer={selectedCustomer}
-        productSale={productSaleForSelectedCustomer}
+        productSales={productSalesForSelectedCustomer}
         allUsers={allUsers}
       />
     </div>
