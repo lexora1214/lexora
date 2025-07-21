@@ -63,7 +63,7 @@ export async function createUserProfile(firebaseUser: FirebaseUser, name: string
     totalIncome: 0,
     avatar: ``,
     createdAt: new Date().toISOString(),
-    ...(role === 'Team Operation Manager' && { branch }),
+    ...(branch && { branch }),
     ...(role === 'Salesman' && { salesmanStage }),
   };
 
