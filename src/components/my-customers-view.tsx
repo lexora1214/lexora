@@ -65,6 +65,12 @@ const MyCustomersView: React.FC<MyCustomersViewProps> = ({ user, allCustomers, a
     return allProductSales.find(p => p.customerId === selectedCustomer.id);
   }, [selectedCustomer, allProductSales]);
 
+  // Since this view is only for a specific user, we can pass `allUsers` as an empty array
+  // because we only need to look up the salesman who registered the customer, and that's the current user.
+  // A better implementation would be to pass the full `allUsers` list from AppLayout.
+  // For now, let's create a minimal list to avoid the error.
+  const usersForDialog = allCustomers.map(c => allUsers.find(u => u.id === c.salesmanId)).filter(Boolean) as User[];
+  
   return (
     <>
       <Card>
@@ -199,6 +205,7 @@ const MyCustomersView: React.FC<MyCustomersViewProps> = ({ user, allCustomers, a
         onOpenChange={setIsDetailsDialogOpen}
         customer={selectedCustomer}
         productSale={productSaleForSelectedCustomer}
+        allUsers={usersForDialog}
       />
     </>
   );
