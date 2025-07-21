@@ -1,3 +1,4 @@
+
 import { doc, getDoc, setDoc, collection, getDocs, query, where, writeBatch, increment, updateDoc, deleteDoc } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -384,21 +385,6 @@ export async function createProductSaleAndDistributeCommissions(
     }
     const customer = { ...customerDoc.data(), id: customerDoc.id } as Customer;
 
-    // A token can be used for multiple product sales, but the first one uses up its "availability" status
-    // and updates the customer record with the purchase details. Subsequent sales are just new sales.
-    if (customer.tokenIsAvailable) {
-      batch.update(customerDocRef, {
-        tokenIsAvailable: false,
-        purchasingItem: formData.productName,
-        purchasingItemCode: formData.productCode ?? null,
-        totalValue: formData.totalValue,
-        discountValue: formData.discountValue ?? null,
-        downPayment: formData.downPayment ?? null,
-        installments: formData.installments ?? null,
-        monthlyInstallment: formData.monthlyInstallment ?? null,
-      });
-    }
-
     const newSaleRef = doc(collection(db, "productSales"));
     const saleDate = new Date().toISOString();
     
@@ -423,9 +409,26 @@ export async function createProductSaleAndDistributeCommissions(
         newSale.paidInstallments = 0;
         newSale.recoveryStatus = 'pending';
     }
+    
+    // The first time a token is used for a product sale, update the customer record.
+    // Subsequent sales with the same token will not update the customer record again.
+    if (customer.tokenIsAvailable) {
+      batch.update(customerDocRef, {
+        tokenIsAvailable: false,
+        purchasingItem: formData.productName,
+        purchasingItemCode: formData.productCode ?? null,
+        totalValue: formData.totalValue,
+        discountValue: formData.discountValue ?? null,
+        downPayment: formData.downPayment ?? null,
+        installments: formData.installments ?? null,
+        monthlyInstallment: formData.monthlyInstallment ?? null,
+      });
+    }
 
     batch.set(newSaleRef, newSale);
 
+    // If it's a cash sale, distribute commissions immediately.
+    // Installment commissions are handled separately when payments are recorded.
     if (formData.paymentMethod === 'cash') {
         const salesman = allUsers.find(u => u.id === customer.salesmanId);
         if (!salesman) {
@@ -444,7 +447,7 @@ export async function createProductSaleAndDistributeCommissions(
                 const tierCommissions = applicableTier.commissions[roleKey];
                 
                 if (tierCommissions) {
-                    const commission = tierCommissions.cash;
+                    const commission = tierCommissions.cash; // Use the cash commission amount
                     if (commission > 0) {
                         const userRef = doc(db, "users", currentUser.id);
                         batch.update(userRef, { totalIncome: increment(commission) });
@@ -474,6 +477,7 @@ export async function createProductSaleAndDistributeCommissions(
                 currentUser = currentUser.referrerId ? allUsers.find(u => u.id === currentUser!.referrerId) : undefined;
             }
 
+            // Distribute admin team commission for cash sales
             const adminCommissionInfo = applicableTier.commissions.admin;
             if (adminCommissionInfo) {
                 const adminCommission = adminCommissionInfo.cash;
@@ -494,7 +498,7 @@ export async function createProductSaleAndDistributeCommissions(
                             salesmanName: salesman.name,
                             shopManagerName: shopManager.name,
                             sourceType: 'product_sale',
-                            productSaleId: newSale.id, // Link to the product sale
+                            productSaleId: newSale.id,
                             customerId: customer.id,
                             customerName: customer.name,
                             tokenSerial: newSale.tokenSerial,
