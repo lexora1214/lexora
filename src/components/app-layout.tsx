@@ -326,7 +326,7 @@ const AppLayout = ({ user }: { user: User }) => {
       case "Income Records":
         return <IncomeRecordsView user={user} />;
       case "My Customers":
-        return <MyCustomersView user={user} allCustomers={allCustomers} allProductSales={allProductSales} />;
+        return <MyCustomersView user={user} allCustomers={allCustomers} allProductSales={allProductSales} allUsers={allUsers} />;
       case "My Deliveries":
         return <DeliveryBoyDashboard user={user} />;
       case "My Collections":
@@ -375,7 +375,7 @@ const AppLayout = ({ user }: { user: User }) => {
               <CardDescription>View all registered customers in the system.</CardDescription>
             </CardHeader>
             <CardContent>
-              <CustomerManagementTable data={allCustomers} users={allUsers} allProductSales={allProductSales} />
+              <CustomerManagementTable data={allCustomers} allUsers={allUsers} allProductSales={allProductSales} />
             </CardContent>
           </Card>
         );

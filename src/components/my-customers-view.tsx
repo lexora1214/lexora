@@ -27,9 +27,10 @@ interface MyCustomersViewProps {
   user: User;
   allCustomers: CustomerType[];
   allProductSales: ProductSale[];
+  allUsers: User[];
 }
 
-const MyCustomersView: React.FC<MyCustomersViewProps> = ({ user, allCustomers, allProductSales }) => {
+const MyCustomersView: React.FC<MyCustomersViewProps> = ({ user, allCustomers, allProductSales, allUsers }) => {
   const [isRegisterDialogOpen, setIsRegisterDialogOpen] = React.useState(false);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = React.useState(false);
   const [selectedCustomer, setSelectedCustomer] = React.useState<CustomerType | null>(null);
@@ -64,12 +65,6 @@ const MyCustomersView: React.FC<MyCustomersViewProps> = ({ user, allCustomers, a
     if (!selectedCustomer) return undefined;
     return allProductSales.find(p => p.customerId === selectedCustomer.id);
   }, [selectedCustomer, allProductSales]);
-
-  // Since this view is only for a specific user, we can pass `allUsers` as an empty array
-  // because we only need to look up the salesman who registered the customer, and that's the current user.
-  // A better implementation would be to pass the full `allUsers` list from AppLayout.
-  // For now, let's create a minimal list to avoid the error.
-  const usersForDialog = allCustomers.map(c => allUsers.find(u => u.id === c.salesmanId)).filter(Boolean) as User[];
   
   return (
     <>
@@ -205,7 +200,7 @@ const MyCustomersView: React.FC<MyCustomersViewProps> = ({ user, allCustomers, a
         onOpenChange={setIsDetailsDialogOpen}
         customer={selectedCustomer}
         productSale={productSaleForSelectedCustomer}
-        allUsers={usersForDialog}
+        allUsers={allUsers}
       />
     </>
   );

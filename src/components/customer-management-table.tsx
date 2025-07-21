@@ -53,7 +53,7 @@ import CustomerDetailsDialog from "./customer-details-dialog";
 
 interface CustomerManagementTableProps {
     data: Customer[];
-    users: User[];
+    allUsers: User[];
     allProductSales: ProductSale[];
 }
 
@@ -135,7 +135,7 @@ export const getColumns = (
   },
 ];
 
-export default function CustomerManagementTable({ data, users, allProductSales }: CustomerManagementTableProps) {
+export default function CustomerManagementTable({ data, allUsers, allProductSales }: CustomerManagementTableProps) {
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
@@ -147,7 +147,7 @@ export default function CustomerManagementTable({ data, users, allProductSales }
     setIsDetailsDialogOpen(true);
   }, []);
   
-  const columns = React.useMemo(() => getColumns(users, handleViewDetails), [users, handleViewDetails]);
+  const columns = React.useMemo(() => getColumns(allUsers, handleViewDetails), [allUsers, handleViewDetails]);
 
   const dateFilteredData = React.useMemo(() => {
     if (!dateRange || !dateRange.from) {
@@ -470,7 +470,7 @@ export default function CustomerManagementTable({ data, users, allProductSales }
         onOpenChange={setIsDetailsDialogOpen}
         customer={selectedCustomer}
         productSale={productSaleForSelectedCustomer}
-        allUsers={users}
+        allUsers={allUsers}
       />
     </div>
   );
