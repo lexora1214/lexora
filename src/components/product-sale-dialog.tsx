@@ -218,6 +218,7 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
                                       setValue('productName', customer.purchasingItem || '');
                                       setValue('productCode', customer.purchasingItemCode || '');
                                       setValue('totalValue', customer.totalValue || 0);
+                                      setValue('discountValue', customer.discountValue || undefined);
                                       setValue('installments', customer.installments || undefined);
                                       setValue('downPayment', customer.downPayment || undefined);
                                       
