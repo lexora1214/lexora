@@ -6,6 +6,7 @@
 
 
 
+
 import { doc, getDoc, setDoc, collection, getDocs, query, where, writeBatch, increment, updateDoc, deleteDoc, addDoc, runTransaction } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -178,10 +179,6 @@ export async function approveTokenCommission(requestId: string, admin: User): Pr
         throw new Error("Commission request is not valid or has already been processed.");
     }
     
-    if (!requestSnap.data().depositSlipUrl) {
-        throw new Error("A deposit slip must be uploaded before approving.");
-    }
-
     const request = requestSnap.data() as CommissionRequest;
     const customerRef = doc(db, "customers", request.customerId);
     const customerSnap = await getDoc(customerRef);

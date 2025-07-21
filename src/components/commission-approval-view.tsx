@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -150,7 +151,7 @@ const CommissionApprovalView: React.FC<CommissionApprovalViewProps> = ({ user })
                             <Button size="sm" variant="outline" className="text-destructive hover:bg-destructive hover:text-destructive-foreground" onClick={() => handleReject(request.id)}>
                               <X className="mr-2 h-4 w-4" /> Reject
                             </Button>
-                             <Button size="sm" className="bg-success hover:bg-success/90 text-success-foreground" onClick={() => handleApprove(request.id)} disabled={!request.depositSlipUrl}>
+                             <Button size="sm" className="bg-success hover:bg-success/90 text-success-foreground" onClick={() => handleApprove(request.id)}>
                               <Check className="mr-2 h-4 w-4" /> Approve
                             </Button>
                           </div>
