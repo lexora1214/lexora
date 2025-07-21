@@ -230,7 +230,6 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
                                             </p>
                                             {customer.location && (
                                                 <Button
-                                                    variant="outline"
                                                     size="sm"
                                                     className="mt-2"
                                                     onClick={() => handleStartRide(customer)}
