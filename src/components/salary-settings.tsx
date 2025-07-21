@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { LoaderCircle, AlertTriangle, History, Undo2 } from "lucide-react";
+import { LoaderCircle, AlertTriangle, History, Undo2, UserCog, CheckCircle2 } from "lucide-react";
 import { SalarySettings, User, MonthlySalaryPayout } from "@/types";
 import {
     AlertDialog,
@@ -31,6 +31,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Badge } from "./ui/badge";
 
 const SALARY_ROLES: (keyof SalarySettings)[] = [
   "BUSINESS PROMOTER (stage 01)",
@@ -60,7 +61,7 @@ const SalarySettingsForm: React.FC<SalarySettingsProps> = ({ user }) => {
         formState: { errors },
     } = useForm<SalarySettings>();
 
-    const fetchInitialData = async () => {
+    const fetchInitialData = React.useCallback(async () => {
         setIsFetching(true);
         try {
             const [settings, payoutsData] = await Promise.all([
@@ -78,11 +79,11 @@ const SalarySettingsForm: React.FC<SalarySettingsProps> = ({ user }) => {
         } finally {
             setIsFetching(false);
         }
-    };
+    }, [reset, toast]);
 
     useEffect(() => {
         fetchInitialData();
-    }, [reset, toast]);
+    }, [fetchInitialData]);
     
     const onSettingsSubmit: SubmitHandler<SalarySettings> = async (data) => {
         setIsLoading(true);
@@ -122,7 +123,7 @@ const SalarySettingsForm: React.FC<SalarySettingsProps> = ({ user }) => {
     const handleReversePayout = async (payoutId: string) => {
         setIsReversing(payoutId);
         try {
-            await reverseSalaryPayout(payoutId);
+            await reverseSalaryPayout(payoutId, user);
             toast({
                 title: "Payout Reversed",
                 description: "The selected salary payout has been successfully undone.",
@@ -234,54 +235,64 @@ const SalarySettingsForm: React.FC<SalarySettingsProps> = ({ user }) => {
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>Payout Date</TableHead>
+                                    <TableHead>Payout Details</TableHead>
                                     <TableHead>Users Paid</TableHead>
                                     <TableHead className="text-right">Total Amount</TableHead>
-                                    <TableHead className="text-center">Actions</TableHead>
+                                    <TableHead className="text-center">Status / Action</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {payouts.length > 0 ? (
                                     payouts.map(payout => (
-                                        <TableRow key={payout.id}>
+                                        <TableRow key={payout.id} className={cn(payout.isReversed && "bg-muted/50 text-muted-foreground")}>
                                             <TableCell>
                                                 <div className="font-medium">{format(new Date(payout.payoutDate), "PPP p")}</div>
-                                                <div className="text-xs text-muted-foreground">{payout.id}</div>
+                                                <div className="text-xs flex items-center gap-1.5 mt-1">
+                                                    <UserCog className="h-3 w-3" /> Processed by: {payout.processedByName}
+                                                </div>
                                             </TableCell>
                                             <TableCell>{payout.totalUsersPaid}</TableCell>
                                             <TableCell className="text-right font-mono">LKR {payout.totalAmountPaid.toLocaleString()}</TableCell>
                                             <TableCell className="text-center">
-                                                <AlertDialog>
-                                                    <AlertDialogTrigger asChild>
-                                                        <Button variant="outline" size="sm" disabled={!!isReversing}>
-                                                             {isReversing === payout.id ? (
-                                                                <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
-                                                            ) : (
-                                                                <Undo2 className="mr-2 h-4 w-4" />
-                                                            )}
-                                                            Reverse
-                                                        </Button>
-                                                    </AlertDialogTrigger>
-                                                    <AlertDialogContent>
-                                                        <AlertDialogHeader>
-                                                            <AlertDialogTitle>Reverse this payout?</AlertDialogTitle>
-                                                            <AlertDialogDescription>
-                                                                This will permanently delete this payout record and subtract the salary amounts from all respective employees' income. This action cannot be undone.
-                                                            </AlertDialogDescription>
-                                                        </AlertDialogHeader>
-                                                        <AlertDialogFooter>
-                                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                            <AlertDialogAction
-                                                                disabled={!!isReversing}
-                                                                onClick={() => handleReversePayout(payout.id)}
-                                                                className={cn(buttonVariants({ variant: "destructive" }))}
-                                                            >
-                                                                 {isReversing === payout.id && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
-                                                                Yes, reverse payout
-                                                            </AlertDialogAction>
-                                                        </AlertDialogFooter>
-                                                    </AlertDialogContent>
-                                                </AlertDialog>
+                                                {payout.isReversed ? (
+                                                     <div className="flex flex-col items-center justify-center gap-1 text-xs">
+                                                        <Badge variant="destructive">Reversed</Badge>
+                                                        <span className="flex items-center gap-1.5"><UserCog className="h-3 w-3"/>{payout.reversedByName}</span>
+                                                        <span>on {format(new Date(payout.reversalDate!), "PPP")}</span>
+                                                    </div>
+                                                ) : (
+                                                    <AlertDialog>
+                                                        <AlertDialogTrigger asChild>
+                                                            <Button variant="outline" size="sm" disabled={!!isReversing}>
+                                                                {isReversing === payout.id ? (
+                                                                    <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+                                                                ) : (
+                                                                    <Undo2 className="mr-2 h-4 w-4" />
+                                                                )}
+                                                                Reverse
+                                                            </Button>
+                                                        </AlertDialogTrigger>
+                                                        <AlertDialogContent>
+                                                            <AlertDialogHeader>
+                                                                <AlertDialogTitle>Reverse this payout?</AlertDialogTitle>
+                                                                <AlertDialogDescription>
+                                                                    This will permanently delete this payout record and subtract the salary amounts from all respective employees' income. This action cannot be undone.
+                                                                </AlertDialogDescription>
+                                                            </AlertDialogHeader>
+                                                            <AlertDialogFooter>
+                                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                <AlertDialogAction
+                                                                    disabled={!!isReversing}
+                                                                    onClick={() => handleReversePayout(payout.id)}
+                                                                    className={cn(buttonVariants({ variant: "destructive" }))}
+                                                                >
+                                                                    {isReversing === payout.id && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
+                                                                    Yes, reverse payout
+                                                                </AlertDialogAction>
+                                                            </AlertDialogFooter>
+                                                        </AlertDialogContent>
+                                                    </AlertDialog>
+                                                )}
                                             </TableCell>
                                         </TableRow>
                                     ))

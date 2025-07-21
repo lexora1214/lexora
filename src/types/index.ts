@@ -168,9 +168,14 @@ export interface SalarySettings {
 }
 
 export interface MonthlySalaryPayout {
-    id: string; // A unique ID for the payout transaction, e.g., timestamp or ISO date string
+    id: string;
     payoutDate: string;
-    processedBy: string; // Admin User ID
+    processedBy: string;
+    processedByName: string;
     totalUsersPaid: number;
     totalAmountPaid: number;
+    isReversed?: boolean;
+    reversedBy?: string;
+    reversedByName?: string;
+    reversalDate?: string;
 }

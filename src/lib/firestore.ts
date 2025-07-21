@@ -828,6 +828,7 @@ export async function processMonthlySalaries(adminUser: User): Promise<{ usersPa
         id: payoutId,
         payoutDate,
         processedBy: adminUser.id,
+        processedByName: adminUser.name,
         totalUsersPaid: usersPaid,
         totalAmountPaid: totalAmount,
     };
@@ -846,7 +847,7 @@ export async function getSalaryPayouts(): Promise<MonthlySalaryPayout[]> {
     return payouts.sort((a, b) => new Date(b.payoutDate).getTime() - new Date(a.payoutDate).getTime());
 }
 
-export async function reverseSalaryPayout(payoutId: string): Promise<void> {
+export async function reverseSalaryPayout(payoutId: string, adminUser: User): Promise<void> {
     const batch = writeBatch(db);
     const payoutDocRef = doc(db, "salaryPayouts", payoutId);
     
@@ -854,8 +855,17 @@ export async function reverseSalaryPayout(payoutId: string): Promise<void> {
     const incomeRecordsSnap = await getDocs(incomeQuery);
     
     if (incomeRecordsSnap.empty) {
-        // If no records found, maybe it was already reversed. Just delete the log.
-        await deleteDoc(payoutDocRef);
+        // This case should ideally not happen if the UI prevents reversing twice.
+        const payoutSnap = await getDoc(payoutDocRef);
+        if (payoutSnap.exists() && !payoutSnap.data().isReversed) {
+            batch.update(payoutDocRef, {
+                isReversed: true,
+                reversedBy: adminUser.id,
+                reversedByName: adminUser.name,
+                reversalDate: new Date().toISOString()
+            });
+        }
+        await batch.commit();
         return;
     }
 
@@ -870,8 +880,13 @@ export async function reverseSalaryPayout(payoutId: string): Promise<void> {
         batch.delete(recordDoc.ref);
     }
     
-    // Delete the original payout log
-    batch.delete(payoutDocRef);
+    // Update the original payout log to mark it as reversed
+    batch.update(payoutDocRef, {
+      isReversed: true,
+      reversedBy: adminUser.id,
+      reversedByName: adminUser.name,
+      reversalDate: new Date().toISOString()
+    });
     
     await batch.commit();
 }
