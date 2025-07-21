@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from "react";
 import { User, ProductSale, Customer } from "@/types";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { LoaderCircle, CheckCircle2, Phone, Truck, Package, Navigation } from "lucide-react";
 import { collection, query, where, onSnapshot, getDocs } from "firebase/firestore";
@@ -12,6 +12,18 @@ import { markAsDelivered } from "@/lib/firestore";
 import { useToast } from "@/hooks/use-toast";
 import MapPicker from "./map-picker";
 import { Badge } from "./ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { cn } from "@/lib/utils";
 
 interface DeliveryBoyDashboardProps {
   user: User;
@@ -22,6 +34,7 @@ const DeliveryBoyDashboard: React.FC<DeliveryBoyDashboardProps> = ({ user }) => 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const [processingId, setProcessingId] = useState<string | null>(null);
 
   useEffect(() => {
     const salesQuery = query(collection(db, "productSales"), where("assignedTo", "==", user.id), where("deliveryStatus", "==", "assigned"));
@@ -42,6 +55,7 @@ const DeliveryBoyDashboard: React.FC<DeliveryBoyDashboardProps> = ({ user }) => 
   }, [user.id]);
   
   const handleMarkDelivered = async (saleId: string) => {
+      setProcessingId(saleId);
       try {
           await markAsDelivered(saleId);
           toast({
@@ -52,6 +66,8 @@ const DeliveryBoyDashboard: React.FC<DeliveryBoyDashboardProps> = ({ user }) => 
           });
       } catch (error: any) {
           toast({ variant: "destructive", title: "Update Failed", description: error.message });
+      } finally {
+        setProcessingId(null);
       }
   };
 
@@ -98,9 +114,31 @@ const DeliveryBoyDashboard: React.FC<DeliveryBoyDashboardProps> = ({ user }) => 
                                 <CardTitle className="flex items-center gap-2"><Package /> {sale.productName}</CardTitle>
                                 <CardDescription>For: {sale.customerName}</CardDescription>
                             </div>
-                            <Button size="sm" onClick={() => handleMarkDelivered(sale.id)}>
-                                <CheckCircle2 className="mr-2 h-4 w-4" /> Mark as Delivered
-                            </Button>
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button size="sm" disabled={!!processingId}>
+                                        {processingId === sale.id ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin"/> : <CheckCircle2 className="mr-2 h-4 w-4" />}
+                                        Mark as Delivered
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Confirm Delivery</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            Are you sure you want to mark this item as delivered? This action cannot be undone.
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction
+                                            onClick={() => handleMarkDelivered(sale.id)}
+                                            className={cn(buttonVariants({variant: 'default'}), 'bg-success text-success-foreground hover:bg-success/90')}
+                                        >
+                                            Confirm
+                                        </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
                         </div>
                     </CardHeader>
                     <CardContent className="space-y-4">
