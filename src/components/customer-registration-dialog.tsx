@@ -243,7 +243,7 @@ const CustomerRegistrationDialog: React.FC<CustomerRegistrationDialogProps> = ({
                                     className="w-full justify-between"
                                     >
                                     {field.value
-                                        ? stockItems.find((item) => item.id === field.value)?.productName
+                                        ? (stockItems || []).find((item) => item.id === field.value)?.productName
                                         : "Select product..."}
                                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                     </Button>
@@ -254,7 +254,7 @@ const CustomerRegistrationDialog: React.FC<CustomerRegistrationDialogProps> = ({
                                     <CommandList>
                                         <CommandEmpty>No products in stock.</CommandEmpty>
                                         <CommandGroup>
-                                        {stockItems.map((item) => (
+                                        {(stockItems || []).map((item) => (
                                             <CommandItem
                                             key={item.id}
                                             value={`${item.productName} ${item.productCode || ''}`}

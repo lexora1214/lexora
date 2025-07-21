@@ -336,7 +336,7 @@ const AppLayout = ({ user }: { user: User }) => {
           case "Admin":
             return <AdminDashboard user={user} allUsers={allUsers} allCustomers={allCustomers} allIncomeRecords={allIncomeRecords} setActiveView={setActiveView} />;
           case "Salesman":
-            return <SalesmanDashboard user={user} allCustomers={allCustomers} allIncomeRecords={allIncomeRecords} allCommissionRequests={allCommissionRequests} />;
+            return <SalesmanDashboard user={user} allCustomers={allCustomers} allIncomeRecords={allIncomeRecords} allCommissionRequests={allCommissionRequests} allStockItems={allStockItems} />;
           case "Team Operation Manager":
             return <ManagerDashboard user={user} allUsers={allUsers} allIncomeRecords={allIncomeRecords} />;
           case "Delivery Boy":
@@ -535,5 +535,3 @@ const AppLayout = ({ user }: { user: User }) => {
 };
 
 export default AppLayout;
-
-    

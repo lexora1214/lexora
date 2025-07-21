@@ -3,7 +3,7 @@
 "use client";
 
 import React from "react";
-import { User, Customer as CustomerType, IncomeRecord, CommissionRequest } from "@/types";
+import { User, Customer as CustomerType, IncomeRecord, CommissionRequest, StockItem } from "@/types";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { DollarSign, Users, UserPlus, Calendar as CalendarIcon, Hourglass, LoaderCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -22,9 +22,10 @@ interface SalesmanDashboardProps {
   allCustomers: CustomerType[];
   allIncomeRecords: IncomeRecord[];
   allCommissionRequests: CommissionRequest[];
+  allStockItems: StockItem[];
 }
 
-const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ user, allCustomers, allIncomeRecords, allCommissionRequests }) => {
+const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ user, allCustomers, allIncomeRecords, allCommissionRequests, allStockItems }) => {
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [isPendingApprovalsOpen, setIsPendingApprovalsOpen] = React.useState(false);
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
@@ -46,7 +47,7 @@ const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ user, allCustomer
         console.error("Error calculating pending income:", error);
         setPendingIncome(0);
       } finally {
-        setLoadingPending(true);
+        setLoadingPending(false); // Corrected from true to false
       }
     };
     
@@ -173,11 +174,23 @@ const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ user, allCustomer
               <div className="text-2xl font-bold">+{filteredCustomers.length}</div>
               <p className="text-xs text-muted-foreground">Customers registered in the period</p>
             </CardContent>
-            {/* The button to open the registration dialog is now in MyCustomersView */}
+             <CardFooter>
+               <Button className="w-full" onClick={() => setIsDialogOpen(true)}>
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  Register New Customer
+               </Button>
+            </CardFooter>
           </Card>
           <TokenUsagePieChart data={tokenUsageData} totalTokens={totalTokens} />
         </div>
       </div>
+       <CustomerRegistrationDialog 
+        isOpen={isDialogOpen} 
+        onOpenChange={setIsDialogOpen} 
+        salesman={user}
+        stockItems={allStockItems}
+        onRegistrationSuccess={() => {}} 
+      />
       <PendingApprovalsDialog
         isOpen={isPendingApprovalsOpen}
         onOpenChange={setIsPendingApprovalsOpen}
