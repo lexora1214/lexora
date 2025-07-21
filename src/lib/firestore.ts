@@ -4,6 +4,7 @@
 
 
 
+
 import { doc, getDoc, setDoc, collection, getDocs, query, where, writeBatch, increment, updateDoc, deleteDoc, addDoc, runTransaction } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -376,6 +377,7 @@ export async function createProductSaleAndDistributeCommissions(
     monthlyInstallment?: number | null;
     paymentMethod: 'cash' | 'installments';
     customerToken: string;
+    requestedDeliveryDate?: Date;
   },
   shopManager: User,
   customerId: string,
@@ -423,7 +425,7 @@ export async function createProductSaleAndDistributeCommissions(
             shopManagerId: shopManager.id,
             shopManagerName: shopManager.name,
             deliveryStatus: 'pending',
-            requestedDeliveryDate: customer.requestedDeliveryDate,
+            requestedDeliveryDate: formData.requestedDeliveryDate?.toISOString(),
         };
 
         if (formData.paymentMethod === 'installments') {

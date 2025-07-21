@@ -20,13 +20,15 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { createProductSaleAndDistributeCommissions } from "@/lib/firestore";
-import { LoaderCircle, Check, ChevronsUpDown } from "lucide-react";
+import { LoaderCircle, Check, ChevronsUpDown, Calendar as CalendarIcon } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "./ui/command";
 import { cn } from "@/lib/utils";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { ScrollArea } from "./ui/scroll-area";
 import { Badge } from "./ui/badge";
+import { Calendar } from "./ui/calendar";
+import { format } from "date-fns";
 
 const formSchema = z.object({
   customerToken: z.string({ required_error: "Please select a customer token." }),
@@ -41,6 +43,7 @@ const formSchema = z.object({
   downPayment: z.coerce.number().min(0, "Down payment must be a positive number.").optional(),
   installments: z.coerce.number().min(1, "Number of installments must be at least 1.").optional(),
   monthlyInstallment: z.coerce.number().optional(),
+  requestedDeliveryDate: z.date().optional(),
 }).refine(data => {
   if (data.paymentMethod === 'installments') {
     return data.downPayment !== undefined && data.downPayment !== null;
@@ -221,6 +224,11 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
                                       setValue('discountValue', customer.discountValue || undefined);
                                       setValue('installments', customer.installments || undefined);
                                       setValue('downPayment', customer.downPayment || undefined);
+                                      if (customer.requestedDeliveryDate) {
+                                        setValue('requestedDeliveryDate', new Date(customer.requestedDeliveryDate));
+                                      } else {
+                                        setValue('requestedDeliveryDate', undefined);
+                                      }
                                       
                                       if (selectedStockItem) {
                                           setValue('productId', selectedStockItem.id);
@@ -380,6 +388,35 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
                   </div>
                 </>
               )}
+              
+               <div className="col-span-full">
+                  <Label htmlFor="requestedDeliveryDate">Requested Delivery Date (Optional)</Label>
+                  <Controller
+                      control={control}
+                      name="requestedDeliveryDate"
+                      render={({ field }) => (
+                          <Popover>
+                              <PopoverTrigger asChild>
+                                  <Button
+                                      variant={"outline"}
+                                      className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}
+                                  >
+                                      <CalendarIcon className="mr-2 h-4 w-4" />
+                                      {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                                  </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0">
+                                  <Calendar
+                                      mode="single"
+                                      selected={field.value}
+                                      onSelect={field.onChange}
+                                      initialFocus
+                                  />
+                              </PopoverContent>
+                          </Popover>
+                      )}
+                  />
+              </div>
 
             </div>
           </ScrollArea>
