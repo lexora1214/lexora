@@ -13,7 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ArrowUpDown, Calendar as CalendarIcon, CreditCard, LoaderCircle, ShoppingBag, User as UserIcon, FileDown, Award } from "lucide-react";
+import { ArrowUpDown, Calendar as CalendarIcon, CreditCard, LoaderCircle, ShoppingBag, User as UserIcon, FileDown, Award, Wallet } from "lucide-react";
 import { getIncomeRecordsForUser } from "@/lib/firestore";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import {
@@ -502,3 +502,4 @@ const IncomeRecordsView: React.FC<IncomeRecordsViewProps> = ({ user }) => {
 };
 
 export default IncomeRecordsView;
+
