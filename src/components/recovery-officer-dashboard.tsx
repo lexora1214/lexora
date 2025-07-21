@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
@@ -13,6 +14,18 @@ import MapPicker from "./map-picker";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { format, addMonths } from 'date-fns';
 import { Progress } from "./ui/progress";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { cn } from "@/lib/utils";
 
 interface RecoveryOfficerDashboardProps {
   user: User;
@@ -31,6 +44,8 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const [processingId, setProcessingId] = useState<string | null>(null);
+
 
   useEffect(() => {
     const salesQuery = query(
@@ -96,6 +111,7 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
   }, [assignedSales, customers]);
   
   const handleMarkPaid = async (saleId: string) => {
+      setProcessingId(saleId);
       try {
           await markInstallmentPaid(saleId);
           toast({
@@ -106,6 +122,8 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
           });
       } catch (error: any) {
           toast({ variant: "destructive", title: "Update Failed", description: error.message });
+      } finally {
+          setProcessingId(null);
       }
   };
 
@@ -155,9 +173,35 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
                                         </div>
                                         <div className="text-right">
                                              <p className="font-bold text-lg text-primary">LKR {amount.toLocaleString()}</p>
-                                             <Button size="sm" className="mt-1" onClick={() => handleMarkPaid(sale.id)}>
-                                                <CheckCircle2 className="mr-2 h-4 w-4" /> Mark as Paid
-                                            </Button>
+                                                <AlertDialog>
+                                                    <AlertDialogTrigger asChild>
+                                                         <Button size="sm" className="mt-1" disabled={!!processingId}>
+                                                            {processingId === sale.id ? (
+                                                                <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+                                                            ) : (
+                                                                <CheckCircle2 className="mr-2 h-4 w-4" />
+                                                            )}
+                                                             Mark as Paid
+                                                        </Button>
+                                                    </AlertDialogTrigger>
+                                                    <AlertDialogContent>
+                                                        <AlertDialogHeader>
+                                                            <AlertDialogTitle>Confirm Payment Collection</AlertDialogTitle>
+                                                            <AlertDialogDescription>
+                                                                Are you sure you want to mark this installment as paid? This will distribute commissions and cannot be easily undone.
+                                                            </AlertDialogDescription>
+                                                        </AlertDialogHeader>
+                                                        <AlertDialogFooter>
+                                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                            <AlertDialogAction
+                                                                onClick={() => handleMarkPaid(sale.id)}
+                                                                className={cn("bg-success text-success-foreground hover:bg-success/90")}
+                                                            >
+                                                                Yes, Mark as Paid
+                                                            </AlertDialogAction>
+                                                        </AlertDialogFooter>
+                                                    </AlertDialogContent>
+                                                </AlertDialog>
                                         </div>
                                     </div>
                                 </CardHeader>
