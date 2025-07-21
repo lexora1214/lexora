@@ -95,7 +95,7 @@ const CustomerDetailsDialog: React.FC<CustomerDetailsDialogProps> = ({
     ? (productSale.installments! - productSale.paidInstallments) * productSale.monthlyInstallment
     : 0;
   
-  const salesmanName = allUsers?.find(u => u.id === customer.salesmanId)?.name || 'Unknown';
+  const salesmanName = allUsers?.find(u => u.id === customer.salesmanId)?.name || 'Unknown User';
 
   return (
     <>
