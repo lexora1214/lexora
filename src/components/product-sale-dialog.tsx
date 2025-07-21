@@ -212,6 +212,21 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
                                   value={`${customer.name} ${customer.tokenSerial} ${customer.nic || ''}`}
                                   onSelect={() => {
                                       field.onChange(customer.tokenSerial);
+                                      
+                                      const selectedStockItem = stockItems.find(item => item.productCode === customer.purchasingItemCode);
+                                      
+                                      setValue('productName', customer.purchasingItem || '');
+                                      setValue('productCode', customer.purchasingItemCode || '');
+                                      setValue('totalValue', customer.totalValue || 0);
+                                      setValue('installments', customer.installments || undefined);
+                                      setValue('downPayment', customer.downPayment || undefined);
+                                      
+                                      if (selectedStockItem) {
+                                          setValue('productId', selectedStockItem.id);
+                                      } else {
+                                          setValue('productId', '');
+                                      }
+
                                       setIsCustomerPopoverOpen(false);
                                   }}
                                   >
