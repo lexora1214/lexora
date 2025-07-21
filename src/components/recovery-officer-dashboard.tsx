@@ -231,7 +231,7 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
                                             {customer.location && (
                                                 <Button
                                                     size="sm"
-                                                    className="mt-2"
+                                                    className="mt-2 bg-accent text-accent-foreground hover:bg-accent/90 shadow-lg shadow-accent/20 transition-all hover:shadow-accent/40"
                                                     onClick={() => handleStartRide(customer)}
                                                 >
                                                     <Navigation className="mr-2 h-4 w-4" /> Start Ride
