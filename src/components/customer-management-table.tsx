@@ -218,7 +218,10 @@ export default function CustomerManagementTable({ data, allUsers, allProductSale
 
   const productSaleForSelectedCustomer = React.useMemo(() => {
     if (!selectedCustomer) return undefined;
-    return allProductSales.find(p => p.customerId === selectedCustomer.id);
+    const sales = allProductSales
+      .filter(p => p.customerId === selectedCustomer.id)
+      .sort((a, b) => new Date(b.saleDate).getTime() - new Date(a.saleDate).getTime());
+    return sales[0];
   }, [selectedCustomer, allProductSales]);
 
   return (
