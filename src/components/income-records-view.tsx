@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -12,7 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ArrowUpDown, Calendar as CalendarIcon, CreditCard, LoaderCircle, ShoppingBag, User as UserIcon, FileDown } from "lucide-react";
+import { ArrowUpDown, Calendar as CalendarIcon, CreditCard, LoaderCircle, ShoppingBag, User as UserIcon, FileDown, Award } from "lucide-react";
 import { getIncomeRecordsForUser } from "@/lib/firestore";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import {
@@ -72,7 +73,7 @@ const columns: ColumnDef<IncomeRecord>[] = [
         cell: ({row}) => {
             const record = row.original;
             let badgeText: string;
-            let badgeVariant: 'default' | 'secondary' | 'success' = 'secondary';
+            let badgeVariant: 'default' | 'secondary' | 'success' | 'destructive' = 'secondary';
 
             switch (record.sourceType) {
                 case 'product_sale':
@@ -86,6 +87,10 @@ const columns: ColumnDef<IncomeRecord>[] = [
                 case 'salary':
                     badgeText = 'Salary';
                     badgeVariant = 'success';
+                    break;
+                case 'incentive':
+                    badgeText = 'Incentive';
+                    badgeVariant = 'destructive';
                     break;
                 default:
                     badgeText = 'Unknown';
@@ -127,6 +132,13 @@ const columns: ColumnDef<IncomeRecord>[] = [
                             <p className="text-sm text-muted-foreground">For {format(new Date(record.saleDate), 'MMMM yyyy')}</p>
                         </div>
                     );
+                case 'incentive':
+                    return (
+                        <div>
+                            <p className="font-medium">Monthly Incentive</p>
+                            <p className="text-sm text-muted-foreground">For {format(new Date(record.saleDate), 'MMMM yyyy')} Target</p>
+                        </div>
+                    );
                 default:
                     return null;
             }
@@ -143,6 +155,8 @@ const columns: ColumnDef<IncomeRecord>[] = [
                 case 'token_sale':
                     return record.salesmanName;
                 case 'salary':
+                    return 'System Payroll';
+                case 'incentive':
                     return 'System Payroll';
                 default:
                     return 'N/A'
@@ -197,7 +211,7 @@ const IncomeRecordsView: React.FC<IncomeRecordsViewProps> = ({ user }) => {
     },
   });
   
-  const getSourceTypeInfo = (sourceType: 'token_sale' | 'product_sale' | 'salary' | undefined) => {
+  const getSourceTypeInfo = (sourceType: 'token_sale' | 'product_sale' | 'salary' | 'incentive' | undefined) => {
     switch (sourceType) {
         case 'product_sale':
             return { text: 'Product Sale', variant: 'default' as const };
@@ -205,6 +219,8 @@ const IncomeRecordsView: React.FC<IncomeRecordsViewProps> = ({ user }) => {
             return { text: 'Token Sale', variant: 'secondary' as const };
         case 'salary':
             return { text: 'Salary', variant: 'success' as const };
+        case 'incentive':
+            return { text: 'Incentive', variant: 'destructive' as const };
         default:
             return { text: 'Unknown', variant: 'outline' as const };
     }
@@ -230,7 +246,10 @@ const IncomeRecordsView: React.FC<IncomeRecordsViewProps> = ({ user }) => {
           detailText = `Token Sale for ${record.customerName}. Sale by: ${record.salesmanName || 'N/A'}`;
       } else if (record.sourceType === 'salary') {
           detailText = `Monthly salary for ${format(new Date(record.saleDate), 'MMMM yyyy')}`;
+      } else if (record.sourceType === 'incentive') {
+          detailText = `Incentive for ${format(new Date(record.saleDate), 'MMMM yyyy')} target`;
       }
+
 
       const recordData = [
         new Date(record.saleDate).toLocaleDateString(),
@@ -383,22 +402,32 @@ const IncomeRecordsView: React.FC<IncomeRecordsViewProps> = ({ user }) => {
                     let detailTitle = '';
                     let detailSubtitle = '';
                     let saleBy = '';
+                    let Icon = ShoppingBag;
 
                     switch (record.sourceType) {
                         case 'product_sale':
                             detailTitle = record.productName || 'Product';
                             detailSubtitle = `for ${record.customerName}`;
                             saleBy = record.shopManagerName || 'N/A';
+                            Icon = ShoppingBag;
                             break;
                         case 'token_sale':
                             detailTitle = 'Token Sale';
                             detailSubtitle = `for ${record.customerName}`;
                             saleBy = record.salesmanName || 'N/A';
+                            Icon = CreditCard;
                             break;
                         case 'salary':
                             detailTitle = 'Monthly Salary';
                             detailSubtitle = `For ${format(new Date(record.saleDate), 'MMMM yyyy')}`;
                             saleBy = 'System Payroll';
+                            Icon = Wallet;
+                            break;
+                         case 'incentive':
+                            detailTitle = 'Monthly Incentive';
+                            detailSubtitle = `For ${format(new Date(record.saleDate), 'MMMM yyyy')}`;
+                            saleBy = 'System Payroll';
+                            Icon = Award;
                             break;
                     }
 
@@ -418,7 +447,7 @@ const IncomeRecordsView: React.FC<IncomeRecordsViewProps> = ({ user }) => {
                             </div>
                             <div className="border-t pt-3 space-y-2 text-sm text-muted-foreground">
                                 <div className="flex items-center gap-2">
-                                    <ShoppingBag className="w-4 h-4 text-primary/80"/>
+                                    <Icon className="w-4 h-4 text-primary/80"/>
                                     <p><span className="font-medium text-card-foreground">{detailTitle}</span> {detailSubtitle}</p>
                                 </div>
                                 {record.installmentNumber && (
@@ -426,7 +455,7 @@ const IncomeRecordsView: React.FC<IncomeRecordsViewProps> = ({ user }) => {
                                         <Badge variant="default">Installment #{record.installmentNumber}</Badge>
                                     </div>
                                 )}
-                                {record.tokenSerial && (
+                                {record.tokenSerial && record.sourceType === 'token_sale' && (
                                     <div className="flex items-center gap-2">
                                         <CreditCard className="w-4 h-4 text-primary/80"/>
                                         <Badge variant="outline" className="font-mono">{record.tokenSerial}</Badge>

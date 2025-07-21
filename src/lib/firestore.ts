@@ -5,11 +5,12 @@
 
 
 
+
 import { doc, getDoc, setDoc, collection, getDocs, query, where, writeBatch, increment, updateDoc, deleteDoc, addDoc, runTransaction } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage } from "./firebase";
-import { User, Role, Customer, CommissionSettings, IncomeRecord, ProductSale, ProductCommissionSettings, SignupRoleSettings, CommissionRequest, SalesmanStage, SalarySettings, MonthlySalaryPayout, StockItem } from "@/types";
+import { User, Role, Customer, CommissionSettings, IncomeRecord, ProductSale, ProductCommissionSettings, SignupRoleSettings, CommissionRequest, SalesmanStage, SalarySettings, MonthlySalaryPayout, StockItem, SalesmanIncentiveSettings } from "@/types";
 import type { User as FirebaseUser } from 'firebase/auth';
 
 function generateReferralCode(): string {
@@ -794,53 +795,98 @@ export async function updateSalarySettings(data: SalarySettings): Promise<void> 
     await setDoc(settingsDocRef, data, { merge: true });
 }
 
-export async function processMonthlySalaries(adminUser: User): Promise<{ usersPaid: number; totalAmount: number; }> {
+export async function processMonthlySalaries(adminUser: User, allCustomers: Customer[]): Promise<{ usersPaid: number; totalAmount: number; }> {
     const now = new Date();
-    // Make ID unique for every payout by including the timestamp
-    const payoutId = `${now.toISOString()}`;
+    const payoutId = now.toISOString();
 
     const allUsers = await getAllUsers();
     const salarySettings = await getSalarySettings();
+    const incentiveSettings = await getSalesmanIncentiveSettings();
     const batch = writeBatch(db);
 
     let usersPaid = 0;
     let totalAmount = 0;
     const payoutDate = now.toISOString();
 
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+
     for (const user of allUsers) {
+        let userTotalPayout = 0;
         let salaryAmount = 0;
-        let roleOrStage: keyof SalarySettings | undefined;
-
+        let incentiveAmount = 0;
+        
+        // Determine base salary
+        let salaryRoleKey: keyof SalarySettings | undefined;
         if (user.role === 'Salesman' && user.salesmanStage) {
-            roleOrStage = user.salesmanStage;
+            salaryRoleKey = user.salesmanStage;
         } else if (Object.keys(DEFAULT_SALARY_SETTINGS).includes(user.role)) {
-            roleOrStage = user.role as keyof SalarySettings;
+            salaryRoleKey = user.role as keyof SalarySettings;
+        }
+        if (salaryRoleKey) {
+            salaryAmount = salarySettings[salaryRoleKey] ?? 0;
         }
 
-        if (roleOrStage) {
-            salaryAmount = salarySettings[roleOrStage] ?? 0;
+        // Determine incentive for salesmen
+        if (user.role === 'Salesman' && user.salesmanStage) {
+            const stageSettings = incentiveSettings[user.salesmanStage];
+            if (stageSettings) {
+                const monthlySalesCount = allCustomers.filter(c => 
+                    c.salesmanId === user.id &&
+                    c.commissionStatus === 'approved' &&
+                    new Date(c.saleDate) >= startOfMonth &&
+                    new Date(c.saleDate) <= endOfMonth
+                ).length;
+                
+                if (monthlySalesCount >= stageSettings.target) {
+                    incentiveAmount = stageSettings.incentive;
+                }
+            }
         }
+        
+        userTotalPayout = salaryAmount + incentiveAmount;
 
-        if (salaryAmount > 0) {
+        if (userTotalPayout > 0) {
             usersPaid++;
-            totalAmount += salaryAmount;
+            totalAmount += userTotalPayout;
 
             const userRef = doc(db, "users", user.id);
-            batch.update(userRef, { totalIncome: increment(salaryAmount) });
+            batch.update(userRef, { totalIncome: increment(userTotalPayout) });
 
-            const incomeRecordRef = doc(collection(db, "incomeRecords"));
-            const newIncomeRecord: IncomeRecord = {
-                id: incomeRecordRef.id,
-                userId: user.id,
-                amount: salaryAmount,
-                saleDate: payoutDate,
-                grantedForRole: user.role,
-                salesmanId: user.id,
-                salesmanName: user.name,
-                sourceType: 'salary',
-                payoutId: payoutId, // Tag the income record with the payout ID
-            };
-            batch.set(incomeRecordRef, newIncomeRecord);
+            // Create income record for salary
+            if (salaryAmount > 0) {
+                const salaryRecordRef = doc(collection(db, "incomeRecords"));
+                const newSalaryRecord: IncomeRecord = {
+                    id: salaryRecordRef.id,
+                    userId: user.id,
+                    amount: salaryAmount,
+                    saleDate: payoutDate,
+                    grantedForRole: user.role,
+                    salesmanId: user.id,
+                    salesmanName: user.name,
+                    sourceType: 'salary',
+                    payoutId: payoutId,
+                };
+                batch.set(salaryRecordRef, newSalaryRecord);
+            }
+
+            // Create income record for incentive
+            if (incentiveAmount > 0) {
+                 const incentiveRecordRef = doc(collection(db, "incomeRecords"));
+                 const newIncentiveRecord: IncomeRecord = {
+                    id: incentiveRecordRef.id,
+                    userId: user.id,
+                    amount: incentiveAmount,
+                    saleDate: payoutDate,
+                    grantedForRole: user.role,
+                    salesmanId: user.id,
+                    salesmanName: user.name,
+                    sourceType: 'incentive',
+                    payoutId: payoutId,
+                    incentiveForStage: user.salesmanStage,
+                };
+                batch.set(incentiveRecordRef, newIncentiveRecord);
+            }
         }
     }
     
@@ -942,4 +988,33 @@ export async function updateStockItem(itemId: string, updates: Partial<Omit<Stoc
 export async function deleteStockItem(itemId: string): Promise<void> {
     const itemDocRef = doc(db, "stock", itemId);
     await deleteDoc(itemDocRef);
+}
+
+// --- Salesman Incentive Settings ---
+
+const DEFAULT_SALESMAN_INCENTIVE_SETTINGS: SalesmanIncentiveSettings = {
+    "BUSINESS PROMOTER (stage 01)": {
+        target: 40,
+        incentive: 10000,
+    },
+    "MARKETING EXECUTIVE (stage 02)": {
+        target: 60,
+        incentive: 15000,
+    },
+};
+
+export async function getSalesmanIncentiveSettings(): Promise<SalesmanIncentiveSettings> {
+    const settingsDocRef = doc(db, "settings", "salesmanIncentives");
+    const settingsDocSnap = await getDoc(settingsDocRef);
+    if (settingsDocSnap.exists()) {
+        const data = settingsDocSnap.data();
+        return { ...DEFAULT_SALESMAN_INCENTIVE_SETTINGS, ...data };
+    }
+    await setDoc(settingsDocRef, DEFAULT_SALESMAN_INCENTIVE_SETTINGS);
+    return DEFAULT_SALESMAN_INCENTIVE_SETTINGS;
+}
+
+export async function updateSalesmanIncentiveSettings(data: SalesmanIncentiveSettings): Promise<void> {
+    const settingsDocRef = doc(db, "settings", "salesmanIncentives");
+    await setDoc(settingsDocRef, data, { merge: true });
 }

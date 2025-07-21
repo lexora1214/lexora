@@ -32,6 +32,7 @@ import {
   SignalZero,
   Package,
   Boxes,
+  Award,
 } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
@@ -82,6 +83,7 @@ import { useOfflineSync } from "@/hooks/use-offline-sync";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 import StockManagementView from "./stock-management-view";
 import AdminStockView from "./admin-stock-view";
+import IncentiveSettings from "./incentive-settings";
 
 type NavItem = {
   href: string;
@@ -135,6 +137,7 @@ const navItems: NavItem[] = [
       { href: "#", icon: DollarSign, label: "Token Commissions", roles: ["Admin"] },
       { href: "#", icon: Briefcase, label: "Product Commissions", roles: ["Admin"] },
       { href: "#", icon: Wallet, label: "Salary Management", roles: ["Admin"] },
+      { href: "#", icon: Award, label: "Incentive Management", roles: ["Admin"] },
       { href: "#", icon: SlidersHorizontal, label: "Signup Roles", roles: ["Admin"] },
     ]
   },
@@ -435,7 +438,9 @@ const AppLayout = ({ user }: { user: User }) => {
       case "Product Commissions":
         return <ProductCommissionSettings />;
       case "Salary Management":
-        return <SalarySettingsForm user={user} />;
+        return <SalarySettingsForm user={user} allCustomers={allCustomers} />;
+      case "Incentive Management":
+        return <IncentiveSettings />;
       case "Signup Roles":
         return <SignupRoleSettingsForm />;
       case "Insights":

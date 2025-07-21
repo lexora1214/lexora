@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { LoaderCircle, AlertTriangle, History, Undo2, UserCog, CheckCircle2 } from "lucide-react";
-import { SalarySettings, User, MonthlySalaryPayout } from "@/types";
+import { SalarySettings, User, MonthlySalaryPayout, Customer } from "@/types";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -45,9 +45,10 @@ const SALARY_ROLES: (keyof SalarySettings)[] = [
 
 interface SalarySettingsProps {
     user: User;
+    allCustomers: Customer[];
 }
 
-const SalarySettingsForm: React.FC<SalarySettingsProps> = ({ user }) => {
+const SalarySettingsForm: React.FC<SalarySettingsProps> = ({ user, allCustomers }) => {
     const { toast } = useToast();
     const [isLoading, setIsLoading] = useState(false);
     const [isFetching, setIsFetching] = useState(true);
@@ -109,7 +110,7 @@ const SalarySettingsForm: React.FC<SalarySettingsProps> = ({ user }) => {
     const handlePaySalaries = async () => {
         setIsPaying(true);
         try {
-            const { usersPaid, totalAmount } = await processMonthlySalaries(user);
+            const { usersPaid, totalAmount } = await processMonthlySalaries(user, allCustomers);
             toast({
                 title: "Salaries Processed!",
                 description: `Successfully paid ${usersPaid} employees a total of LKR ${totalAmount.toLocaleString()}.`,
@@ -216,7 +217,7 @@ const SalarySettingsForm: React.FC<SalarySettingsProps> = ({ user }) => {
                                 <AlertDialogHeader>
                                     <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                                     <AlertDialogDescription>
-                                        You are about to pay salaries for **{currentMonthYear}**. This action is irreversible. The system will add the defined salary to each eligible employee's total income.
+                                        You are about to pay salaries for **{currentMonthYear}**. This action is irreversible. The system will add the defined salary and any earned incentives to each eligible employee's total income.
                                     </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>

@@ -121,7 +121,7 @@ export interface IncomeRecord {
   salesmanName: string;
   shopManagerName?: string; // The shop manager who made the product sale
   // Source details
-  sourceType: 'token_sale' | 'product_sale' | 'salary';
+  sourceType: 'token_sale' | 'product_sale' | 'salary' | 'incentive';
   customerId?: string; // Optional for salary
   customerName?: string; // Optional for salary
   tokenSerial?: string;
@@ -133,6 +133,7 @@ export interface IncomeRecord {
   installmentNumber?: number;
   // Payout ID for salaries
   payoutId?: string;
+  incentiveForStage?: SalesmanStage;
 }
 
 
@@ -191,4 +192,14 @@ export interface StockItem {
   branch: string;
   managedBy: string; // Team Operation Manager's ID
   lastUpdatedAt: string;
+}
+
+export type SalesmanIncentive = {
+  target: number;
+  incentive: number;
+};
+
+export interface SalesmanIncentiveSettings {
+  "BUSINESS PROMOTER (stage 01)": SalesmanIncentive;
+  "MARKETING EXECUTIVE (stage 02)": SalesmanIncentive;
 }

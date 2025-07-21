@@ -4,18 +4,19 @@
 
 import React from "react";
 import { User, Customer as CustomerType, IncomeRecord, CommissionRequest, StockItem } from "@/types";
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
-import { DollarSign, Users, UserPlus, Calendar as CalendarIcon, Hourglass, LoaderCircle } from "lucide-react";
+import { Card, CardHeader, CardTitle, CardContent, CardFooter, CardDescription } from "@/components/ui/card";
+import { DollarSign, Users, UserPlus, Calendar as CalendarIcon, Hourglass, LoaderCircle, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import CustomerRegistrationDialog from "@/components/customer-registration-dialog";
 import { DateRange } from "react-day-picker";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { format } from "date-fns";
+import { format, startOfMonth, endOfMonth } from "date-fns";
 import { cn } from "@/lib/utils";
 import TokenUsagePieChart from "../token-usage-pie-chart";
-import { getCommissionSettings } from "@/lib/firestore";
+import { getCommissionSettings, getSalesmanIncentiveSettings } from "@/lib/firestore";
 import PendingApprovalsDialog from "../pending-approvals-dialog";
+import { Progress } from "../ui/progress";
 
 interface SalesmanDashboardProps {
   user: User;
@@ -31,6 +32,8 @@ const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ user, allCustomer
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
   const [pendingIncome, setPendingIncome] = React.useState(0);
   const [loadingPending, setLoadingPending] = React.useState(true);
+  const [incentiveTarget, setIncentiveTarget] = React.useState(0);
+  const [monthlySales, setMonthlySales] = React.useState(0);
 
   const pendingRequests = allCommissionRequests.filter(
     req => req.salesmanId === user.id && req.status === 'pending'
@@ -47,12 +50,43 @@ const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ user, allCustomer
         console.error("Error calculating pending income:", error);
         setPendingIncome(0);
       } finally {
-        setLoadingPending(false); // Corrected from true to false
+        setLoadingPending(false);
       }
     };
     
     calculatePendingIncome();
   }, [allCommissionRequests, user.id, pendingRequests.length]);
+
+  React.useEffect(() => {
+    if (user.role !== 'Salesman' || !user.salesmanStage) return;
+
+    const fetchIncentiveData = async () => {
+        const incentiveSettings = await getSalesmanIncentiveSettings();
+        const stageSettings = incentiveSettings[user.salesmanStage!];
+        if (stageSettings) {
+            setIncentiveTarget(stageSettings.target);
+        }
+    }
+    
+    const countMonthlySales = () => {
+        const today = new Date();
+        const start = startOfMonth(today);
+        const end = endOfMonth(today);
+
+        const salesCount = allCustomers.filter(c => 
+            c.salesmanId === user.id &&
+            c.commissionStatus === 'approved' &&
+            new Date(c.saleDate) >= start &&
+            new Date(c.saleDate) <= end
+        ).length;
+
+        setMonthlySales(salesCount);
+    }
+
+    fetchIncentiveData();
+    countMonthlySales();
+  }, [user.id, user.role, user.salesmanStage, allCustomers]);
+
 
   const filteredData = React.useMemo(() => {
     const myCustomers = allCustomers.filter(c => c.salesmanId === user.id);
@@ -91,6 +125,8 @@ const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ user, allCustomer
     { status: 'Used' as const, count: usedTokens, fill: 'var(--color-Used)' },
     { status: 'Available' as const, count: availableTokens, fill: 'var(--color-Available)' },
   ].filter(item => item.count > 0);
+  
+  const targetProgress = incentiveTarget > 0 ? (monthlySales / incentiveTarget) * 100 : 0;
 
 
   return (
@@ -183,6 +219,32 @@ const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ user, allCustomer
           </Card>
           <TokenUsagePieChart data={tokenUsageData} totalTokens={totalTokens} />
         </div>
+        {user.role === 'Salesman' && incentiveTarget > 0 && (
+          <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                    <Target className="h-5 w-5 text-primary" />
+                    Monthly Token Target
+                </CardTitle>
+                <CardDescription>
+                    Your progress for {format(new Date(), 'MMMM yyyy')}.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <div className="flex justify-between text-sm text-muted-foreground mb-2">
+                    <span>Progress</span>
+                    <span>{monthlySales} / {incentiveTarget} Tokens</span>
+                </div>
+                <Progress value={targetProgress} className="h-3" />
+                 <p className="text-xs text-muted-foreground mt-2">
+                    {incentiveTarget - monthlySales > 0 
+                        ? `${incentiveTarget - monthlySales} more approved sales to go!`
+                        : `Congratulations! You've reached your monthly target.`
+                    }
+                </p>
+            </CardContent>
+          </Card>
+        )}
       </div>
        <CustomerRegistrationDialog 
         isOpen={isDialogOpen} 
