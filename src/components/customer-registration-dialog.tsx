@@ -24,9 +24,9 @@ import { ScrollArea } from "./ui/scroll-area";
 import MapPicker from "./map-picker";
 import { useOfflineSync } from "@/hooks/use-offline-sync";
 
-
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
+  nic: z.string().min(10, "NIC must be at least 10 characters.").max(12, "NIC cannot be more than 12 characters."),
   contactInfo: z.string().regex(/^0\d{9}$/, "Please enter a valid 10-digit primary mobile number."),
   whatsappNumber: z.string().regex(/^0\d{9}$/, "Please enter a valid 10-digit WhatsApp number.").optional().or(z.literal('')),
   email: z.string().email("Please enter a valid email address.").optional().or(z.literal('')),
@@ -106,6 +106,7 @@ const CustomerRegistrationDialog: React.FC<CustomerRegistrationDialogProps> = ({
     
     const customerPayload: Omit<Customer, 'id' | 'saleDate' | 'commissionStatus' | 'salesmanId' | 'tokenIsAvailable'> = {
         name: data.name,
+        nic: data.nic,
         contactInfo: data.contactInfo,
         address: data.address,
         tokenSerial: data.tokenSerial,
@@ -170,6 +171,11 @@ const CustomerRegistrationDialog: React.FC<CustomerRegistrationDialogProps> = ({
                     <Label htmlFor="name">Full Name</Label>
                     <Input id="name" {...register("name")} />
                     {errors.name && <p className="text-xs text-destructive mt-1">{errors.name.message}</p>}
+                  </div>
+                   <div>
+                    <Label htmlFor="nic">NIC Number</Label>
+                    <Input id="nic" {...register("nic")} />
+                    {errors.nic && <p className="text-xs text-destructive mt-1">{errors.nic.message}</p>}
                   </div>
                   <div>
                     <Label htmlFor="branch">Branch</Label>

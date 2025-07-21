@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Customer, IncomeRecord, ProductSale, User } from "@/types";
-import { CalendarIcon, Hash, Home, Phone, User as UserIcon, CheckCircle2, XCircle, Mail, MessageSquare, MapPin, ShoppingCart, Percent, DollarSign, Repeat, Clock, ShieldCheck, ShieldX, ShieldAlert, Users } from "lucide-react";
+import { CalendarIcon, Hash, Home, Phone, User as UserIcon, CheckCircle2, XCircle, Mail, MessageSquare, MapPin, ShoppingCart, Percent, DollarSign, Repeat, Clock, ShieldCheck, ShieldX, ShieldAlert, Users, Fingerprint } from "lucide-react";
 import { ScrollArea } from "./ui/scroll-area";
 import MapPicker from "./map-picker";
 import { Progress } from "./ui/progress";
@@ -114,6 +114,7 @@ const CustomerDetailsDialog: React.FC<CustomerDetailsDialogProps> = ({
               <div className="grid gap-2 py-4 px-4 divide-y">
                   <div className="grid md:grid-cols-2 gap-x-8">
                       <DetailRow icon={UserIcon} label="Full Name" value={customer.name} />
+                      <DetailRow icon={Fingerprint} label="NIC Number" value={customer.nic} />
                       <DetailRow icon={Phone} label="Primary Contact" value={customer.contactInfo} />
                       <DetailRow icon={MessageSquare} label="WhatsApp Number" value={customer.whatsappNumber} />
                       <DetailRow icon={Mail} label="Email Address" value={customer.email} />

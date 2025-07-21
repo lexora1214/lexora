@@ -1,3 +1,4 @@
+
 export type Role =
   | "Salesman"
   | "Team Operation Manager"
@@ -28,6 +29,7 @@ export interface User {
 export interface Customer {
   id:string;
   name: string;
+  nic?: string;
   contactInfo: string;
   address: string;
   tokenSerial: string;
