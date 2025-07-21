@@ -272,6 +272,7 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
                                       field.onChange(item.id);
                                       setValue('productName', item.productName);
                                       setValue('productCode', item.productCode);
+                                      setValue('totalValue', item.price);
                                       setIsProductPopoverOpen(false);
                                   }}
                                   disabled={item.quantity === 0}

@@ -73,6 +73,7 @@ const AdminStockView: React.FC<AdminStockViewProps> = ({ allStockItems }) => {
                 <TableHead>Product Name</TableHead>
                 <TableHead>Code</TableHead>
                 <TableHead>Branch</TableHead>
+                <TableHead>Price (LKR)</TableHead>
                 <TableHead className="text-center">Quantity</TableHead>
                 <TableHead>Last Updated</TableHead>
               </TableRow>
@@ -84,13 +85,14 @@ const AdminStockView: React.FC<AdminStockViewProps> = ({ allStockItems }) => {
                     <TableCell className="font-medium">{item.productName}</TableCell>
                     <TableCell>{item.productCode || 'N/A'}</TableCell>
                     <TableCell><Badge variant="outline">{item.branch}</Badge></TableCell>
+                    <TableCell>{item.price.toLocaleString()}</TableCell>
                     <TableCell className="text-center">{item.quantity}</TableCell>
                     <TableCell>{format(new Date(item.lastUpdatedAt), 'PPP p')}</TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center">
+                  <TableCell colSpan={6} className="h-24 text-center">
                     No stock items found.
                   </TableCell>
                 </TableRow>

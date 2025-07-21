@@ -1,6 +1,7 @@
 
 
 
+
 import { doc, getDoc, setDoc, collection, getDocs, query, where, writeBatch, increment, updateDoc, deleteDoc, addDoc, runTransaction } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -913,7 +914,7 @@ export async function addStockItem(item: Omit<StockItem, 'id' | 'lastUpdatedAt'>
     });
 }
 
-export async function updateStockItem(itemId: string, updates: Partial<StockItem>): Promise<void> {
+export async function updateStockItem(itemId: string, updates: Partial<Omit<StockItem, 'id' | 'lastUpdatedAt'>>): Promise<void> {
     const itemDocRef = doc(db, "stock", itemId);
     await updateDoc(itemDocRef, {
         ...updates,

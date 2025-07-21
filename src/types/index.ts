@@ -186,6 +186,7 @@ export interface StockItem {
   id: string;
   productName: string;
   productCode?: string;
+  price: number;
   quantity: number;
   branch: string;
   managedBy: string; // Team Operation Manager's ID
