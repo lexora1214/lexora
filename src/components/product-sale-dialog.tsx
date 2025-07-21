@@ -197,14 +197,14 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
                       </PopoverTrigger>
                       <PopoverContent className="w-[375px] p-0">
                         <Command>
-                          <CommandInput placeholder="Search customer or token..." />
+                          <CommandInput placeholder="Search name, token, or NIC..." />
                           <CommandList>
                               <CommandEmpty>No tokens found.</CommandEmpty>
                               <CommandGroup>
                               {customerList.map((customer) => (
                                   <CommandItem
                                   key={customer.id}
-                                  value={`${customer.name} ${customer.tokenSerial}`}
+                                  value={`${customer.name} ${customer.tokenSerial} ${customer.nic || ''}`}
                                   onSelect={() => {
                                       field.onChange(customer.tokenSerial);
                                       if (customer.tokenIsAvailable) {
@@ -234,7 +234,10 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
                                       field.value === customer.tokenSerial ? "opacity-100" : "opacity-0"
                                       )}
                                   />
-                                  <div className="flex-grow">{customer.name} - <span className="text-muted-foreground">{customer.tokenSerial}</span></div>
+                                  <div className="flex-grow">
+                                      {customer.name} - <span className="text-muted-foreground">{customer.tokenSerial}</span>
+                                      {customer.nic && <span className="text-xs text-muted-foreground ml-2">({customer.nic})</span>}
+                                  </div>
                                   {!customer.tokenIsAvailable && <Badge variant="destructive" className="ml-auto">Used</Badge>}
                                   </CommandItem>
                               ))}
