@@ -1,10 +1,11 @@
+
 "use client";
 
 import React, { useState, useEffect } from "react";
 import { User, ProductSale, Customer } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { LoaderCircle, CheckCircle2, Phone, Truck, Package } from "lucide-react";
+import { LoaderCircle, CheckCircle2, Phone, Truck, Package, Navigation } from "lucide-react";
 import { collection, query, where, onSnapshot, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { markAsDelivered } from "@/lib/firestore";
@@ -54,6 +55,20 @@ const DeliveryBoyDashboard: React.FC<DeliveryBoyDashboardProps> = ({ user }) => 
       }
   };
 
+  const handleStartRide = (customer: Customer) => {
+    if (!customer.location) {
+        toast({
+            variant: "destructive",
+            title: "Navigation Failed",
+            description: "No location is available for this customer.",
+        });
+        return;
+    }
+    const { latitude, longitude } = customer.location;
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}&travelmode=driving`;
+    window.open(url, '_blank');
+  };
+
   const getCustomerForSale = (customerId: string) => customers.find(c => c.id === customerId);
 
   if (loading) {
@@ -100,7 +115,18 @@ const DeliveryBoyDashboard: React.FC<DeliveryBoyDashboardProps> = ({ user }) => 
                                  <Badge variant="outline" className="capitalize">{sale.paymentMethod} Payment</Badge>
                             </div>
                             <div>
-                                <p className="font-semibold text-sm mb-2">Delivery Location</p>
+                                <div className="flex justify-between items-center mb-2">
+                                    <p className="font-semibold text-sm">Delivery Location</p>
+                                    {customer?.location && (
+                                        <Button
+                                            size="sm"
+                                            className="bg-accent text-accent-foreground hover:bg-accent/90 shadow-lg shadow-accent/20 transition-all hover:shadow-accent/40"
+                                            onClick={() => handleStartRide(customer)}
+                                        >
+                                            <Navigation className="mr-2 h-4 w-4" /> Start Ride
+                                        </Button>
+                                    )}
+                                </div>
                                 {customer?.location ? (
                                     <MapPicker 
                                         isDisplayOnly
