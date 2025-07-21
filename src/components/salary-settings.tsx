@@ -275,7 +275,7 @@ const SalarySettingsForm: React.FC<SalarySettingsProps> = ({ user }) => {
                                                             <span>on {format(new Date(payout.reversalDate!), "PPP")}</span>
                                                         </div>
                                                     ) : (
-                                                        <AlertDialog onOpenChange={(e) => e.stopPropagation()} onCancel={(e) => e.stopPropagation()}>
+                                                        <AlertDialog>
                                                             <AlertDialogTrigger asChild>
                                                                 <Button 
                                                                     variant="outline" 
