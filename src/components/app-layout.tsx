@@ -355,7 +355,7 @@ const AppLayout = ({ user }: { user: User }) => {
       case "Income Records":
         return <IncomeRecordsView user={user} />;
       case "My Customers":
-        return <MyCustomersView user={user} allCustomers={allCustomers} allProductSales={allProductSales} allUsers={allUsers} />;
+        return <MyCustomersView user={user} allCustomers={allCustomers} allProductSales={allProductSales} allUsers={allUsers} allStockItems={allStockItems} />;
       case "My Deliveries":
         return <DeliveryBoyDashboard user={user} />;
       case "My Collections":

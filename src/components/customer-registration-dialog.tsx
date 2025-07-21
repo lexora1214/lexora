@@ -1,7 +1,8 @@
 
+
 "use client";
 
-import React, { useEffect, useCallback } from "react";
+import React, { useEffect, useCallback, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -18,8 +19,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { createCustomer } from "@/lib/firestore";
-import { User, Customer } from "@/types";
-import { Calendar as CalendarIcon, LoaderCircle } from "lucide-react";
+import { User, Customer, StockItem } from "@/types";
+import { Calendar as CalendarIcon, LoaderCircle, ChevronsUpDown, Check } from "lucide-react";
 import { ScrollArea } from "./ui/scroll-area";
 import MapPicker from "./map-picker";
 import { useOfflineSync } from "@/hooks/use-offline-sync";
@@ -27,6 +28,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { Calendar } from "./ui/calendar";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "./ui/command";
+import { Badge } from "./ui/badge";
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
@@ -38,6 +41,7 @@ const formSchema = z.object({
   tokenSerial: z.string().min(1, "Token serial cannot be empty."),
   latitude: z.coerce.number().optional(),
   longitude: z.coerce.number().optional(),
+  purchasingItemId: z.string({ required_error: "Please select a product." }),
   purchasingItem: z.string().min(2, "Item name is required."),
   purchasingItemCode: z.string().optional(),
   totalValue: z.coerce.number().min(0, "Total value must be a positive number."),
@@ -56,6 +60,7 @@ interface CustomerRegistrationDialogProps {
   onOpenChange: (isOpen: boolean) => void;
   salesman: User;
   onRegistrationSuccess: () => void;
+  stockItems: StockItem[];
 }
 
 const CustomerRegistrationDialog: React.FC<CustomerRegistrationDialogProps> = ({
@@ -63,9 +68,11 @@ const CustomerRegistrationDialog: React.FC<CustomerRegistrationDialogProps> = ({
   onOpenChange,
   salesman,
   onRegistrationSuccess,
+  stockItems,
 }) => {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = React.useState(false);
+  const [isProductPopoverOpen, setIsProductPopoverOpen] = useState(false);
   const { isOffline } = useOfflineSync();
   
   const {
@@ -130,21 +137,15 @@ const CustomerRegistrationDialog: React.FC<CustomerRegistrationDialogProps> = ({
         requestedDeliveryDate: data.requestedDeliveryDate?.toISOString(),
     };
 
-    // This is a "fire-and-forget" call from the UI's perspective.
-    // Firestore's offline persistence handles the rest automatically.
-    // We only catch immediate validation errors from the function itself.
     createCustomer(customerPayload, salesman).catch((error: any) => {
       toast({
           variant: "destructive",
           title: "Registration Failed",
           description: error.message,
       });
-      // In case of a critical error, stop the loading state.
       setIsLoading(false);
     });
 
-    // Provide immediate feedback to the user, regardless of network status.
-    // This is the key change to make the UI feel responsive.
     toast({
       title: isOffline ? "Customer Queued" : "Request Submitted",
       description: isOffline
@@ -154,7 +155,6 @@ const CustomerRegistrationDialog: React.FC<CustomerRegistrationDialogProps> = ({
       className: 'bg-success text-success-foreground'
     });
     
-    // Close the dialog and reset the form immediately.
     onRegistrationSuccess();
     reset({ branch: salesman?.branch || "N/A" });
     onOpenChange(false);
@@ -228,15 +228,70 @@ const CustomerRegistrationDialog: React.FC<CustomerRegistrationDialogProps> = ({
               <div className="border-t pt-4 mt-2">
                 <h3 className="text-lg font-medium mb-2">Purchase & Delivery Details</h3>
                 <div className="grid md:grid-cols-2 gap-4">
-                    <div>
-                        <Label htmlFor="purchasingItem">Purchasing Item</Label>
-                        <Input id="purchasingItem" {...register("purchasingItem")} />
-                        {errors.purchasingItem && <p className="text-xs text-destructive mt-1">{errors.purchasingItem.message}</p>}
+                    <div className="md:col-span-2">
+                        <Label>Purchasing Item</Label>
+                        <Controller
+                            control={control}
+                            name="purchasingItemId"
+                            render={({ field }) => (
+                                <Popover open={isProductPopoverOpen} onOpenChange={setIsProductPopoverOpen}>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                    variant="outline"
+                                    role="combobox"
+                                    aria-expanded={isProductPopoverOpen}
+                                    className="w-full justify-between"
+                                    >
+                                    {field.value
+                                        ? stockItems.find((item) => item.id === field.value)?.productName
+                                        : "Select product..."}
+                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[375px] p-0">
+                                    <Command>
+                                    <CommandInput placeholder="Search product name or code..." />
+                                    <CommandList>
+                                        <CommandEmpty>No products in stock.</CommandEmpty>
+                                        <CommandGroup>
+                                        {stockItems.map((item) => (
+                                            <CommandItem
+                                            key={item.id}
+                                            value={`${item.productName} ${item.productCode || ''}`}
+                                            onSelect={() => {
+                                                field.onChange(item.id);
+                                                setValue('purchasingItem', item.productName);
+                                                setValue('purchasingItemCode', item.productCode);
+                                                setValue('totalValue', item.price);
+                                                setIsProductPopoverOpen(false);
+                                            }}
+                                            disabled={item.quantity === 0}
+                                            >
+                                            <Check
+                                                className={cn(
+                                                "mr-2 h-4 w-4",
+                                                field.value === item.id ? "opacity-100" : "opacity-0"
+                                                )}
+                                            />
+                                            <div className="flex-grow">
+                                                <p>{item.productName}</p>
+                                                {item.productCode && <p className="text-xs text-muted-foreground">{item.productCode}</p>}
+                                            </div>
+                                            <Badge variant={item.quantity > 0 ? "success" : "destructive"}>
+                                                {item.quantity} in stock
+                                            </Badge>
+                                            </CommandItem>
+                                        ))}
+                                        </CommandGroup>
+                                    </CommandList>
+                                    </Command>
+                                </PopoverContent>
+                                </Popover>
+                            )}
+                        />
+                        {errors.purchasingItemId && <p className="text-xs text-destructive mt-1">{errors.purchasingItemId.message}</p>}
                     </div>
-                     <div>
-                        <Label htmlFor="purchasingItemCode">Item Code (Optional)</Label>
-                        <Input id="purchasingItemCode" {...register("purchasingItemCode")} />
-                    </div>
+
                      <div>
                         <Label htmlFor="totalValue">Total Value (LKR)</Label>
                         <Input id="totalValue" type="number" {...register("totalValue")} />

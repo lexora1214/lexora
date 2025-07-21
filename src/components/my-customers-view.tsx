@@ -1,8 +1,9 @@
 
+
 "use client";
 
 import React from "react";
-import { User, Customer as CustomerType, ProductSale } from "@/types";
+import { User, Customer as CustomerType, ProductSale, StockItem } from "@/types";
 import {
   Table,
   TableBody,
@@ -28,9 +29,10 @@ interface MyCustomersViewProps {
   allCustomers: CustomerType[];
   allProductSales: ProductSale[];
   allUsers: User[];
+  allStockItems: StockItem[];
 }
 
-const MyCustomersView: React.FC<MyCustomersViewProps> = ({ user, allCustomers, allProductSales, allUsers }) => {
+const MyCustomersView: React.FC<MyCustomersViewProps> = ({ user, allCustomers, allProductSales, allUsers, allStockItems }) => {
   const [isRegisterDialogOpen, setIsRegisterDialogOpen] = React.useState(false);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = React.useState(false);
   const [selectedCustomer, setSelectedCustomer] = React.useState<CustomerType | null>(null);
@@ -195,6 +197,7 @@ const MyCustomersView: React.FC<MyCustomersViewProps> = ({ user, allCustomers, a
         isOpen={isRegisterDialogOpen} 
         onOpenChange={setIsRegisterDialogOpen} 
         salesman={user}
+        stockItems={allStockItems}
         onRegistrationSuccess={() => {}} 
       />
       <CustomerDetailsDialog 

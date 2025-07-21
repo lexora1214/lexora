@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React from "react";
@@ -45,7 +46,7 @@ const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ user, allCustomer
         console.error("Error calculating pending income:", error);
         setPendingIncome(0);
       } finally {
-        setLoadingPending(false);
+        setLoadingPending(true);
       }
     };
     
@@ -172,24 +173,11 @@ const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ user, allCustomer
               <div className="text-2xl font-bold">+{filteredCustomers.length}</div>
               <p className="text-xs text-muted-foreground">Customers registered in the period</p>
             </CardContent>
-            <CardFooter>
-              <Button className="w-full" onClick={() => setIsDialogOpen(true)}>
-                  <UserPlus className="mr-2 h-4 w-4" />
-                  Register New Customer
-              </Button>
-            </CardFooter>
+            {/* The button to open the registration dialog is now in MyCustomersView */}
           </Card>
           <TokenUsagePieChart data={tokenUsageData} totalTokens={totalTokens} />
         </div>
       </div>
-      <CustomerRegistrationDialog 
-        isOpen={isDialogOpen} 
-        onOpenChange={setIsDialogOpen} 
-        salesman={user}
-        onRegistrationSuccess={() => {
-          // Data is updated via the top-level snapshot listener in AppLayout
-        }} 
-      />
       <PendingApprovalsDialog
         isOpen={isPendingApprovalsOpen}
         onOpenChange={setIsPendingApprovalsOpen}
