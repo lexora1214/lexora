@@ -33,6 +33,7 @@ import {
   Package,
   Boxes,
   Award,
+  TrendingUp,
 } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
@@ -84,6 +85,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/t
 import StockManagementView from "./stock-management-view";
 import AdminStockView from "./admin-stock-view";
 import IncentiveSettings from "./incentive-settings";
+import TargetAchieversView from "./target-achievers-view";
 
 type NavItem = {
   href: string;
@@ -128,6 +130,15 @@ const navItems: NavItem[] = [
   { href: "#", icon: Briefcase, label: "Customer Management", roles: ["Admin"]},
   { href: "#", icon: ShieldCheck, label: "Commission Approvals", roles: ["Admin"] },
   { href: "#", icon: Network, label: "Network View", roles: ["Admin"] },
+  { 
+    href: "#", 
+    icon: TrendingUp, 
+    label: "Reports", 
+    roles: ["Admin"],
+    children: [
+      { href: "#", icon: Award, label: "Target Achievers", roles: ["Admin"] },
+    ]
+  },
   { 
     href: "#", 
     icon: Settings, 
@@ -425,6 +436,8 @@ const AppLayout = ({ user }: { user: User }) => {
             </CardContent>
           </Card>
         );
+      case "Target Achievers":
+        return <TargetAchieversView allUsers={allUsers} allCustomers={allCustomers} />;
       case "Token Commissions":
         return (
           <Card>
