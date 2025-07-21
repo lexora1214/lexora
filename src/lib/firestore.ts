@@ -1,4 +1,5 @@
 
+
 import { doc, getDoc, setDoc, collection, getDocs, query, where, writeBatch, increment, updateDoc, deleteDoc } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -889,4 +890,13 @@ export async function reverseSalaryPayout(payoutId: string, adminUser: User): Pr
     });
     
     await batch.commit();
+}
+
+
+export async function getIncomeRecordsForPayout(payoutId: string): Promise<IncomeRecord[]> {
+    const recordsCol = collection(db, "incomeRecords");
+    const q = query(recordsCol, where("payoutId", "==", payoutId));
+    const recordsSnap = await getDocs(q);
+    const records = recordsSnap.docs.map(doc => doc.data() as IncomeRecord);
+    return records.sort((a, b) => a.salesmanName.localeCompare(b.salesmanName));
 }

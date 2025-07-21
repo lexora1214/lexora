@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -32,6 +33,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "./ui/badge";
+import PayoutDetailsDialog from "./payout-details-dialog";
 
 const SALARY_ROLES: (keyof SalarySettings)[] = [
   "BUSINESS PROMOTER (stage 01)",
@@ -52,6 +54,8 @@ const SalarySettingsForm: React.FC<SalarySettingsProps> = ({ user }) => {
     const [isPaying, setIsPaying] = useState(false);
     const [isReversing, setIsReversing] = useState<string | null>(null);
     const [payouts, setPayouts] = useState<MonthlySalaryPayout[]>([]);
+    const [selectedPayout, setSelectedPayout] = useState<MonthlySalaryPayout | null>(null);
+    const [isDetailsOpen, setIsDetailsOpen] = useState(false);
     const currentMonthYear = format(new Date(), "MMMM yyyy");
 
     const {
@@ -138,6 +142,11 @@ const SalarySettingsForm: React.FC<SalarySettingsProps> = ({ user }) => {
         }
     }
 
+    const handleViewDetails = (payout: MonthlySalaryPayout) => {
+        setSelectedPayout(payout);
+        setIsDetailsOpen(true);
+    }
+
 
     if (isFetching) {
         return (
@@ -150,163 +159,181 @@ const SalarySettingsForm: React.FC<SalarySettingsProps> = ({ user }) => {
     }
 
     return (
-        <div className="space-y-6">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Base Salary Settings</CardTitle>
-                    <CardDescription>Define the monthly base salary for each role. This does not include commissions.</CardDescription>
-                </CardHeader>
-                <form onSubmit={handleSubmit(onSettingsSubmit)}>
-                    <CardContent className="grid gap-6 pt-6">
-                        {SALARY_ROLES.map(role => (
-                             <div key={role} className="grid gap-3">
-                                <Label htmlFor={role}>{role}</Label>
-                                <Input id={role} type="number" {...register(role, { valueAsNumber: true })} />
-                            </div>
-                        ))}
-                    </CardContent>
-                    <CardFooter className="border-t px-6 py-4">
-                        <Button type="submit" disabled={isLoading}>
-                            {isLoading && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
-                            Save Salary Settings
-                        </Button>
-                    </CardFooter>
-                </form>
-            </Card>
+        <>
+            <div className="space-y-6">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Base Salary Settings</CardTitle>
+                        <CardDescription>Define the monthly base salary for each role. This does not include commissions.</CardDescription>
+                    </CardHeader>
+                    <form onSubmit={handleSubmit(onSettingsSubmit)}>
+                        <CardContent className="grid gap-6 pt-6">
+                            {SALARY_ROLES.map(role => (
+                                <div key={role} className="grid gap-3">
+                                    <Label htmlFor={role}>{role}</Label>
+                                    <Input id={role} type="number" {...register(role, { valueAsNumber: true })} />
+                                </div>
+                            ))}
+                        </CardContent>
+                        <CardFooter className="border-t px-6 py-4">
+                            <Button type="submit" disabled={isLoading}>
+                                {isLoading && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
+                                Save Salary Settings
+                            </Button>
+                        </CardFooter>
+                    </form>
+                </Card>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>Monthly Salary Payout</CardTitle>
-                    <CardDescription>Process the salary payment for all eligible employees for the current month of {currentMonthYear}.</CardDescription>
-                </CardHeader>
-                 <CardContent>
-                    <div className="p-4 rounded-md border border-warning/50 bg-warning/10 text-warning-foreground">
-                        <div className="flex items-start gap-3">
-                            <AlertTriangle className="h-5 w-5 mt-0.5 flex-shrink-0 text-warning" />
-                            <div>
-                                <h3 className="font-semibold">Warning: Handle with Care</h3>
-                                <p className="text-sm">This action can be performed multiple times. Each time you click this button, it will add the defined salary amount to each eligible employee's income. Please ensure you are not making duplicate payments for the same month.</p>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Monthly Salary Payout</CardTitle>
+                        <CardDescription>Process the salary payment for all eligible employees for the current month of {currentMonthYear}.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="p-4 rounded-md border border-warning/50 bg-warning/10 text-warning-foreground">
+                            <div className="flex items-start gap-3">
+                                <AlertTriangle className="h-5 w-5 mt-0.5 flex-shrink-0 text-warning" />
+                                <div>
+                                    <h3 className="font-semibold">Warning: Handle with Care</h3>
+                                    <p className="text-sm">This action can be performed multiple times. Each time you click this button, it will add the defined salary amount to each eligible employee's income. Please ensure you are not making duplicate payments for the same month.</p>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </CardContent>
-                <CardFooter className="border-t px-6 py-4">
-                    <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                            <Button variant="destructive" disabled={isPaying}>
-                                {isPaying ? (
-                                    <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
-                                ) : (
-                                    <AlertTriangle className="mr-2 h-4 w-4" />
-                                )}
-                                Process Salaries for {currentMonthYear}
-                            </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                            <AlertDialogHeader>
-                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                    You are about to pay salaries for **{currentMonthYear}**. This action is irreversible. The system will add the defined salary to each eligible employee's total income.
-                                </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction
-                                    disabled={isPaying}
-                                    onClick={handlePaySalaries}
-                                    className={cn(buttonVariants({ variant: "destructive" }))}
-                                >
-                                    {isPaying && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
-                                    Yes, pay salaries now
-                                </AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
-                </CardFooter>
-            </Card>
+                    </CardContent>
+                    <CardFooter className="border-t px-6 py-4">
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="destructive" disabled={isPaying}>
+                                    {isPaying ? (
+                                        <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+                                    ) : (
+                                        <AlertTriangle className="mr-2 h-4 w-4" />
+                                    )}
+                                    Process Salaries for {currentMonthYear}
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        You are about to pay salaries for **{currentMonthYear}**. This action is irreversible. The system will add the defined salary to each eligible employee's total income.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                        disabled={isPaying}
+                                        onClick={handlePaySalaries}
+                                        className={cn(buttonVariants({ variant: "destructive" }))}
+                                    >
+                                        {isPaying && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
+                                        Yes, pay salaries now
+                                    </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    </CardFooter>
+                </Card>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2"><History /> Payout History</CardTitle>
-                    <CardDescription>A log of all salary payouts. You can reverse a payout if it was made in error.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                   <div className="rounded-md border">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Payout Details</TableHead>
-                                    <TableHead>Users Paid</TableHead>
-                                    <TableHead className="text-right">Total Amount</TableHead>
-                                    <TableHead className="text-center">Status / Action</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {payouts.length > 0 ? (
-                                    payouts.map(payout => (
-                                        <TableRow key={payout.id} className={cn(payout.isReversed && "bg-muted/50 text-muted-foreground")}>
-                                            <TableCell>
-                                                <div className="font-medium">{format(new Date(payout.payoutDate), "PPP p")}</div>
-                                                <div className="text-xs flex items-center gap-1.5 mt-1">
-                                                    <UserCog className="h-3 w-3" /> Processed by: {payout.processedByName}
-                                                </div>
-                                            </TableCell>
-                                            <TableCell>{payout.totalUsersPaid}</TableCell>
-                                            <TableCell className="text-right font-mono">LKR {payout.totalAmountPaid.toLocaleString()}</TableCell>
-                                            <TableCell className="text-center">
-                                                {payout.isReversed ? (
-                                                     <div className="flex flex-col items-center justify-center gap-1 text-xs">
-                                                        <Badge variant="destructive">Reversed</Badge>
-                                                        <span className="flex items-center gap-1.5"><UserCog className="h-3 w-3"/>{payout.reversedByName}</span>
-                                                        <span>on {format(new Date(payout.reversalDate!), "PPP")}</span>
-                                                    </div>
-                                                ) : (
-                                                    <AlertDialog>
-                                                        <AlertDialogTrigger asChild>
-                                                            <Button variant="outline" size="sm" disabled={!!isReversing}>
-                                                                {isReversing === payout.id ? (
-                                                                    <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
-                                                                ) : (
-                                                                    <Undo2 className="mr-2 h-4 w-4" />
-                                                                )}
-                                                                Reverse
-                                                            </Button>
-                                                        </AlertDialogTrigger>
-                                                        <AlertDialogContent>
-                                                            <AlertDialogHeader>
-                                                                <AlertDialogTitle>Reverse this payout?</AlertDialogTitle>
-                                                                <AlertDialogDescription>
-                                                                    This will permanently delete this payout record and subtract the salary amounts from all respective employees' income. This action cannot be undone.
-                                                                </AlertDialogDescription>
-                                                            </AlertDialogHeader>
-                                                            <AlertDialogFooter>
-                                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                                <AlertDialogAction
-                                                                    disabled={!!isReversing}
-                                                                    onClick={() => handleReversePayout(payout.id)}
-                                                                    className={cn(buttonVariants({ variant: "destructive" }))}
-                                                                >
-                                                                    {isReversing === payout.id && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
-                                                                    Yes, reverse payout
-                                                                </AlertDialogAction>
-                                                            </AlertDialogFooter>
-                                                        </AlertDialogContent>
-                                                    </AlertDialog>
-                                                )}
-                                            </TableCell>
-                                        </TableRow>
-                                    ))
-                                ) : (
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2"><History /> Payout History</CardTitle>
+                        <CardDescription>A log of all salary payouts. You can reverse a payout if it was made in error.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                    <div className="rounded-md border">
+                            <Table>
+                                <TableHeader>
                                     <TableRow>
-                                        <TableCell colSpan={4} className="h-24 text-center">No payout history found.</TableCell>
+                                        <TableHead>Payout Details</TableHead>
+                                        <TableHead>Users Paid</TableHead>
+                                        <TableHead className="text-right">Total Amount</TableHead>
+                                        <TableHead className="text-center">Status / Action</TableHead>
                                     </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
-                   </div>
-                </CardContent>
-            </Card>
-        </div>
+                                </TableHeader>
+                                <TableBody>
+                                    {payouts.length > 0 ? (
+                                        payouts.map(payout => (
+                                            <TableRow 
+                                                key={payout.id} 
+                                                className={cn(payout.isReversed && "bg-muted/50 text-muted-foreground", "cursor-pointer")}
+                                                onClick={() => handleViewDetails(payout)}
+                                            >
+                                                <TableCell>
+                                                    <div className="font-medium">{format(new Date(payout.payoutDate), "PPP p")}</div>
+                                                    <div className="text-xs flex items-center gap-1.5 mt-1">
+                                                        <UserCog className="h-3 w-3" /> Processed by: {payout.processedByName}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>{payout.totalUsersPaid}</TableCell>
+                                                <TableCell className="text-right font-mono">LKR {payout.totalAmountPaid.toLocaleString()}</TableCell>
+                                                <TableCell className="text-center">
+                                                    {payout.isReversed ? (
+                                                        <div className="flex flex-col items-center justify-center gap-1 text-xs">
+                                                            <Badge variant="destructive">Reversed</Badge>
+                                                            <span className="flex items-center gap-1.5"><UserCog className="h-3 w-3"/>{payout.reversedByName}</span>
+                                                            <span>on {format(new Date(payout.reversalDate!), "PPP")}</span>
+                                                        </div>
+                                                    ) : (
+                                                        <AlertDialog onOpenChange={(e) => e.stopPropagation()} onCancel={(e) => e.stopPropagation()}>
+                                                            <AlertDialogTrigger asChild>
+                                                                <Button 
+                                                                    variant="outline" 
+                                                                    size="sm" 
+                                                                    disabled={!!isReversing}
+                                                                    onClick={(e) => e.stopPropagation()}
+                                                                >
+                                                                    {isReversing === payout.id ? (
+                                                                        <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+                                                                    ) : (
+                                                                        <Undo2 className="mr-2 h-4 w-4" />
+                                                                    )}
+                                                                    Reverse
+                                                                </Button>
+                                                            </AlertDialogTrigger>
+                                                            <AlertDialogContent>
+                                                                <AlertDialogHeader>
+                                                                    <AlertDialogTitle>Reverse this payout?</AlertDialogTitle>
+                                                                    <AlertDialogDescription>
+                                                                        This will permanently delete this payout record and subtract the salary amounts from all respective employees' income. This action cannot be undone.
+                                                                    </AlertDialogDescription>
+                                                                </AlertDialogHeader>
+                                                                <AlertDialogFooter>
+                                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                    <AlertDialogAction
+                                                                        disabled={!!isReversing}
+                                                                        onClick={() => handleReversePayout(payout.id)}
+                                                                        className={cn(buttonVariants({ variant: "destructive" }))}
+                                                                    >
+                                                                        {isReversing === payout.id && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
+                                                                        Yes, reverse payout
+                                                                    </AlertDialogAction>
+                                                                </AlertDialogFooter>
+                                                            </AlertDialogContent>
+                                                        </AlertDialog>
+                                                    )}
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    ) : (
+                                        <TableRow>
+                                            <TableCell colSpan={4} className="h-24 text-center">No payout history found.</TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                    </div>
+                    </CardContent>
+                </Card>
+            </div>
+            {selectedPayout && (
+                 <PayoutDetailsDialog 
+                    isOpen={isDetailsOpen}
+                    onOpenChange={setIsDetailsOpen}
+                    payout={selectedPayout}
+                />
+            )}
+        </>
     );
 };
 
