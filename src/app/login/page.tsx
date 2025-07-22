@@ -5,8 +5,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
+import { getUser } from "@/lib/firestore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -25,7 +26,21 @@ export default function LoginPage() {
     e.preventDefault();
     setIsLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      
+      const appUser = await getUser(userCredential.user.uid);
+
+      if (appUser?.isDisabled) {
+        await signOut(auth);
+        toast({
+          variant: "destructive",
+          title: "Login Failed",
+          description: "Your account is disabled. Please contact an administrator.",
+        });
+        setIsLoading(false);
+        return;
+      }
+
       router.push("/");
     } catch (error: any) {
       toast({
@@ -33,7 +48,6 @@ export default function LoginPage() {
         title: "Login Failed",
         description: error.message,
       });
-    } finally {
       setIsLoading(false);
     }
   };

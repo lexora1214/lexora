@@ -56,6 +56,8 @@ import {
 } from "@/components/ui/select";
 import { updateUser } from "@/lib/firestore";
 import { useToast } from "@/hooks/use-toast";
+import { Switch } from "./ui/switch";
+import { Label } from "./ui/label";
 
 
 interface UserManagementTableProps {
@@ -124,6 +126,24 @@ export default function UserManagementTable({ data, allIncomeRecords }: UserMana
             title: "Update Failed",
             description: "Could not update the salesman's stage.",
         });
+    }
+  };
+
+  const handleStatusChange = async (userId: string, isDisabled: boolean) => {
+    try {
+      await updateUser(userId, { isDisabled });
+       toast({
+        title: `User ${isDisabled ? 'Disabled' : 'Enabled'}`,
+        description: `The user's account has been successfully ${isDisabled ? 'disabled' : 'enabled'}.`,
+        variant: "default",
+        className: "bg-success text-success-foreground",
+      });
+    } catch (error) {
+       toast({
+        variant: "destructive",
+        title: "Status Update Failed",
+        description: "Could not update the user's status.",
+      });
     }
   };
 
@@ -226,6 +246,31 @@ export default function UserManagementTable({ data, allIncomeRecords }: UserMana
       header: "Branch",
       cell: ({ row }) => row.original.branch || 'N/A',
       filterFn: (row, id, value) => ((row.getValue(id) as string) || '').toLowerCase().includes(String(value).toLowerCase()),
+    },
+     {
+      accessorKey: "isDisabled",
+      header: "Status",
+      cell: ({ row }) => {
+          const user = row.original;
+          // Don't allow an admin to disable themselves
+          const authUser = auth.currentUser;
+          const isSelf = authUser?.uid === user.id;
+
+          return (
+             <div className="flex items-center space-x-2">
+                <Switch
+                    id={`status-switch-${user.id}`}
+                    checked={!user.isDisabled}
+                    onCheckedChange={(isChecked) => handleStatusChange(user.id, !isChecked)}
+                    disabled={isSelf}
+                    aria-readonly={isSelf}
+                />
+                <Label htmlFor={`status-switch-${user.id}`} className={cn(user.isDisabled ? "text-destructive" : "text-success")}>
+                    {user.isDisabled ? 'Disabled' : 'Enabled'}
+                </Label>
+            </div>
+          );
+      },
     },
     {
       accessorKey: "createdAt",
@@ -516,6 +561,7 @@ export default function UserManagementTable({ data, allIncomeRecords }: UserMana
                     if (column.id === 'mobileNumber') displayName = 'Mobile Number';
                     if (column.id === 'branch') displayName = 'Branch';
                     if (column.id === 'salesmanStage') displayName = 'Salesman Stage';
+                    if (column.id === 'isDisabled') displayName = 'Status';
 
                     return (
                     <DropdownMenuCheckboxItem

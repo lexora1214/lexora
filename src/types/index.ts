@@ -25,6 +25,7 @@ export interface User {
   createdAt: string;
   branch?: string;
   salesmanStage?: SalesmanStage | null;
+  isDisabled?: boolean;
 }
 
 export interface Customer {

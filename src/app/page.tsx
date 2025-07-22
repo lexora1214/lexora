@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -7,7 +8,18 @@ import { auth, db } from "@/lib/firebase";
 import { doc, onSnapshot } from "firebase/firestore";
 import AppLayout from "@/components/app-layout";
 import { User } from "@/types";
-import { LoaderCircle } from "lucide-react";
+import { LoaderCircle, Ban } from "lucide-react";
+
+const DisabledUserView = () => (
+  <div className="flex flex-col items-center justify-center h-screen bg-auth-gradient text-center p-4">
+    <Ban className="h-16 w-16 text-destructive mb-4" />
+    <h1 className="text-2xl font-bold text-foreground mb-2">Account Disabled</h1>
+    <p className="text-muted-foreground">
+      Your account has been disabled. Please contact an administrator to regain access.
+    </p>
+  </div>
+);
+
 
 export default function Home() {
   const [firebaseUser, loadingAuth, errorAuth] = useAuthState(auth);
@@ -45,7 +57,7 @@ export default function Home() {
     return () => unsubscribe();
   }, [firebaseUser, loadingAuth, router]);
 
-  if (loadingAuth || loadingUser || !appUser) {
+  if (loadingAuth || loadingUser) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
         <LoaderCircle className="h-12 w-12 animate-spin text-primary" />
@@ -58,6 +70,20 @@ export default function Home() {
       console.error("Authentication error:", errorAuth);
       router.replace("/login");
       return null;
+  }
+
+  if (!appUser) {
+     // This case should ideally not be hit if logic is correct, but as a fallback:
+     router.replace("/login");
+     return (
+       <div className="flex h-screen w-full items-center justify-center">
+         <LoaderCircle className="h-12 w-12 animate-spin text-primary" />
+       </div>
+     );
+  }
+
+  if (appUser.isDisabled) {
+    return <DisabledUserView />;
   }
 
   return <AppLayout user={appUser} />;
