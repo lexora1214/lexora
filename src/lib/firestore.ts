@@ -7,6 +7,8 @@
 
 
 
+
+
 import { doc, getDoc, setDoc, collection, getDocs, query, where, writeBatch, increment, updateDoc, deleteDoc, addDoc, runTransaction } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -764,6 +766,100 @@ export async function markInstallmentPaid(productSaleId: string): Promise<void> 
   }
 
   await batch.commit();
+}
+
+export async function payRemainingInstallments(productSaleId: string): Promise<void> {
+    const batch = writeBatch(db);
+    const saleDocRef = doc(db, "productSales", productSaleId);
+    const saleDocSnap = await getDoc(saleDocRef);
+
+    if (!saleDocSnap.exists()) throw new Error("Product sale not found.");
+    
+    const saleData = saleDocSnap.data() as ProductSale;
+    const { installments, paidInstallments } = saleData;
+
+    if (saleData.paymentMethod !== 'installments' || installments === undefined || paidInstallments === undefined) {
+        throw new Error("This sale is not an installment plan.");
+    }
+    
+    const remainingInstallments = installments - paidInstallments;
+    if (remainingInstallments <= 0) {
+        throw new Error("All installments have already been paid.");
+    }
+
+    const customerDocRef = doc(db, "customers", saleData.customerId);
+    const customerDocSnap = await getDoc(customerDocRef);
+    if (!customerDocSnap.exists()) throw new Error("Could not find the customer for this sale.");
+    
+    const customer = customerDocSnap.data() as Customer;
+    const allUsers = await getAllUsers();
+    const salesman = allUsers.find(u => u.id === customer.salesmanId);
+    if (!salesman) throw new Error("Could not find the salesman for this sale.");
+
+    const productSettings = await getProductCommissionSettings();
+    const applicableTier = productSettings.tiers.find(tier => 
+        saleData.price >= tier.minPrice && (tier.maxPrice === null || saleData.price <= tier.maxPrice)
+    );
+
+    if (!applicableTier) throw new Error("Could not find an applicable commission tier for this product price.");
+
+    const paymentDate = new Date().toISOString();
+
+    for (let i = 0; i < remainingInstallments; i++) {
+        const currentInstallmentNumber = paidInstallments + 1 + i;
+        
+        let currentUser: User | undefined = salesman;
+        while(currentUser) {
+            const roleKey = currentUser.role.replace(/\s/g, '').charAt(0).toLowerCase() + currentUser.role.replace(/\s/g, '').slice(1) as keyof typeof applicableTier.commissions;
+            const tierCommissions = applicableTier.commissions[roleKey];
+            
+            if (tierCommissions && installments) {
+                const perInstallmentCommission = tierCommissions.installments / installments;
+                if (perInstallmentCommission > 0) {
+                    const userRef = doc(db, "users", currentUser.id);
+                    batch.update(userRef, { totalIncome: increment(perInstallmentCommission) });
+                    
+                    const incomeRecordRef = doc(collection(db, "incomeRecords"));
+                    const newIncomeRecord: IncomeRecord = {
+                        id: incomeRecordRef.id, userId: currentUser.id, amount: perInstallmentCommission, saleDate: paymentDate,
+                        grantedForRole: currentUser.role, salesmanId: salesman.id, salesmanName: salesman.name,
+                        shopManagerName: saleData.shopManagerName, sourceType: 'product_sale', productSaleId: saleData.id,
+                        customerId: saleData.customerId, customerName: saleData.customerName, tokenSerial: saleData.tokenSerial,
+                        productName: saleData.productName, productPrice: saleData.price, paymentMethod: saleData.paymentMethod,
+                        installmentNumber: currentInstallmentNumber,
+                    };
+                    batch.set(incomeRecordRef, newIncomeRecord);
+                }
+            }
+            currentUser = currentUser.referrerId ? allUsers.find(u => u.id === currentUser!.referrerId) : undefined;
+        }
+
+        const adminCommissionInfo = applicableTier.commissions.admin;
+        if (adminCommissionInfo && installments) {
+            const perInstallmentAdminCommission = adminCommissionInfo.installments / installments;
+            if (perInstallmentAdminCommission > 0) {
+                const adminUsers = allUsers.filter(u => u.role === 'Admin');
+                for (const adminUser of adminUsers) {
+                    const userRef = doc(db, "users", adminUser.id);
+                    batch.update(userRef, { totalIncome: increment(perInstallmentAdminCommission) });
+
+                    const incomeRecordRef = doc(collection(db, "incomeRecords"));
+                    batch.set(incomeRecordRef, {
+                        id: incomeRecordRef.id, userId: adminUser.id, amount: perInstallmentAdminCommission, saleDate: paymentDate,
+                        grantedForRole: 'Admin', salesmanId: salesman.id, salesmanName: salesman.name,
+                        shopManagerName: saleData.shopManagerName, sourceType: 'product_sale', productSaleId: saleData.id,
+                        customerId: saleData.customerId, customerName: saleData.customerName, tokenSerial: saleData.tokenSerial,
+                        productName: saleData.productName, productPrice: saleData.price, paymentMethod: saleData.paymentMethod,
+                        installmentNumber: currentInstallmentNumber,
+                    });
+                }
+            }
+        }
+    }
+
+    batch.update(saleDocRef, { paidInstallments: installments });
+
+    await batch.commit();
 }
 
 

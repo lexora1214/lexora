@@ -5,10 +5,10 @@ import React, { useState, useEffect, useMemo } from "react";
 import { User, ProductSale, Customer } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { LoaderCircle, Phone, HandCoins, Package, CheckCircle2, DollarSign, Navigation } from "lucide-react";
+import { LoaderCircle, Phone, HandCoins, Package, CheckCircle2, DollarSign, Navigation, AlertTriangle } from "lucide-react";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { markInstallmentPaid } from "@/lib/firestore";
+import { markInstallmentPaid, payRemainingInstallments } from "@/lib/firestore";
 import { useToast } from "@/hooks/use-toast";
 import MapPicker from "./map-picker";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -127,6 +127,23 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
       }
   };
 
+  const handlePayRemaining = async (saleId: string) => {
+    setProcessingId(saleId);
+    try {
+        await payRemainingInstallments(saleId);
+        toast({
+            title: "Remaining Installments Paid",
+            description: "All future installments have been marked as paid and commissions distributed.",
+            variant: "default",
+            className: "bg-success text-success-foreground",
+        });
+    } catch (error: any) {
+        toast({ variant: "destructive", title: "Update Failed", description: error.message });
+    } finally {
+        setProcessingId(null);
+    }
+  };
+
   const handleStartRide = (customer: Customer) => {
     if (!customer.location) {
         toast({
@@ -177,100 +194,134 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
                         {getDayLabel(date)} ({collections.length} collections)
                     </AccordionTrigger>
                     <AccordionContent className="pt-4 space-y-4">
-                        {collections.map(({ sale, customer, amount, installmentNumber }) => (
-                             <Card key={sale.id}>
-                                <CardHeader>
-                                    <div className="flex justify-between items-start">
-                                        <div>
-                                            <CardTitle className="flex items-center gap-2"><Package /> {sale.productName}</CardTitle>
-                                            <CardDescription>For: {customer.name} (Installment {installmentNumber}/{sale.installments})</CardDescription>
-                                        </div>
-                                        <div className="text-right">
-                                             <p className="font-bold text-lg text-primary">LKR {amount.toLocaleString()}</p>
-                                                <AlertDialog>
-                                                    <AlertDialogTrigger asChild>
-                                                         <Button size="sm" className="mt-1" disabled={!!processingId}>
-                                                            {processingId === sale.id ? (
-                                                                <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
-                                                            ) : (
-                                                                <CheckCircle2 className="mr-2 h-4 w-4" />
-                                                            )}
-                                                             Mark as Paid
-                                                        </Button>
-                                                    </AlertDialogTrigger>
-                                                    <AlertDialogContent>
-                                                        <AlertDialogHeader>
-                                                            <AlertDialogTitle>Confirm Payment Collection</AlertDialogTitle>
-                                                            <AlertDialogDescription>
-                                                                Are you sure you want to mark this installment as paid? This will distribute commissions and cannot be easily undone.
-                                                            </AlertDialogDescription>
-                                                        </AlertDialogHeader>
-                                                        <AlertDialogFooter>
-                                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                            <AlertDialogAction
-                                                                onClick={() => handleMarkPaid(sale.id)}
-                                                                className={cn("bg-success text-success-foreground hover:bg-success/90")}
-                                                            >
-                                                                Yes, Mark as Paid
-                                                            </AlertDialogAction>
-                                                        </AlertDialogFooter>
-                                                    </AlertDialogContent>
-                                                </AlertDialog>
-                                        </div>
-                                    </div>
-                                </CardHeader>
-                                <CardContent className="space-y-4">
-                                    <div className="grid md:grid-cols-2 gap-4">
-                                        <div className="space-y-2 text-sm">
-                                            <p className="font-semibold">Customer Details</p>
-                                            <p><strong>Name:</strong> {customer?.name}</p>
-                                            <p><strong>Address:</strong> {customer?.address}</p>
-                                            <p className="flex items-center gap-2">
-                                                <Phone className="h-4 w-4" /> {customer?.contactInfo}
-                                            </p>
-                                            {customer.location && (
-                                                <Button
-                                                    size="sm"
-                                                    className="mt-2 bg-accent text-accent-foreground hover:bg-accent/90 shadow-lg shadow-accent/20 transition-all hover:shadow-accent/40"
-                                                    onClick={() => handleStartRide(customer)}
-                                                >
-                                                    <Navigation className="mr-2 h-4 w-4" /> Start Ride
-                                                </Button>
-                                            )}
-                                        </div>
-                                        <div>
-                                            <p className="font-semibold text-sm mb-2">Delivery Location</p>
-                                            {customer?.location ? (
-                                                <MapPicker 
-                                                    isDisplayOnly
-                                                    initialPosition={{ lat: customer.location.latitude, lng: customer.location.longitude }}
-                                                />
-                                            ) : <p className="text-sm text-muted-foreground">No location provided.</p>}
-                                        </div>
-                                    </div>
-                                     {sale.installments && sale.paidInstallments !== undefined && (
-                                        <div className="border-t pt-4 mt-4">
-                                            <h4 className="font-semibold text-md mb-2">Installment Progress</h4>
+                        {collections.map(({ sale, customer, amount, installmentNumber }) => {
+                            const remainingInstallments = sale.installments! - sale.paidInstallments!;
+                            const remainingBalance = remainingInstallments * sale.monthlyInstallment!;
+                            return (
+                                <Card key={sale.id}>
+                                    <CardHeader>
+                                        <div className="flex justify-between items-start">
                                             <div>
-                                              <div className="flex justify-between text-sm mb-1">
-                                                  <span className="font-medium">Paid Installments</span>
-                                                  <span>{sale.paidInstallments} / {sale.installments}</span>
-                                              </div>
-                                              <Progress value={(sale.paidInstallments / sale.installments) * 100} className="h-2" />
-                                                <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                                                    <p>{sale.installments - sale.paidInstallments} months remaining.</p>
-                                                    {sale.monthlyInstallment && (
-                                                    <p className="font-semibold text-card-foreground">
-                                                        Balance: LKR {((sale.installments - sale.paidInstallments) * sale.monthlyInstallment).toLocaleString()}
-                                                    </p>
-                                                    )}
-                                                </div>
+                                                <CardTitle className="flex items-center gap-2"><Package /> {sale.productName}</CardTitle>
+                                                <CardDescription>For: {customer.name} (Installment {installmentNumber}/{sale.installments})</CardDescription>
+                                            </div>
+                                            <div className="text-right">
+                                                 <p className="font-bold text-lg text-primary">LKR {amount.toLocaleString()}</p>
+                                                    <AlertDialog>
+                                                        <AlertDialogTrigger asChild>
+                                                             <Button size="sm" className="mt-1" disabled={!!processingId}>
+                                                                {processingId === sale.id ? (
+                                                                    <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+                                                                ) : (
+                                                                    <CheckCircle2 className="mr-2 h-4 w-4" />
+                                                                )}
+                                                                 Mark as Paid
+                                                            </Button>
+                                                        </AlertDialogTrigger>
+                                                        <AlertDialogContent>
+                                                            <AlertDialogHeader>
+                                                                <AlertDialogTitle>Confirm Payment Collection</AlertDialogTitle>
+                                                                <AlertDialogDescription>
+                                                                    Are you sure you want to mark this installment as paid? This will distribute commissions and cannot be easily undone.
+                                                                </AlertDialogDescription>
+                                                            </AlertDialogHeader>
+                                                            <AlertDialogFooter>
+                                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                <AlertDialogAction
+                                                                    onClick={() => handleMarkPaid(sale.id)}
+                                                                    className={cn("bg-success text-success-foreground hover:bg-success/90")}
+                                                                >
+                                                                    Yes, Mark as Paid
+                                                                </AlertDialogAction>
+                                                            </AlertDialogFooter>
+                                                        </AlertDialogContent>
+                                                    </AlertDialog>
                                             </div>
                                         </div>
-                                    )}
-                                </CardContent>
-                            </Card>
-                        ))}
+                                    </CardHeader>
+                                    <CardContent className="space-y-4">
+                                        <div className="grid md:grid-cols-2 gap-4">
+                                            <div className="space-y-2 text-sm">
+                                                <p className="font-semibold">Customer Details</p>
+                                                <p><strong>Name:</strong> {customer?.name}</p>
+                                                <p><strong>Address:</strong> {customer?.address}</p>
+                                                <p className="flex items-center gap-2">
+                                                    <Phone className="h-4 w-4" /> {customer?.contactInfo}
+                                                </p>
+                                                {customer.location && (
+                                                    <Button
+                                                        size="sm"
+                                                        className="mt-2 bg-accent text-accent-foreground hover:bg-accent/90 shadow-lg shadow-accent/20 transition-all hover:shadow-accent/40"
+                                                        onClick={() => handleStartRide(customer)}
+                                                    >
+                                                        <Navigation className="mr-2 h-4 w-4" /> Start Ride
+                                                    </Button>
+                                                )}
+                                            </div>
+                                            <div>
+                                                <p className="font-semibold text-sm mb-2">Delivery Location</p>
+                                                {customer?.location ? (
+                                                    <MapPicker 
+                                                        isDisplayOnly
+                                                        initialPosition={{ lat: customer.location.latitude, lng: customer.location.longitude }}
+                                                    />
+                                                ) : <p className="text-sm text-muted-foreground">No location provided.</p>}
+                                            </div>
+                                        </div>
+                                         {sale.installments && sale.paidInstallments !== undefined && (
+                                            <div className="border-t pt-4 mt-4">
+                                                <h4 className="font-semibold text-md mb-2">Installment Progress</h4>
+                                                <div>
+                                                  <div className="flex justify-between text-sm mb-1">
+                                                      <span className="font-medium">Paid Installments</span>
+                                                      <span>{sale.paidInstallments} / {sale.installments}</span>
+                                                  </div>
+                                                  <Progress value={(sale.paidInstallments / sale.installments) * 100} className="h-2" />
+                                                    <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                                                        <p>{remainingInstallments} months remaining.</p>
+                                                        {sale.monthlyInstallment && (
+                                                        <p className="font-semibold text-card-foreground">
+                                                            Balance: LKR {remainingBalance.toLocaleString()}
+                                                        </p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                 {remainingInstallments > 1 && (
+                                                    <div className="mt-4 p-3 rounded-lg border border-amber-500/50 bg-amber-500/10">
+                                                        <div className="flex items-start gap-3">
+                                                            <AlertTriangle className="h-5 w-5 mt-1 text-amber-500" />
+                                                            <div className="flex-grow">
+                                                                <h5 className="font-semibold text-amber-700">Early Payout Option</h5>
+                                                                <p className="text-xs text-amber-600">The customer can pay off the remaining balance of LKR {remainingBalance.toLocaleString()} now.</p>
+                                                            </div>
+                                                            <AlertDialog>
+                                                                <AlertDialogTrigger asChild>
+                                                                    <Button size="sm" variant="outline" className="bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200">Pay Remaining</Button>
+                                                                </AlertDialogTrigger>
+                                                                <AlertDialogContent>
+                                                                    <AlertDialogHeader>
+                                                                        <AlertDialogTitle>Confirm Full Payout?</AlertDialogTitle>
+                                                                        <AlertDialogDescription>
+                                                                            You are about to process a payment for all {remainingInstallments} remaining installments, totaling LKR {remainingBalance.toLocaleString()}. This action will distribute all future commissions and cannot be undone.
+                                                                        </AlertDialogDescription>
+                                                                    </AlertDialogHeader>
+                                                                    <AlertDialogFooter>
+                                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                        <AlertDialogAction onClick={() => handlePayRemaining(sale.id)}>
+                                                                            Confirm Full Payment
+                                                                        </AlertDialogAction>
+                                                                    </AlertDialogFooter>
+                                                                </AlertDialogContent>
+                                                            </AlertDialog>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </CardContent>
+                                </Card>
+                            )
+                        })}
                     </AccordionContent>
                  </AccordionItem>
             ))}
