@@ -58,6 +58,7 @@ import { updateUser } from "@/lib/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { Switch } from "./ui/switch";
 import { Label } from "./ui/label";
+import { auth } from "@/lib/firebase";
 
 
 interface UserManagementTableProps {
