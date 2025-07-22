@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -14,7 +15,7 @@ import { DateRange } from "react-day-picker";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Calendar } from "./ui/calendar";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
+import { format, startOfMonth, endOfMonth } from "date-fns";
 
 interface UserIncomeDetailsDialogProps {
   user: User | null;
@@ -25,7 +26,10 @@ interface UserIncomeDetailsDialogProps {
 const UserIncomeDetailsDialog: React.FC<UserIncomeDetailsDialogProps> = ({ user, isOpen, onOpenChange }) => {
   const [records, setRecords] = useState<IncomeRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+    from: startOfMonth(new Date()),
+    to: endOfMonth(new Date()),
+  });
 
   useEffect(() => {
     if (isOpen && user) {
@@ -44,7 +48,10 @@ const UserIncomeDetailsDialog: React.FC<UserIncomeDetailsDialogProps> = ({ user,
       fetchRecords();
     } else {
         // Reset date range when dialog is closed or user changes
-        setDateRange(undefined);
+        setDateRange({
+          from: startOfMonth(new Date()),
+          to: endOfMonth(new Date()),
+        });
     }
   }, [isOpen, user]);
 
@@ -171,7 +178,7 @@ const UserIncomeDetailsDialog: React.FC<UserIncomeDetailsDialogProps> = ({ user,
                       format(dateRange.from, "LLL dd, y")
                   )
                   ) : (
-                  <span>Filter by date</span>
+                  <span>Filter by date (All time)</span>
                   )}
               </Button>
               </PopoverTrigger>

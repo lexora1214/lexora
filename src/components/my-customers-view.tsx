@@ -21,7 +21,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/
 import { DateRange } from "react-day-picker";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
+import { format, startOfMonth, endOfMonth } from "date-fns";
 import { Calendar } from "./ui/calendar";
 
 interface MyCustomersViewProps {
@@ -36,7 +36,10 @@ const MyCustomersView: React.FC<MyCustomersViewProps> = ({ user, allCustomers, a
   const [isRegisterDialogOpen, setIsRegisterDialogOpen] = React.useState(false);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = React.useState(false);
   const [selectedCustomer, setSelectedCustomer] = React.useState<CustomerType | null>(null);
-  const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
+  const [dateRange, setDateRange] = React.useState<DateRange | undefined>({
+    from: startOfMonth(new Date()),
+    to: endOfMonth(new Date()),
+  });
 
   const myCustomers = React.useMemo(() => {
     return allCustomers
@@ -100,7 +103,7 @@ const MyCustomersView: React.FC<MyCustomersViewProps> = ({ user, allCustomers, a
                             format(dateRange.from, "LLL dd, y")
                         )
                         ) : (
-                        <span>Filter by registration date</span>
+                        <span>Filter by registration date (All time)</span>
                         )}
                     </Button>
                     </PopoverTrigger>

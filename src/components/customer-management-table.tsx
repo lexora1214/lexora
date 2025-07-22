@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -46,7 +47,7 @@ import {
 } from "@/components/ui/accordion";
 import { DateRange } from "react-day-picker";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
-import { format } from "date-fns";
+import { format, startOfMonth, endOfMonth } from "date-fns";
 import { Calendar } from "./ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import CustomerDetailsDialog from "./customer-details-dialog";
@@ -141,7 +142,10 @@ export const getColumns = (
 export default function CustomerManagementTable({ data, allUsers, allProductSales }: CustomerManagementTableProps) {
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
-  const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
+  const [dateRange, setDateRange] = React.useState<DateRange | undefined>({
+    from: startOfMonth(new Date()),
+    to: endOfMonth(new Date()),
+  });
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = React.useState(false);
   const [selectedCustomer, setSelectedCustomer] = React.useState<Customer | null>(null);
 
@@ -266,7 +270,7 @@ export default function CustomerManagementTable({ data, allUsers, allProductSale
                     format(dateRange.from, "LLL dd, y")
                 )
                 ) : (
-                <span>Filter by sale date</span>
+                <span>Filter by sale date (All time)</span>
                 )}
             </Button>
             </PopoverTrigger>

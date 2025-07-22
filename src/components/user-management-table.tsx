@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -18,7 +19,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { DateRange } from "react-day-picker";
-import { format } from "date-fns";
+import { format, startOfMonth, endOfMonth } from "date-fns";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -82,7 +83,10 @@ export default function UserManagementTable({ data, allIncomeRecords }: UserMana
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [isIncomeDialogOpen, setIsIncomeDialogOpen] = React.useState(false);
   const [selectedUser, setSelectedUser] = React.useState<User | null>(null);
-  const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
+  const [dateRange, setDateRange] = React.useState<DateRange | undefined>({
+    from: startOfMonth(new Date()),
+    to: endOfMonth(new Date()),
+  });
   const { toast } = useToast();
 
   const branches = React.useMemo(() => {
@@ -431,7 +435,7 @@ export default function UserManagementTable({ data, allIncomeRecords }: UserMana
                   format(dateRange.from, "LLL dd, y")
                 )
               ) : (
-                <span>Filter income by date</span>
+                <span>Filter income by date (All time)</span>
               )}
             </Button>
           </PopoverTrigger>

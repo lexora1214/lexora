@@ -29,7 +29,10 @@ interface SalesmanDashboardProps {
 const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ user, allCustomers, allIncomeRecords, allCommissionRequests, allStockItems }) => {
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [isPendingApprovalsOpen, setIsPendingApprovalsOpen] = React.useState(false);
-  const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
+  const [dateRange, setDateRange] = React.useState<DateRange | undefined>({
+    from: startOfMonth(new Date()),
+    to: endOfMonth(new Date()),
+  });
   const [pendingIncome, setPendingIncome] = React.useState(0);
   const [loadingPending, setLoadingPending] = React.useState(true);
   const [incentiveTarget, setIncentiveTarget] = React.useState(0);

@@ -30,7 +30,7 @@ import { Badge } from "./ui/badge";
 import { DateRange } from "react-day-picker";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
+import { format, startOfMonth, endOfMonth } from "date-fns";
 import { Calendar } from "./ui/calendar";
 
 interface IncomeRecordsViewProps {
@@ -169,7 +169,10 @@ const IncomeRecordsView: React.FC<IncomeRecordsViewProps> = ({ user }) => {
   const [records, setRecords] = useState<IncomeRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+    from: startOfMonth(new Date()),
+    to: endOfMonth(new Date()),
+  });
 
   useEffect(() => {
     const fetchRecords = async () => {
@@ -329,7 +332,7 @@ const IncomeRecordsView: React.FC<IncomeRecordsViewProps> = ({ user }) => {
                         format(dateRange.from, "LLL dd, y")
                     )
                     ) : (
-                    <span>Pick a date range</span>
+                    <span>Filter by date (All time)</span>
                     )}
                 </Button>
                 </PopoverTrigger>
@@ -502,4 +505,3 @@ const IncomeRecordsView: React.FC<IncomeRecordsViewProps> = ({ user }) => {
 };
 
 export default IncomeRecordsView;
-

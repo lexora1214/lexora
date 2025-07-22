@@ -13,7 +13,7 @@ import { DateRange } from "react-day-picker";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import { format } from "date-fns";
+import { format, startOfMonth, endOfMonth } from "date-fns";
 import { cn } from "@/lib/utils";
 
 interface ManagerDashboardProps {
@@ -24,7 +24,10 @@ interface ManagerDashboardProps {
 
 const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ user, allUsers, allIncomeRecords }) => {
   const isMobile = useIsMobile();
-  const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
+  const [dateRange, setDateRange] = React.useState<DateRange | undefined>({
+    from: startOfMonth(new Date()),
+    to: endOfMonth(new Date()),
+  });
 
   const { users: downlineUsers, ids: downlineUserIds } = getDownlineIdsAndUsers(user.id, allUsers);
   

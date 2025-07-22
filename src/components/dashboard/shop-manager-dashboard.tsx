@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "../ui/badge";
 import { DateRange } from "react-day-picker";
-import { format } from "date-fns";
+import { format, startOfMonth, endOfMonth } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -36,7 +36,10 @@ const ShopManagerDashboard: React.FC<ShopManagerDashboardProps> = ({ user, openD
   const [sales, setSales] = useState<ProductSale[]>([]);
   const [stockItems, setStockItems] = useState<StockItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+    from: startOfMonth(new Date()),
+    to: endOfMonth(new Date()),
+  });
 
   useEffect(() => {
     const customersUnsub = onSnapshot(collection(db, "customers"), (snapshot) => {

@@ -10,7 +10,7 @@ import { getCommissionSettings } from "@/lib/firestore";
 import { DateRange } from "react-day-picker";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, startOfMonth, endOfMonth } from "date-fns";
 import { cn } from "@/lib/utils";
 import TokenUsagePieChart from "../token-usage-pie-chart";
 
@@ -33,7 +33,10 @@ interface AdminDashboardProps {
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCustomers, allIncomeRecords, setActiveView }) => {
   const [commissionSettings, setCommissionSettings] = React.useState<CommissionSettings | null>(null);
   const [isBreakdownOpen, setIsBreakdownOpen] = React.useState(false);
-  const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
+  const [dateRange, setDateRange] = React.useState<DateRange | undefined>({
+    from: startOfMonth(new Date()),
+    to: endOfMonth(new Date()),
+  });
 
   const filteredData = React.useMemo(() => {
     if (!dateRange || !dateRange.from) {
