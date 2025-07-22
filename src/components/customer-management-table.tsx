@@ -71,13 +71,16 @@ export const getColumns = (
     accessorKey: "name",
     header: "Customer Name",
     cell: ({ row }) => <div className="font-medium">{row.getValue("name")}</div>,
+     filterFn: (row, id, value) => {
+      const name = row.original.name.toLowerCase();
+      const contact = row.original.contactInfo.toLowerCase();
+      const searchValue = String(value).toLowerCase();
+      return name.includes(searchValue) || contact.includes(searchValue);
+    },
   },
   {
     accessorKey: "contactInfo",
     header: "Contact Info",
-    filterFn: (row, id, value) => {
-        return (row.getValue(id) as string).toLowerCase().includes(value.toLowerCase());
-    },
   },
   {
     accessorKey: "tokenSerial",
@@ -207,13 +210,8 @@ export default function CustomerManagementTable({ data, allUsers, allProductSale
   
   const handleFilterChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const value = event.target.value;
-    setColumnFilters(prev => {
-        const existingFilter = prev.find(f => f.id === 'contactInfo');
-        if (!existingFilter) {
-            return [...prev, { id: 'contactInfo', value }];
-        }
-        return prev.map(f => f.id === 'contactInfo' ? { ...f, value } : f);
-    });
+    availableTable.getColumn('name')?.setFilterValue(value)
+    unavailableTable.getColumn('name')?.setFilterValue(value)
   }
 
   const productSalesForSelectedCustomer = React.useMemo(() => {
@@ -242,8 +240,8 @@ export default function CustomerManagementTable({ data, allUsers, allProductSale
 
       <div className="flex flex-col md:flex-row items-center gap-4 py-4">
         <Input
-          placeholder="Filter by contact info..."
-          value={(columnFilters.find(f => f.id === 'contactInfo')?.value as string) ?? ''}
+          placeholder="Filter by name or contact..."
+          value={(availableTable.getColumn("name")?.getFilterValue() as string) ?? ""}
           onChange={handleFilterChange}
           className="max-w-sm"
         />
