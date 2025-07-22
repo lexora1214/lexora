@@ -13,7 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ArrowUpDown, Calendar as CalendarIcon, CreditCard, LoaderCircle, ShoppingBag, User as UserIcon, FileDown, Award, Wallet } from "lucide-react";
+import { ArrowUpDown, Calendar as CalendarIcon, CreditCard, LoaderCircle, ShoppingBag, User as UserIcon, FileDown, Award, Wallet, ChevronDown, FileSpreadsheet, FileText } from "lucide-react";
 import { getIncomeRecordsForUser } from "@/lib/firestore";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import {
@@ -32,6 +32,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { cn } from "@/lib/utils";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { Calendar } from "./ui/calendar";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
 
 interface IncomeRecordsViewProps {
   user: User;
@@ -229,6 +230,23 @@ const IncomeRecordsView: React.FC<IncomeRecordsViewProps> = ({ user }) => {
     }
   };
 
+  const getDetailText = (record: IncomeRecord) => {
+    if (record.sourceType === 'product_sale') {
+        let text = `${record.productName || 'Product'} for ${record.customerName}. Sale by: ${record.shopManagerName || 'N/A'}`;
+        if (record.installmentNumber) {
+            text += ` (Installment #${record.installmentNumber})`;
+        }
+        return text;
+    } else if (record.sourceType === 'token_sale') {
+        return `Token Sale for ${record.customerName}. Sale by: ${record.salesmanName || 'N/A'}`;
+    } else if (record.sourceType === 'salary') {
+        return `Monthly salary for ${format(new Date(record.saleDate), 'MMMM yyyy')}`;
+    } else if (record.sourceType === 'incentive') {
+        return `Incentive for ${format(new Date(record.saleDate), 'MMMM yyyy')} target`;
+    }
+    return 'N/A';
+  };
+
   const handleGeneratePdf = () => {
     if (!user || filteredRecords.length === 0) return;
 
@@ -239,25 +257,10 @@ const IncomeRecordsView: React.FC<IncomeRecordsViewProps> = ({ user }) => {
     const totalIncome = filteredRecords.reduce((sum, record) => sum + record.amount, 0);
 
     filteredRecords.forEach(record => {
-      let detailText = "";
-      if (record.sourceType === 'product_sale') {
-          detailText = `${record.productName || 'Product'} for ${record.customerName}. Sale by: ${record.shopManagerName || 'N/A'}`;
-          if (record.installmentNumber) {
-            detailText += ` (Installment #${record.installmentNumber})`;
-          }
-      } else if (record.sourceType === 'token_sale') {
-          detailText = `Token Sale for ${record.customerName}. Sale by: ${record.salesmanName || 'N/A'}`;
-      } else if (record.sourceType === 'salary') {
-          detailText = `Monthly salary for ${format(new Date(record.saleDate), 'MMMM yyyy')}`;
-      } else if (record.sourceType === 'incentive') {
-          detailText = `Incentive for ${format(new Date(record.saleDate), 'MMMM yyyy')} target`;
-      }
-
-
       const recordData = [
         new Date(record.saleDate).toLocaleDateString(),
         getSourceTypeInfo(record.sourceType).text,
-        detailText,
+        getDetailText(record),
         record.grantedForRole,
         record.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
       ];
@@ -294,6 +297,39 @@ const IncomeRecordsView: React.FC<IncomeRecordsViewProps> = ({ user }) => {
     const fileNameDateSuffix = dateRange?.from ? `_${format(dateRange.from, "yyyy-MM-dd")}_to_${format(dateRange.to ?? dateRange.from, "yyyy-MM-dd")}` : '_all-time';
     doc.save(`my_income_report${fileNameDateSuffix}.pdf`);
   };
+
+  const handleGenerateCsv = () => {
+    if (!user || filteredRecords.length === 0) return;
+
+    const totalIncome = filteredRecords.reduce((sum, record) => sum + record.amount, 0);
+
+    const csvHeader = "Date,Source,Details,Role Granted,Amount (LKR)\n";
+    const csvRows = filteredRecords.map(record => {
+        const date = new Date(record.saleDate).toLocaleDateString();
+        const source = getSourceTypeInfo(record.sourceType).text;
+        const details = `"${getDetailText(record).replace(/"/g, '""')}"`;
+        const role = record.grantedForRole;
+        const amount = record.amount.toFixed(2);
+        return `${date},${source},${details},${role},${amount}`;
+    }).join("\n");
+    
+    const csvFooter = `\n,,,Total,${totalIncome.toFixed(2)}`;
+    const csvContent = csvHeader + csvRows + csvFooter;
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    
+    const dateSuffix = dateRange?.from ? `_${format(dateRange.from, "yyyy-MM-dd")}_to_${format(dateRange.to ?? dateRange.from, "yyyy-MM-dd")}` : '_all-time';
+    link.setAttribute("download", `my_income_report${dateSuffix}.csv`);
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
 
   if (loading) {
     return (
@@ -350,10 +386,25 @@ const IncomeRecordsView: React.FC<IncomeRecordsViewProps> = ({ user }) => {
                 </div>
                 </PopoverContent>
             </Popover>
-             <Button onClick={handleGeneratePdf} disabled={loading || filteredRecords.length === 0}>
-                <FileDown className="mr-2 h-4 w-4" />
-                Download PDF
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" disabled={loading || filteredRecords.length === 0}>
+                  <FileDown className="mr-2 h-4 w-4" />
+                  Download
+                  <ChevronDown className="ml-2 h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleGenerateCsv}>
+                  <FileSpreadsheet className="mr-2 h-4 w-4" />
+                  <span>Export as CSV</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleGeneratePdf}>
+                  <FileText className="mr-2 h-4 w-4" />
+                  <span>Export as PDF</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
         </div>
       </CardHeader>
       <CardContent>
@@ -505,3 +556,5 @@ const IncomeRecordsView: React.FC<IncomeRecordsViewProps> = ({ user }) => {
 };
 
 export default IncomeRecordsView;
+
+    
