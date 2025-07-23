@@ -13,6 +13,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter as DialogActionsFooter
 } from "@/components/ui/dialog";
 import { deleteSlipsForMonth } from '@/lib/firestore';
