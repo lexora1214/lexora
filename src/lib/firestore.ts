@@ -9,6 +9,7 @@
 
 
 
+
 import { doc, getDoc, setDoc, collection, getDocs, query, where, writeBatch, increment, updateDoc, deleteDoc, addDoc, runTransaction } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -47,7 +48,7 @@ export async function createUserProfile(firebaseUser: FirebaseUser, name: string
   }
   
   let newReferralCode = '';
-  const isReferralCodeNeeded = role && !['Salesman', 'Delivery Boy', 'Recovery Officer'].includes(role);
+  const isReferralCodeNeeded = role && !['Salesman', 'Delivery Boy', 'Recovery Officer', 'Branch Manager'].includes(role);
   
   if (isReferralCodeNeeded) {
     let isCodeUnique = false;
@@ -583,6 +584,7 @@ const DEFAULT_SIGNUP_ROLE_SETTINGS: SignupRoleSettings = {
     "Head Group Manager": true,
     "Group Operation Manager": true,
     "Team Operation Manager": true,
+    "Branch Manager": true,
     "Salesman": true,
     "Delivery Boy": true,
     "Recovery Officer": true,

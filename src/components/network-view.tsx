@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState } from "react";
@@ -74,7 +75,7 @@ interface NetworkViewProps {
 
 const NetworkView: React.FC<NetworkViewProps> = ({ allUsers }) => {
   const usersInNetwork = allUsers.filter((user) => !['Delivery Boy', 'Recovery Officer'].includes(user.role));
-  const rootUsers = usersInNetwork.filter((user) => !user.referrerId);
+  const rootUsers = usersInNetwork.filter((user) => !user.referrerId || !usersInNetwork.find(u => u.id === user.referrerId));
 
   return (
     <div className="space-y-4">

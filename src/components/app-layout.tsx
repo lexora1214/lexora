@@ -86,6 +86,7 @@ import StockManagementView from "./stock-management-view";
 import AdminStockView from "./admin-stock-view";
 import IncentiveSettings from "./incentive-settings";
 import TargetAchieversView from "./target-achievers-view";
+import AddBranchManagerView from "./add-branch-manager-view";
 
 type NavItem = {
   href: string;
@@ -96,7 +97,7 @@ type NavItem = {
 };
 
 const navItems: NavItem[] = [
-  { href: "#", icon: LayoutDashboard, label: "Dashboard", roles: ["Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Salesman", "Delivery Boy", "Recovery Officer"] },
+  { href: "#", icon: LayoutDashboard, label: "Dashboard", roles: ["Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Salesman", "Delivery Boy", "Recovery Officer", "Branch Manager"] },
   { 
     href: "#", 
     icon: Package, 
@@ -108,11 +109,11 @@ const navItems: NavItem[] = [
     ]
   },
   { href: "#", icon: ShoppingCart, label: "Record Product Sale", roles: ["Team Operation Manager"] },
-  { href: "#", icon: Wallet, label: "Income Records", roles: ["Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Salesman"] },
+  { href: "#", icon: Wallet, label: "Income Records", roles: ["Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Salesman", "Branch Manager"] },
   { href: "#", icon: Users, label: "My Customers", roles: ["Salesman"] },
   { href: "#", icon: Truck, label: "My Deliveries", roles: ["Delivery Boy"] },
   { href: "#", icon: HandCoins, label: "My Collections", roles: ["Recovery Officer"] },
-  { href: "#", icon: Network, label: "Team Performance", roles: ["Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager"] },
+  { href: "#", icon: Network, label: "Team Performance", roles: ["Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Branch Manager"] },
   { 
     href: "#", 
     icon: UserPlus, 
@@ -120,6 +121,7 @@ const navItems: NavItem[] = [
     roles: ["Team Operation Manager"],
     children: [
       { href: "#", icon: UserPlus, label: "Add Salesman", roles: ["Team Operation Manager"] },
+      { href: "#", icon: UserPlus, label: "Add Branch Manager", roles: ["Team Operation Manager"] },
       { href: "#", icon: UserPlus, label: "Add Delivery Boy", roles: ["Team Operation Manager"] },
       { href: "#", icon: UserPlus, label: "Add Recovery Officer", roles: ["Team Operation Manager"] },
     ]
@@ -352,6 +354,7 @@ const AppLayout = ({ user }: { user: User }) => {
           case "Salesman":
             return <SalesmanDashboard user={user} allCustomers={allCustomers} allIncomeRecords={allIncomeRecords} allCommissionRequests={allCommissionRequests} allStockItems={allStockItems} />;
           case "Team Operation Manager":
+          case "Branch Manager":
             return <ManagerDashboard user={user} allUsers={allUsers} allIncomeRecords={allIncomeRecords} />;
           case "Delivery Boy":
             return <DeliveryBoyDashboard user={user} />;
@@ -390,6 +393,8 @@ const AppLayout = ({ user }: { user: User }) => {
       }
       case "Add Salesman":
         return <AddSalesmanView manager={user} />;
+      case "Add Branch Manager":
+        return <AddBranchManagerView manager={user} />;
       case "Add Delivery Boy":
         return <AddDeliveryBoyView manager={user} />;
       case "Add Recovery Officer":

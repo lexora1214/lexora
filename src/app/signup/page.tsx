@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/select";
 import { Role, SalesmanStage } from "@/types";
 
-const ALL_ROLES: Role[] = ["Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Salesman", "Delivery Boy", "Recovery Officer"];
+const ALL_ROLES: Role[] = ["Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Branch Manager", "Salesman", "Delivery Boy", "Recovery Officer"];
 
 export default function SignupPage() {
   const router = useRouter();
@@ -42,7 +42,7 @@ export default function SignupPage() {
   const [salesmanStage, setSalesmanStage] = useState<SalesmanStage>("BUSINESS PROMOTER (stage 01)");
 
   const isReferralRequired = role && !['Regional Director', 'Admin'].includes(role);
-  const isBranchRequired = role === 'Team Operation Manager';
+  const isBranchRequired = role === 'Team Operation Manager' || role === 'Branch Manager';
   const isSalesman = role === 'Salesman';
 
 
@@ -175,7 +175,7 @@ export default function SignupPage() {
                        if (['Regional Director', 'Admin'].includes(newRole)) {
                            setReferralCode('');
                        }
-                       if (newRole !== 'Team Operation Manager') {
+                       if (newRole !== 'Team Operation Manager' && newRole !== 'Branch Manager') {
                            setBranch('');
                        }
                    }}>

@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -32,7 +33,7 @@ import {
 const formSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
   mobileNumber: z.string().regex(/^0\d{9}$/, { message: "Please enter a valid 10-digit mobile number." }),
-  role: z.enum(["Salesman", "Team Operation Manager", "Group Operation Manager", "Head Group Manager", "Regional Director", "Admin", "Delivery Boy", "Recovery Officer"]),
+  role: z.enum(["Salesman", "Team Operation Manager", "Group Operation Manager", "Head Group Manager", "Regional Director", "Admin", "Delivery Boy", "Recovery Officer", "Branch Manager"]),
   branch: z.string().optional(),
   salesmanStage: z.enum(["BUSINESS PROMOTER (stage 01)", "MARKETING EXECUTIVE (stage 02)"]).optional().nullable(),
 });
@@ -90,7 +91,7 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({
         role: data.role,
       };
 
-      if (data.role === 'Team Operation Manager') {
+      if (data.role === 'Team Operation Manager' || data.role === 'Branch Manager') {
         updateData.branch = data.branch;
       } else {
         updateData.branch = "";
@@ -168,6 +169,7 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({
                                     <SelectItem value="Head Group Manager">Head Group Manager</SelectItem>
                                     <SelectItem value="Group Operation Manager">Group Operation Manager</SelectItem>
                                     <SelectItem value="Team Operation Manager">Team Operation Manager</SelectItem>
+                                    <SelectItem value="Branch Manager">Branch Manager</SelectItem>
                                     <SelectItem value="Salesman">Salesman</SelectItem>
                                     <SelectItem value="Delivery Boy">Delivery Boy</SelectItem>
                                     <SelectItem value="Recovery Officer">Recovery Officer</SelectItem>
@@ -178,7 +180,7 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({
                     {errors.role && <p className="text-xs text-destructive mt-1">{errors.role.message}</p>}
                 </div>
             </div>
-            {selectedRole === 'Team Operation Manager' && (
+            {(selectedRole === 'Team Operation Manager' || selectedRole === 'Branch Manager') && (
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="branch" className="text-right">Branch</Label>
                 <div className="col-span-3">
