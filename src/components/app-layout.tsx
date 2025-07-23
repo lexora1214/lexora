@@ -34,6 +34,7 @@ import {
   Boxes,
   Award,
   TrendingUp,
+  Map,
 } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
@@ -97,7 +98,7 @@ type NavItem = {
 };
 
 const navItems: NavItem[] = [
-  { href: "#", icon: LayoutDashboard, label: "Dashboard", roles: ["Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Salesman", "Delivery Boy", "Recovery Officer", "Branch Admin"] },
+  { href: "#", icon: LayoutDashboard, label: "Dashboard", roles: ["Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Salesman", "Delivery Boy", "Recovery Officer"] },
   { 
     href: "#", 
     icon: Package, 
@@ -113,7 +114,7 @@ const navItems: NavItem[] = [
   { href: "#", icon: Users, label: "My Customers", roles: ["Salesman"] },
   { href: "#", icon: Truck, label: "My Deliveries", roles: ["Delivery Boy"] },
   { href: "#", icon: HandCoins, label: "My Collections", roles: ["Recovery Officer"] },
-  { href: "#", icon: Network, label: "Team Performance", roles: ["Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Branch Admin"] },
+  { href: "#", icon: Network, label: "Team Performance", roles: ["Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager"] },
   { 
     href: "#", 
     icon: UserPlus, 
@@ -290,6 +291,13 @@ const AppLayout = ({ user }: { user: User }) => {
   const [isProfileSettingsOpen, setIsProfileSettingsOpen] = React.useState(false);
 
   React.useEffect(() => {
+    // For Branch Admins, since they don't have a dashboard, set the default view to something they can see.
+    if (user.role === 'Branch Admin') {
+      setActiveView('Stock Management');
+    }
+  }, [user.role]);
+
+  React.useEffect(() => {
     const usersUnsub = onSnapshot(collection(db, "users"), { includeMetadataChanges: true }, (snapshot) => {
       const usersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
       setAllUsers(usersData);
@@ -354,7 +362,6 @@ const AppLayout = ({ user }: { user: User }) => {
           case "Salesman":
             return <SalesmanDashboard user={user} allCustomers={allCustomers} allIncomeRecords={allIncomeRecords} allCommissionRequests={allCommissionRequests} allStockItems={allStockItems} />;
           case "Team Operation Manager":
-          case "Branch Admin":
             return <ManagerDashboard user={user} allUsers={allUsers} allIncomeRecords={allIncomeRecords} />;
           case "Delivery Boy":
             return <DeliveryBoyDashboard user={user} />;
