@@ -336,6 +336,37 @@ export async function uploadDepositSlipForGroup(requestIds: string[], file: File
     await batch.commit();
 }
 
+export async function approveGroupedCommissions(slipGroupId: string, admin: User): Promise<void> {
+    const q = query(collection(db, "commissionRequests"), where("slipGroupId", "==", slipGroupId), where("status", "==", "pending"));
+    const querySnapshot = await getDocs(q);
+    
+    if (querySnapshot.empty) {
+        throw new Error("No pending requests found for this group.");
+    }
+
+    for (const doc of querySnapshot.docs) {
+        // We call the individual approval function but don't await it inside the loop
+        // to avoid race conditions with a single batch. A better approach is a transaction
+        // or a batched read then batched write, which is what approveTokenCommission does.
+        // For simplicity, we'll just call it and it will create its own batch.
+        // In a high-throughput system, this should be refactored to use a single large batch.
+        await approveTokenCommission(doc.id, admin);
+    }
+}
+
+export async function rejectGroupedCommissions(slipGroupId: string, admin: User): Promise<void> {
+    const q = query(collection(db, "commissionRequests"), where("slipGroupId", "==", slipGroupId), where("status", "==", "pending"));
+    const querySnapshot = await getDocs(q);
+    
+    if (querySnapshot.empty) {
+        throw new Error("No pending requests found for this group.");
+    }
+
+    for (const doc of querySnapshot.docs) {
+        await rejectTokenCommission(doc.id, admin);
+    }
+}
+
 
 // --- Product Sale and Commission Logic ---
 
