@@ -1,17 +1,19 @@
+
 rules_version = '2';
+
 service firebase.storage {
   match /b/{bucket}/o {
+    // Allow public read access to user avatars
+    match /avatars/{userId}/{fileName} {
+      allow read;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Allow salesmen to upload deposit slips for their own commission requests
     match /deposit_slips/{requestId}/{fileName} {
-      // Allow read access to the salesman who uploaded it (via metadata) and Admins (via Firestore get)
-      allow read: if request.auth != null && 
-                     (request.auth.uid == resource.metadata.salesmanId || 
-                      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin');
-      
-      // Allow write (create) if the user is authenticated and the salesmanId in metadata matches their UID.
-      // The check that they are the *correct* salesman for the requestId is done in client code before upload.
-      allow write: if request.auth != null &&
-                      request.resource.metadata.salesmanId == request.auth.uid &&
-                      request.resource.metadata.requestId == requestId;
+      allow read, write: if request.auth != null &&
+                          exists(/databases/$(database)/documents/commissionRequests/$(requestId)) &&
+                          request.auth.uid == get(/databases/$(database)/documents/commissionRequests/$(requestId)).data.salesmanId;
     }
   }
 }
