@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import { CommissionRequest } from '@/types';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { LoaderCircle, Trash2, CalendarIcon, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCcw, FileX } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, subMonths, addMonths } from 'date-fns';
@@ -13,7 +13,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter
+  DialogFooter as DialogActionsFooter
 } from "@/components/ui/dialog";
 import { deleteSlipsForMonth } from '@/lib/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -49,7 +49,7 @@ const ViewSlipDialog: React.FC<{ slipUrl: string; isOpen: boolean; onOpenChange:
                         </div>
                     </div>
                 </div>
-                 <DialogFooter className="sm:justify-center pt-2">
+                 <DialogActionsFooter className="sm:justify-center pt-2">
                     <div className="flex items-center gap-2">
                         <Button variant="outline" size="icon" onClick={() => setZoom(prev => Math.max(0.5, prev - 0.2))}>
                             <ZoomOut className="h-4 w-4" />
@@ -61,7 +61,7 @@ const ViewSlipDialog: React.FC<{ slipUrl: string; isOpen: boolean; onOpenChange:
                             <ZoomIn className="h-4 w-4" />
                         </Button>
                     </div>
-                </DialogFooter>
+                </DialogActionsFooter>
             </DialogContent>
         </Dialog>
     );

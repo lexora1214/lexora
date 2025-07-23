@@ -43,7 +43,9 @@ export default function Home() {
       if (docSnap.exists()) {
         setAppUser({ id: docSnap.id, ...docSnap.data() } as User);
       } else {
-        console.error("Could not find user profile in Firestore.");
+        // The user is authenticated but doesn't have a profile document.
+        // This can happen if profile creation fails after signup.
+        // Redirecting to login is a safe fallback.
         router.replace("/login");
       }
       setLoadingUser(false);
