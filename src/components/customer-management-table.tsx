@@ -75,8 +75,9 @@ export const getColumns = (
      filterFn: (row, id, value) => {
       const name = row.original.name.toLowerCase();
       const contact = row.original.contactInfo.toLowerCase();
+      const nic = row.original.nic?.toLowerCase() || '';
       const searchValue = String(value).toLowerCase();
-      return name.includes(searchValue) || contact.includes(searchValue);
+      return name.includes(searchValue) || contact.includes(searchValue) || nic.includes(searchValue);
     },
   },
   {
@@ -244,7 +245,7 @@ export default function CustomerManagementTable({ data, allUsers, allProductSale
 
       <div className="flex flex-col md:flex-row items-center gap-4 py-4">
         <Input
-          placeholder="Filter by name or contact..."
+          placeholder="Filter by name, contact, or NIC..."
           value={(availableTable.getColumn("name")?.getFilterValue() as string) ?? ""}
           onChange={handleFilterChange}
           className="max-w-sm"
