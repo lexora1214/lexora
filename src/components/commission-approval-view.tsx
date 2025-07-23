@@ -1,12 +1,12 @@
 
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
 import { User, CommissionRequest } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { LoaderCircle, Check, X, ShieldCheck } from "lucide-react";
+import { LoaderCircle, Check, X, ShieldCheck, Users } from "lucide-react";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { approveTokenCommission, rejectTokenCommission } from "@/lib/firestore";
@@ -97,6 +97,58 @@ const CommissionApprovalView: React.FC<CommissionApprovalViewProps> = ({ user })
     }
   };
 
+  const groupedRequests = useMemo(() => {
+    const grouped: { [key: string]: CommissionRequest[] } = {};
+    const ungrouped: CommissionRequest[] = [];
+    
+    pendingRequests.forEach(req => {
+        if (req.slipGroupId) {
+            if (!grouped[req.slipGroupId]) {
+                grouped[req.slipGroupId] = [];
+            }
+            grouped[req.slipGroupId].push(req);
+        } else {
+            ungrouped.push(req);
+        }
+    });
+    
+    return { grouped: Object.values(grouped), ungrouped };
+  }, [pendingRequests]);
+
+
+  const renderRequestRow = (request: CommissionRequest) => (
+     <TableRow key={request.id}>
+        <TableCell>{new Date(request.requestDate).toLocaleDateString()}</TableCell>
+        <TableCell className="font-medium">{request.customerName}</TableCell>
+        <TableCell>{request.salesmanName}</TableCell>
+        <TableCell><Badge variant="outline">{request.tokenSerial}</Badge></TableCell>
+        <TableCell>
+            <Button
+                variant="outline"
+                size="sm"
+                disabled={!request.depositSlipUrl}
+                onClick={() => setSlipToView(request.depositSlipUrl!)}
+            >
+                View Slip
+            </Button>
+        </TableCell>
+        <TableCell className="text-right">
+            {processingId === request.id ? (
+                <LoaderCircle className="h-5 w-5 animate-spin ml-auto" />
+            ) : (
+                <div className="flex gap-2 justify-end">
+                <Button size="sm" variant="outline" className="text-destructive hover:bg-destructive hover:text-destructive-foreground" onClick={() => handleReject(request.id)}>
+                    <X className="mr-2 h-4 w-4" /> Reject
+                </Button>
+                    <Button size="sm" className="bg-success hover:bg-success/90 text-success-foreground" onClick={() => handleApprove(request.id)}>
+                    <Check className="mr-2 h-4 w-4" /> Approve
+                </Button>
+                </div>
+            )}
+        </TableCell>
+    </TableRow>
+  );
+
   if (loading) {
     return (
       <div className="flex h-full w-full items-center justify-center">
@@ -127,37 +179,19 @@ const CommissionApprovalView: React.FC<CommissionApprovalViewProps> = ({ user })
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {pendingRequests.map(request => (
-                    <TableRow key={request.id}>
-                      <TableCell>{new Date(request.requestDate).toLocaleDateString()}</TableCell>
-                      <TableCell className="font-medium">{request.customerName}</TableCell>
-                      <TableCell>{request.salesmanName}</TableCell>
-                      <TableCell><Badge variant="outline">{request.tokenSerial}</Badge></TableCell>
-                      <TableCell>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={!request.depositSlipUrl}
-                          onClick={() => setSlipToView(request.depositSlipUrl!)}
-                        >
-                          View Slip
-                        </Button>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {processingId === request.id ? (
-                          <LoaderCircle className="h-5 w-5 animate-spin ml-auto" />
-                        ) : (
-                          <div className="flex gap-2 justify-end">
-                            <Button size="sm" variant="outline" className="text-destructive hover:bg-destructive hover:text-destructive-foreground" onClick={() => handleReject(request.id)}>
-                              <X className="mr-2 h-4 w-4" /> Reject
-                            </Button>
-                             <Button size="sm" className="bg-success hover:bg-success/90 text-success-foreground" onClick={() => handleApprove(request.id)}>
-                              <Check className="mr-2 h-4 w-4" /> Approve
-                            </Button>
-                          </div>
-                        )}
-                      </TableCell>
-                    </TableRow>
+                  {groupedRequests.ungrouped.map(renderRequestRow)}
+                  {groupedRequests.grouped.map((group, index) => (
+                    <React.Fragment key={`group-${index}`}>
+                        <TableRow className="bg-muted/50 hover:bg-muted">
+                           <TableCell colSpan={6} className="p-2">
+                               <div className="flex items-center gap-2 font-semibold text-sm">
+                                   <Users className="h-4 w-4 text-primary" />
+                                   Grouped Submission ({group.length} requests)
+                               </div>
+                           </TableCell>
+                        </TableRow>
+                        {group.map(renderRequestRow)}
+                    </React.Fragment>
                   ))}
                 </TableBody>
               </Table>

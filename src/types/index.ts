@@ -54,9 +54,9 @@ export interface Customer {
   purchasingItemCode?: string;
   totalValue?: number;
   discountValue?: number;
-  downPayment?: number;
-  installments?: number;
-  monthlyInstallment?: number;
+  downPayment?: number | null;
+  installments?: number | null;
+  monthlyInstallment?: number | null;
   requestedDeliveryDate?: string;
 }
 
@@ -73,6 +73,7 @@ export interface CommissionRequest {
     approverName?: string;
     processedDate?: string;
     depositSlipUrl?: string;
+    slipGroupId?: string;
 }
 
 export interface ProductSale {
@@ -88,8 +89,8 @@ export interface ProductSale {
   saleDate: string;
   shopManagerId: string;
   shopManagerName: string;
-  installments?: number;
-  monthlyInstallment?: number;
+  installments?: number | null;
+  monthlyInstallment?: number | null;
   paidInstallments?: number;
   // Delivery fields
   deliveryStatus: 'pending' | 'assigned' | 'delivered';

@@ -1,4 +1,5 @@
 
+
 import { doc, getDoc, setDoc, collection, getDocs, query, where, writeBatch, increment, updateDoc, deleteDoc, addDoc, runTransaction } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -287,44 +288,52 @@ export async function rejectTokenCommission(requestId: string, admin: User): Pro
     await batch.commit();
 }
 
-export async function uploadDepositSlipAndUpdateRequest(requestId: string, file: File): Promise<void> {
+export async function uploadDepositSlipForGroup(requestIds: string[], file: File): Promise<void> {
     if (!file.type.startsWith("image/")) {
         throw new Error("File must be an image.");
+    }
+    if (requestIds.length === 0) {
+        throw new Error("No requests selected.");
     }
 
     const auth = getAuth();
     const currentUser = auth.currentUser;
-
     if (!currentUser) {
         throw new Error("You must be logged in to upload a file.");
     }
-    
-    const requestRef = doc(db, "commissionRequests", requestId);
-    const requestSnap = await getDoc(requestRef);
 
-    if (!requestSnap.exists()) {
-        throw new Error("The commission request could not be found.");
+    const firstRequestRef = doc(db, "commissionRequests", requestIds[0]);
+    const firstRequestSnap = await getDoc(firstRequestRef);
+    if (!firstRequestSnap.exists()) {
+        throw new Error("The first commission request could not be found.");
     }
-
-    const requestData = requestSnap.data();
-    if (requestData.salesmanId !== currentUser.uid) {
+    if (firstRequestSnap.data().salesmanId !== currentUser.uid) {
         throw new Error("You are not authorized to upload a slip for this sale.");
     }
+
+    const slipGroupId = doc(collection(db, "dummy")).id; // Generate a unique ID for the group
+    const storageRef = ref(storage, `deposit_slips/group_${slipGroupId}/${file.name}`);
     
     const metadata = {
         customMetadata: {
             uploaderUid: currentUser.uid,
-            requestId: requestId,
+            slipGroupId: slipGroupId,
         }
     };
 
-    const storageRef = ref(storage, `deposit_slips/${requestId}/${file.name}`);
     const uploadResult = await uploadBytes(storageRef, file, metadata);
     const downloadURL = await getDownloadURL(uploadResult.ref);
 
-    await updateDoc(requestRef, {
-        depositSlipUrl: downloadURL,
-    });
+    const batch = writeBatch(db);
+    for (const requestId of requestIds) {
+        const requestRef = doc(db, "commissionRequests", requestId);
+        batch.update(requestRef, {
+            depositSlipUrl: downloadURL,
+            slipGroupId: slipGroupId,
+        });
+    }
+
+    await batch.commit();
 }
 
 
