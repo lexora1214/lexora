@@ -208,3 +208,18 @@ export interface SalesmanIncentiveSettings {
   "BUSINESS PROMOTER (stage 01)": SalesmanIncentive;
   "MARKETING EXECUTIVE (stage 02)": SalesmanIncentive;
 }
+
+export interface Reminder {
+  id: string;
+  salesmanId: string;
+  name: string;
+  nic: string;
+  address: string;
+  location: {
+    latitude: number;
+    longitude: number;
+  } | null;
+  remindDate: string;
+  createdAt: string;
+  status: 'pending' | 'completed';
+}

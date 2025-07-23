@@ -1,10 +1,10 @@
 
 
-import { doc, getDoc, setDoc, collection, getDocs, query, where, writeBatch, increment, updateDoc, deleteDoc, addDoc, runTransaction } from "firebase/firestore";
+import { doc, getDoc, setDoc, collection, getDocs, query, where, writeBatch, increment, updateDoc, deleteDoc, addDoc, runTransaction, deleteField } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { db, storage } from "./firebase";
-import { User, Role, Customer, CommissionSettings, IncomeRecord, ProductSale, ProductCommissionSettings, SignupRoleSettings, CommissionRequest, SalesmanStage, SalarySettings, MonthlySalaryPayout, StockItem, SalesmanIncentiveSettings } from "@/types";
+import { User, Role, Customer, CommissionSettings, IncomeRecord, ProductSale, ProductCommissionSettings, SignupRoleSettings, CommissionRequest, SalesmanStage, SalarySettings, MonthlySalaryPayout, StockItem, SalesmanIncentiveSettings, Reminder } from "@/types";
 import type { User as FirebaseUser } from 'firebase/auth';
 
 function generateReferralCode(): string {
@@ -1169,26 +1169,33 @@ export async function deleteSlipsForMonth(slipGroupIds: string[]): Promise<void>
     const querySnapshot = await getDocs(q);
 
     let slipUrlToDelete: string | null = null;
+    let canDelete = true;
     
     querySnapshot.forEach((doc) => {
       const requestData = doc.data() as CommissionRequest;
+      if (requestData.status !== 'pending') {
+          canDelete = false; // Do not proceed if any request in the group is already processed
+      }
       if (requestData.depositSlipUrl) {
           slipUrlToDelete = requestData.depositSlipUrl;
       }
-      batch.update(doc.ref, {
-        depositSlipUrl: deleteField(),
-        slipGroupId: deleteField(),
-      });
     });
 
-    if (slipUrlToDelete) {
-        try {
-            const storageRef = ref(storage, slipUrlToDelete);
-            await deleteObject(storageRef);
-        } catch (error: any) {
-            // It's possible the file doesn't exist or permissions are wrong,
-            // but we should still proceed with clearing the Firestore fields.
-            console.error(`Failed to delete slip from storage: ${slipUrlToDelete}`, error);
+    if (canDelete) {
+        querySnapshot.forEach((doc) => {
+            batch.update(doc.ref, {
+                depositSlipUrl: deleteField(),
+                slipGroupId: deleteField(),
+            });
+        });
+        
+        if (slipUrlToDelete) {
+            try {
+                const storageRef = ref(storage, slipUrlToDelete);
+                await deleteObject(storageRef);
+            } catch (error: any) {
+                console.error(`Failed to delete slip from storage: ${slipUrlToDelete}`, error);
+            }
         }
     }
   }
@@ -1196,6 +1203,27 @@ export async function deleteSlipsForMonth(slipGroupIds: string[]): Promise<void>
   await batch.commit();
 }
 
-// Firestore's deleteField() needs to be imported, but we can't do that at the top level
-// because this file runs on the server. So we import it dynamically here.
-import { deleteField } from 'firebase/firestore';
+
+// Reminder Management
+
+export async function createReminder(reminderData: Omit<Reminder, 'id' | 'createdAt' | 'status'>): Promise<void> {
+  await addDoc(collection(db, "reminders"), {
+    ...reminderData,
+    createdAt: new Date().toISOString(),
+    status: 'pending',
+  });
+}
+
+export async function getRemindersForUser(userId: string): Promise<Reminder[]> {
+    const q = query(collection(db, "reminders"), where("salesmanId", "==", userId));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Reminder));
+}
+
+export async function updateReminder(reminderId: string, updates: Partial<Reminder>): Promise<void> {
+    await updateDoc(doc(db, "reminders", reminderId), updates);
+}
+
+export async function deleteReminder(reminderId: string): Promise<void> {
+    await deleteDoc(doc(db, "reminders", reminderId));
+}

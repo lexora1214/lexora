@@ -53,7 +53,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import type { User, Role, Customer, IncomeRecord, ProductSale, CommissionRequest, StockItem } from "@/types";
+import type { User, Role, Customer, IncomeRecord, ProductSale, CommissionRequest, StockItem, Reminder } from "@/types";
 import { getDownlineIdsAndUsers } from "@/lib/hierarchy";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -90,6 +90,7 @@ import IncentiveSettings from "./incentive-settings";
 import TargetAchieversView from "./target-achievers-view";
 import AddBranchAdminView from "./add-branch-admin-view";
 import SlipManagementView from "./slip-management-view";
+import RemindersView from "./reminders-view";
 
 type NavItem = {
   href: string;
@@ -114,6 +115,7 @@ const navItems: NavItem[] = [
   { href: "#", icon: ShoppingCart, label: "Record Product Sale", roles: ["Team Operation Manager", "Branch Admin"] },
   { href: "#", icon: Wallet, label: "Income Records", roles: ["Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Salesman"] },
   { href: "#", icon: Users, label: "My Customers", roles: ["Salesman"] },
+  { href: "#", icon: Map, label: "Reminders", roles: ["Salesman"] },
   { href: "#", icon: Truck, label: "My Deliveries", roles: ["Delivery Boy"] },
   { href: "#", icon: HandCoins, label: "My Collections", roles: ["Recovery Officer"] },
   { href: "#", icon: Network, label: "Team Performance", roles: ["Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager"] },
@@ -289,6 +291,7 @@ const AppLayout = ({ user }: { user: User }) => {
   const [allProductSales, setAllProductSales] = React.useState<ProductSale[]>([]);
   const [allCommissionRequests, setAllCommissionRequests] = React.useState<CommissionRequest[]>([]);
   const [allStockItems, setAllStockItems] = React.useState<StockItem[]>([]);
+  const [allReminders, setAllReminders] = React.useState<Reminder[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [isMobileSheetOpen, setIsMobileSheetOpen] = React.useState(false);
   const [isProfileSettingsOpen, setIsProfileSettingsOpen] = React.useState(false);
@@ -331,6 +334,11 @@ const AppLayout = ({ user }: { user: User }) => {
         const stockData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StockItem));
         setAllStockItems(stockData);
     });
+    
+    const remindersUnsub = onSnapshot(query(collection(db, 'reminders'), where('salesmanId', '==', user.id)), { includeMetadataChanges: true }, (snapshot) => {
+        const remindersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Reminder));
+        setAllReminders(remindersData);
+    });
 
     return () => {
       usersUnsub();
@@ -339,8 +347,9 @@ const AppLayout = ({ user }: { user: User }) => {
       productSalesUnsub();
       commissionRequestsUnsub();
       stockItemsUnsub();
+      remindersUnsub();
     };
-  }, []);
+  }, [user.id]);
 
 
   const handleLogout = async () => {
@@ -383,6 +392,8 @@ const AppLayout = ({ user }: { user: User }) => {
         return <IncomeRecordsView user={user} />;
       case "My Customers":
         return <MyCustomersView user={user} allCustomers={allCustomers} allProductSales={allProductSales} allUsers={allUsers} allStockItems={allStockItems} />;
+      case "Reminders":
+        return <RemindersView user={user} allReminders={allReminders} />;
       case "My Deliveries":
         return <DeliveryBoyDashboard user={user} />;
       case "My Collections":
