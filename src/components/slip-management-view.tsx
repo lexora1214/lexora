@@ -16,65 +16,118 @@ import {
   DialogFooter as DialogActionsFooter
 } from "@/components/ui/dialog";
 import { deleteSlipsForMonth } from '@/lib/firestore';
+import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
 import { cn } from '@/lib/utils';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import { ScrollArea } from './ui/scroll-area';
+import { Badge } from './ui/badge';
 
-interface SlipManagementViewProps {
-  allCommissionRequests: CommissionRequest[];
+interface SlipDetails {
+  url: string;
+  count: number;
+  salesmanName: string;
+  slipGroupId: string;
 }
 
-const ViewSlipDialog: React.FC<{ slipUrl: string; isOpen: boolean; onOpenChange: (open: boolean) => void; }> = ({ slipUrl, isOpen, onOpenChange }) => {
+const SlipDetailsDialog: React.FC<{ slip: SlipDetails | null; isOpen: boolean; onOpenChange: (open: boolean) => void; }> = ({ slip, isOpen, onOpenChange }) => {
     const [zoom, setZoom] = useState(1);
+    const [requests, setRequests] = useState<CommissionRequest[]>([]);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         if (!isOpen) {
-            setTimeout(() => setZoom(1), 200);
+            setTimeout(() => {
+                setZoom(1);
+                setRequests([]);
+            }, 200);
+            return;
         }
-    }, [isOpen]);
+
+        if (slip) {
+            setLoading(true);
+            const fetchRequests = async () => {
+                const q = query(collection(db, 'commissionRequests'), where('slipGroupId', '==', slip.slipGroupId));
+                const snapshot = await getDocs(q);
+                const fetchedRequests = snapshot.docs.map(doc => doc.data() as CommissionRequest);
+                setRequests(fetchedRequests);
+                setLoading(false);
+            };
+            fetchRequests();
+        }
+    }, [isOpen, slip]);
+
+    if (!slip) return null;
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-3xl">
+            <DialogContent className="max-w-4xl h-[90vh] flex flex-col">
                 <DialogHeader>
-                    <DialogTitle>Bank Deposit Slip</DialogTitle>
+                    <DialogTitle>Slip Details</DialogTitle>
+                    <DialogDescription>Submitted by: {slip.salesmanName}</DialogDescription>
                 </DialogHeader>
-                <div className="mt-4 relative bg-muted rounded-lg overflow-hidden h-[70vh]">
-                    <div className="absolute inset-0 overflow-auto">
-                        <div
-                            className="relative w-full h-full flex items-center justify-center transition-transform duration-200"
+                <div className="grid md:grid-cols-2 gap-6 flex-1 overflow-hidden">
+                    <div className="relative bg-muted rounded-lg flex flex-col h-full">
+                       <div className="flex-1 relative overflow-auto">
+                         <div
+                            className="absolute inset-0 flex items-center justify-center transition-transform duration-200"
                             style={{ transform: `scale(${zoom})` }}
-                        >
-                            <Image src={slipUrl} alt="Deposit Slip" layout="fill" objectFit="contain" data-ai-hint="deposit slip" />
-                        </div>
+                          >
+                            <Image src={slip.url} alt="Deposit Slip" layout="fill" objectFit="contain" data-ai-hint="deposit slip" />
+                          </div>
+                       </div>
+                        <DialogActionsFooter className="sm:justify-center pt-2 border-t mt-auto bg-background/80 backdrop-blur-sm">
+                            <div className="flex items-center gap-2">
+                                <Button variant="outline" size="icon" onClick={() => setZoom(prev => Math.max(0.5, prev - 0.2))}>
+                                    <ZoomOut className="h-4 w-4" />
+                                </Button>
+                                <Button variant="outline" size="icon" onClick={() => setZoom(1)}>
+                                    <RotateCcw className="h-4 w-4" />
+                                </Button>
+                                <Button variant="outline" size="icon" onClick={() => setZoom(prev => Math.min(3, prev + 0.2))}>
+                                    <ZoomIn className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        </DialogActionsFooter>
+                    </div>
+                    <div className="flex flex-col">
+                        <h3 className="font-semibold mb-2">Associated Token Sales ({slip.count})</h3>
+                        <ScrollArea className="flex-1 rounded-md border">
+                            <div className="p-4 space-y-3">
+                                {loading ? (
+                                    <div className="flex justify-center items-center h-full">
+                                        <LoaderCircle className="h-6 w-6 animate-spin"/>
+                                    </div>
+                                ) : (
+                                    requests.map(req => (
+                                        <div key={req.id} className="text-sm p-2 rounded-md bg-muted/50 flex justify-between items-center">
+                                            <p className="text-muted-foreground">{req.customerName}</p>
+                                            <Badge variant="outline" className="font-mono">{req.tokenSerial}</Badge>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </ScrollArea>
                     </div>
                 </div>
-                 <DialogActionsFooter className="sm:justify-center pt-2">
-                    <div className="flex items-center gap-2">
-                        <Button variant="outline" size="icon" onClick={() => setZoom(prev => Math.max(0.5, prev - 0.2))}>
-                            <ZoomOut className="h-4 w-4" />
-                        </Button>
-                        <Button variant="outline" size="icon" onClick={() => setZoom(1)}>
-                            <RotateCcw className="h-4 w-4" />
-                        </Button>
-                        <Button variant="outline" size="icon" onClick={() => setZoom(prev => Math.min(3, prev + 0.2))}>
-                            <ZoomIn className="h-4 w-4" />
-                        </Button>
-                    </div>
-                </DialogActionsFooter>
             </DialogContent>
         </Dialog>
     );
 };
 
+interface SlipManagementViewProps {
+  allCommissionRequests: CommissionRequest[];
+}
+
 const SlipManagementView: React.FC<SlipManagementViewProps> = ({ allCommissionRequests }) => {
   const [selectedMonth, setSelectedMonth] = useState(new Date());
-  const [slipToView, setSlipToView] = useState<string | null>(null);
+  const [slipToView, setSlipToView] = useState<SlipDetails | null>(null);
   const { toast } = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
 
   const slipsByMonth = useMemo(() => {
-    const slipsWithDetails: Record<string, { url: string; count: number; salesmanName: string; slipGroupId: string }> = {};
+    const slipsWithDetails: Record<string, SlipDetails> = {};
 
     allCommissionRequests.forEach(req => {
       if (req.depositSlipUrl && req.slipGroupId) {
@@ -160,7 +213,7 @@ const SlipManagementView: React.FC<SlipManagementViewProps> = ({ allCommissionRe
           {currentMonthSlips.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {currentMonthSlips.map((slip, index) => (
-                <Card key={index} className="overflow-hidden cursor-pointer group" onClick={() => setSlipToView(slip.url)}>
+                <Card key={index} className="overflow-hidden cursor-pointer group" onClick={() => setSlipToView(slip)}>
                   <div className="relative aspect-[3/4]">
                     <Image src={slip.url} layout="fill" objectFit="cover" alt={`Deposit slip by ${slip.salesmanName}`} className="group-hover:scale-105 transition-transform duration-300" data-ai-hint="deposit slip" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
@@ -208,13 +261,11 @@ const SlipManagementView: React.FC<SlipManagementViewProps> = ({ allCommissionRe
          )}
       </Card>
 
-      {slipToView && (
-        <ViewSlipDialog
+      <SlipDetailsDialog
           isOpen={!!slipToView}
           onOpenChange={(open) => !open && setSlipToView(null)}
-          slipUrl={slipToView}
-        />
-      )}
+          slip={slipToView}
+      />
     </>
   );
 };
