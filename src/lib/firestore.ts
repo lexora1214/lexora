@@ -2,7 +2,7 @@
 
 import { doc, getDoc, setDoc, collection, getDocs, query, where, writeBatch, increment, updateDoc, deleteDoc, addDoc, runTransaction } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { db, storage } from "./firebase";
 import { User, Role, Customer, CommissionSettings, IncomeRecord, ProductSale, ProductCommissionSettings, SignupRoleSettings, CommissionRequest, SalesmanStage, SalarySettings, MonthlySalaryPayout, StockItem, SalesmanIncentiveSettings } from "@/types";
 import type { User as FirebaseUser } from 'firebase/auth';
@@ -145,6 +145,13 @@ export async function createCustomer(customerData: Omit<Customer, 'id' | 'saleDa
         tokenIsAvailable: true,
         branch: salesman.branch,
     };
+
+    if (newCustomer.paymentMethod === 'cash') {
+        newCustomer.installments = null;
+        newCustomer.monthlyInstallment = null;
+        newCustomer.downPayment = null;
+    }
+
     batch.set(newCustomerRef, newCustomer);
 
     const commissionRequestRef = doc(collection(db, "commissionRequests"));
@@ -464,6 +471,11 @@ export async function createProductSaleAndDistributeCommissions(
             newSale.monthlyInstallment = formData.monthlyInstallment ?? undefined;
             newSale.paidInstallments = 0;
             newSale.recoveryStatus = 'pending';
+        } else {
+             newSale.installments = undefined;
+            newSale.monthlyInstallment = undefined;
+            newSale.paidInstallments = undefined;
+            newSale.recoveryStatus = undefined;
         }
         
         // --- ALL WRITES HAPPEN LAST ---
@@ -1143,3 +1155,47 @@ export async function updateSalesmanIncentiveSettings(data: SalesmanIncentiveSet
     const settingsDocRef = doc(db, "settings", "salesmanIncentives");
     await setDoc(settingsDocRef, data, { merge: true });
 }
+
+// Slip Management
+
+export async function deleteSlipsForMonth(slipGroupIds: string[]): Promise<void> {
+  const batch = writeBatch(db);
+
+  for (const slipGroupId of slipGroupIds) {
+    const q = query(
+      collection(db, 'commissionRequests'),
+      where('slipGroupId', '==', slipGroupId)
+    );
+    const querySnapshot = await getDocs(q);
+
+    let slipUrlToDelete: string | null = null;
+    
+    querySnapshot.forEach((doc) => {
+      const requestData = doc.data() as CommissionRequest;
+      if (requestData.depositSlipUrl) {
+          slipUrlToDelete = requestData.depositSlipUrl;
+      }
+      batch.update(doc.ref, {
+        depositSlipUrl: deleteField(),
+        slipGroupId: deleteField(),
+      });
+    });
+
+    if (slipUrlToDelete) {
+        try {
+            const storageRef = ref(storage, slipUrlToDelete);
+            await deleteObject(storageRef);
+        } catch (error: any) {
+            // It's possible the file doesn't exist or permissions are wrong,
+            // but we should still proceed with clearing the Firestore fields.
+            console.error(`Failed to delete slip from storage: ${slipUrlToDelete}`, error);
+        }
+    }
+  }
+
+  await batch.commit();
+}
+
+// Firestore's deleteField() needs to be imported, but we can't do that at the top level
+// because this file runs on the server. So we import it dynamically here.
+import { deleteField } from 'firebase/firestore';
