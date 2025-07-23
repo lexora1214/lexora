@@ -1,19 +1,9 @@
-
 rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    // Allow public read access to user avatars
-    match /avatars/{userId}/{fileName} {
-      allow read;
-      allow write: if request.auth != null && request.auth.uid == userId;
-    }
-
-    // Allow salesmen to upload deposit slips for their own commission requests
-    match /deposit_slips/{requestId}/{fileName} {
-      allow read, write: if request.auth != null &&
-                          exists(/databases/$(database)/documents/commissionRequests/$(requestId)) &&
-                          request.auth.uid == get(/databases/$(database)/documents/commissionRequests/$(requestId)).data.salesmanId;
+    match /{allPaths=**} {
+      allow read, write, delete: if request.auth != null;
     }
   }
 }
