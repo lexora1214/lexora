@@ -235,7 +235,7 @@ const RemindersView: React.FC<RemindersViewProps> = ({ user, allReminders }) => 
         {reminder.location && (
           <div>
             <div className="rounded-lg overflow-hidden relative">
-              <MapPicker isDisplayOnly initialPosition={reminder.location} />
+              <MapPicker isDisplayOnly initialPosition={{lat: reminder.location.latitude, lng: reminder.location.longitude}} />
                <Button size="sm" onClick={() => handleStartRide(reminder)} className="absolute bottom-2 right-2 shadow-lg">Navigate</Button>
             </div>
           </div>
