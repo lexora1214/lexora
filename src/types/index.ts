@@ -28,6 +28,11 @@ export interface User {
   salesmanStage?: SalesmanStage | null;
   isDisabled?: boolean;
   assignedManagerIds?: string[];
+  // New fields for document verification
+  nicFrontUrl?: string;
+  nicBackUrl?: string;
+  birthCertificateUrl?: string;
+  policeReportUrl?: string;
 }
 
 export interface Customer {
@@ -222,4 +227,12 @@ export interface Reminder {
   remindDate: string;
   createdAt: string;
   status: 'pending' | 'completed';
+}
+
+// Type for the file uploads during salesman registration
+export interface SalesmanDocuments {
+    nicFront: File;
+    nicBack: File;
+    birthCertificate: File;
+    policeReport: File;
 }

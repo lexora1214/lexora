@@ -36,6 +36,7 @@ import {
   TrendingUp,
   Map,
   Receipt,
+  UserCheck,
 } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
@@ -91,6 +92,7 @@ import TargetAchieversView from "./target-achievers-view";
 import AddBranchAdminView from "./add-branch-admin-view";
 import SlipManagementView from "./slip-management-view";
 import RemindersView from "./reminders-view";
+import SalesmanVerificationView from "./salesman-verification-view";
 
 type NavItem = {
   href: string;
@@ -136,6 +138,7 @@ const navItems: NavItem[] = [
   { href: "#", icon: Building, label: "User Management", roles: ["Admin"] },
   { href: "#", icon: Briefcase, label: "Customer Management", roles: ["Admin"]},
   { href: "#", icon: ShieldCheck, label: "Commission Approvals", roles: ["Admin"] },
+  { href: "#", icon: UserCheck, label: "Salesman Verification", roles: ["Admin"] },
   { href: "#", icon: Receipt, label: "Slip Management", roles: ["Admin"] },
   { href: "#", icon: Network, label: "Network View", roles: ["Admin"] },
   { 
@@ -450,6 +453,8 @@ const AppLayout = ({ user }: { user: User }) => {
         );
       case "Commission Approvals":
         return <CommissionApprovalView user={user} />;
+      case "Salesman Verification":
+        return <SalesmanVerificationView allUsers={allUsers} />;
       case "Slip Management":
         return <SlipManagementView allCommissionRequests={allCommissionRequests} />;
       case "Network View":

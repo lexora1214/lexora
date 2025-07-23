@@ -4,7 +4,7 @@ import { doc, getDoc, setDoc, collection, getDocs, query, where, writeBatch, inc
 import { getAuth } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { db, storage } from "./firebase";
-import { User, Role, Customer, CommissionSettings, IncomeRecord, ProductSale, ProductCommissionSettings, SignupRoleSettings, CommissionRequest, SalesmanStage, SalarySettings, MonthlySalaryPayout, StockItem, SalesmanIncentiveSettings, Reminder } from "@/types";
+import { User, Role, Customer, CommissionSettings, IncomeRecord, ProductSale, ProductCommissionSettings, SignupRoleSettings, CommissionRequest, SalesmanStage, SalarySettings, MonthlySalaryPayout, StockItem, SalesmanIncentiveSettings, Reminder, SalesmanDocuments } from "@/types";
 import type { User as FirebaseUser } from 'firebase/auth';
 
 function generateReferralCode(): string {
@@ -16,7 +16,24 @@ function generateReferralCode(): string {
   return result;
 }
 
-export async function createUserProfile(firebaseUser: FirebaseUser, name: string, mobileNumber: string, role: Role, referralCodeInput: string, branch?: string, salesmanStage?: SalesmanStage, extraData?: Partial<User>): Promise<User> {
+async function uploadVerificationDocument(userId: string, file: File, documentType: string): Promise<string> {
+    const fileExtension = file.name.split('.').pop();
+    const storageRef = ref(storage, `user-documents/${userId}/${documentType}.${fileExtension}`);
+    const uploadResult = await uploadBytes(storageRef, file);
+    return getDownloadURL(uploadResult.ref);
+}
+
+export async function createUserProfile(
+    firebaseUser: FirebaseUser, 
+    name: string, 
+    mobileNumber: string, 
+    role: Role, 
+    referralCodeInput: string, 
+    branch?: string, 
+    salesmanStage?: SalesmanStage, 
+    documents?: SalesmanDocuments,
+    extraData?: Partial<User>
+): Promise<User> {
   const batch = writeBatch(db);
   let referrerId: string | null = null;
   const isReferralNeeded = role && !['Regional Director', 'Admin'].includes(role);
@@ -53,6 +70,14 @@ export async function createUserProfile(firebaseUser: FirebaseUser, name: string
     }
   }
 
+  const documentUrls: Partial<User> = {};
+  if (role === 'Salesman' && documents) {
+      documentUrls.nicFrontUrl = await uploadVerificationDocument(firebaseUser.uid, documents.nicFront, 'nic_front');
+      documentUrls.nicBackUrl = await uploadVerificationDocument(firebaseUser.uid, documents.nicBack, 'nic_back');
+      documentUrls.birthCertificateUrl = await uploadVerificationDocument(firebaseUser.uid, documents.birthCertificate, 'birth_certificate');
+      documentUrls.policeReportUrl = await uploadVerificationDocument(firebaseUser.uid, documents.policeReport, 'police_report');
+  }
+
   const newUser: User = {
     id: firebaseUser.uid,
     name,
@@ -64,8 +89,10 @@ export async function createUserProfile(firebaseUser: FirebaseUser, name: string
     totalIncome: 0,
     avatar: ``,
     createdAt: new Date().toISOString(),
+    isDisabled: role === 'Salesman', // Salesmen are disabled by default
     ...(branch && { branch }),
     ...(role === 'Salesman' && { salesmanStage }),
+    ...documentUrls,
     ...extraData,
   };
 

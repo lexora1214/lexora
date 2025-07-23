@@ -7,8 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { LoaderCircle, UserPlus } from "lucide-react";
-import { User, SalesmanStage } from "@/types";
+import { LoaderCircle, UserPlus, FileUp, CheckCircle2 } from "lucide-react";
+import { User, SalesmanStage, SalesmanDocuments } from "@/types";
 import { createUserProfile } from "@/lib/firestore";
 import { firebaseConfig } from "@/lib/firebase";
 import { initializeApp, deleteApp } from "firebase/app";
@@ -20,9 +20,34 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
 interface AddSalesmanViewProps {
   manager: User;
+}
+
+const FileInput: React.FC<{ label: string, onFileSelect: (file: File) => void, acceptedFileTypes: string, selectedFile: File | null }> = ({ label, onFileSelect, acceptedFileTypes, selectedFile }) => {
+    const [fileName, setFileName] = useState<string | null>(null);
+    const inputRef = React.useRef<HTMLInputElement>(null);
+
+    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            onFileSelect(file);
+            setFileName(file.name);
+        }
+    };
+
+    return (
+        <div className="grid gap-2">
+            <Label>{label}</Label>
+            <Input ref={inputRef} type="file" onChange={handleFileChange} accept={acceptedFileTypes} className="hidden" />
+            <Button type="button" variant="outline" onClick={() => inputRef.current?.click()} className="justify-start">
+                {selectedFile ? <CheckCircle2 className="mr-2 h-4 w-4 text-success" /> : <FileUp className="mr-2 h-4 w-4" />}
+                <span className="truncate">{selectedFile?.name || 'Select File'}</span>
+            </Button>
+        </div>
+    )
 }
 
 export default function AddSalesmanView({ manager }: AddSalesmanViewProps) {
@@ -33,7 +58,11 @@ export default function AddSalesmanView({ manager }: AddSalesmanViewProps) {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [salesmanStage, setSalesmanStage] = useState<SalesmanStage>("BUSINESS PROMOTER (stage 01)");
+  const [documents, setDocuments] = useState<Partial<SalesmanDocuments>>({});
 
+  const handleFileSelect = (docType: keyof SalesmanDocuments, file: File) => {
+    setDocuments(prev => ({ ...prev, [docType]: file }));
+  };
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,6 +72,10 @@ export default function AddSalesmanView({ manager }: AddSalesmanViewProps) {
     }
     if (!/^(0\d{9})$/.test(mobileNumber)) {
         toast({ variant: "destructive", title: "Registration Failed", description: "Please enter a valid 10-digit mobile number." });
+        return;
+    }
+    if (!documents.nicFront || !documents.nicBack || !documents.birthCertificate || !documents.policeReport) {
+        toast({ variant: "destructive", title: "Registration Failed", description: "All four verification documents are required." });
         return;
     }
 
@@ -61,19 +94,23 @@ export default function AddSalesmanView({ manager }: AddSalesmanViewProps) {
         "Salesman",
         manager.referralCode,
         manager.branch,
-        salesmanStage
+        salesmanStage,
+        documents as SalesmanDocuments
       );
       toast({
         title: "Salesman Registered",
-        description: `${name} has been successfully registered. You can now share their login details.`,
+        description: `${name} has been successfully registered. Their account must be enabled by an admin before they can log in.`,
         variant: "default",
         className: "bg-success text-success-foreground",
       });
+      // Reset form
       setName("");
       setEmail("");
       setMobileNumber("");
       setPassword("");
       setSalesmanStage("BUSINESS PROMOTER (stage 01)");
+      setDocuments({});
+
     } catch (error: any) {
       let errorMessage = error.message;
       if (error.code === 'auth/email-already-in-use') {
@@ -93,7 +130,7 @@ export default function AddSalesmanView({ manager }: AddSalesmanViewProps) {
           <UserPlus />
           Register New Salesman
         </CardTitle>
-        <CardDescription>Enter the new salesman's details. They will be added to your team and branch.</CardDescription>
+        <CardDescription>Enter the new salesman's details. Their account will be disabled until an admin verifies their documents.</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSignup}>
@@ -126,6 +163,17 @@ export default function AddSalesmanView({ manager }: AddSalesmanViewProps) {
                 </SelectContent>
               </Select>
             </div>
+            
+            <div className="border-t pt-4 mt-2">
+                <h3 className="font-medium text-center mb-4">Verification Documents</h3>
+                <div className="grid grid-cols-2 gap-4">
+                    <FileInput label="NIC Front" onFileSelect={(file) => handleFileSelect('nicFront', file)} acceptedFileTypes=".png,.jpg,.jpeg,.pdf" selectedFile={documents.nicFront || null}/>
+                    <FileInput label="NIC Back" onFileSelect={(file) => handleFileSelect('nicBack', file)} acceptedFileTypes=".png,.jpg,.jpeg,.pdf" selectedFile={documents.nicBack || null} />
+                    <FileInput label="Birth Certificate" onFileSelect={(file) => handleFileSelect('birthCertificate', file)} acceptedFileTypes=".png,.jpg,.jpeg,.pdf" selectedFile={documents.birthCertificate || null} />
+                    <FileInput label="Police Report" onFileSelect={(file) => handleFileSelect('policeReport', file)} acceptedFileTypes=".png,.jpg,.jpeg,.pdf" selectedFile={documents.policeReport || null} />
+                </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="referral-code">Your Referral Code</Label>
