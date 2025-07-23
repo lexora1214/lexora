@@ -213,17 +213,17 @@ const SlipManagementView: React.FC<SlipManagementViewProps> = ({ allCommissionRe
         </CardHeader>
         <CardContent>
           {currentMonthSlips.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
               {currentMonthSlips.map((slip, index) => (
                 <Card key={index} className="overflow-hidden cursor-pointer group" onClick={() => setSlipToView(slip)}>
-                  <div className="relative aspect-[3/4]">
+                  <div className="relative aspect-square">
                     <Image src={slip.url} layout="fill" objectFit="cover" alt={`Deposit slip by ${slip.salesmanName}`} className="group-hover:scale-105 transition-transform duration-300" data-ai-hint="deposit slip" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
                   </div>
-                  <div className="p-3 bg-card absolute bottom-0 w-full text-white">
-                    <p className="font-semibold text-sm truncate">{slip.salesmanName}</p>
-                    <p className="text-xs text-white/80">{slip.count} token sales</p>
-                    <p className="text-xs text-white/80 mt-1">{format(new Date(slip.requestDate), 'PPP')}</p>
+                  <div className="p-2 absolute bottom-0 w-full text-white bg-gradient-to-t from-black/80 to-transparent">
+                    <p className="font-semibold text-xs truncate">{slip.salesmanName}</p>
+                    <p className="text-xs text-white/80">{slip.count} sales</p>
+                    <p className="text-xs text-white/80 mt-1">{format(new Date(slip.requestDate), 'PP')}</p>
                   </div>
                 </Card>
               ))}
@@ -274,5 +274,3 @@ const SlipManagementView: React.FC<SlipManagementViewProps> = ({ allCommissionRe
 };
 
 export default SlipManagementView;
-
-    
