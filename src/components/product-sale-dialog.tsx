@@ -145,6 +145,7 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
       if (payload.paymentMethod === 'cash') {
         payload.installments = undefined;
         payload.monthlyInstallment = undefined;
+        payload.downPayment = undefined;
       }
 
       await createProductSaleAndDistributeCommissions(

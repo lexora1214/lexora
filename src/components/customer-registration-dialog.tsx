@@ -146,9 +146,9 @@ const CustomerRegistrationDialog: React.FC<CustomerRegistrationDialogProps> = ({
         purchasingItemCode: data.purchasingItemCode,
         totalValue: data.totalValue,
         discountValue: data.discountValue,
-        downPayment: data.downPayment,
-        installments: data.installments,
-        monthlyInstallment: data.monthlyInstallment,
+        downPayment: data.paymentMethod === 'cash' ? null : data.downPayment,
+        installments: data.paymentMethod === 'cash' ? null : data.installments,
+        monthlyInstallment: data.paymentMethod === 'cash' ? null : data.monthlyInstallment,
         requestedDeliveryDate: data.requestedDeliveryDate?.toISOString(),
     };
 
