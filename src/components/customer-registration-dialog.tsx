@@ -30,6 +30,7 @@ import { format } from "date-fns";
 import { Calendar } from "./ui/calendar";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "./ui/command";
 import { Badge } from "./ui/badge";
+import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
@@ -42,6 +43,7 @@ const formSchema = z.object({
   latitude: z.coerce.number().optional(),
   longitude: z.coerce.number().optional(),
   purchasingItemId: z.string({ required_error: "Please select a product." }),
+  paymentMethod: z.enum(["cash", "installments"], { required_error: "You need to select a payment method." }),
   purchasingItem: z.string().min(2, "Item name is required."),
   purchasingItemCode: z.string().optional(),
   totalValue: z.coerce.number().min(0, "Total value must be a positive number."),
@@ -91,8 +93,8 @@ const CustomerRegistrationDialog: React.FC<CustomerRegistrationDialogProps> = ({
     }
   });
 
-  const [totalValue, discountValue, downPayment, installments] = watch([
-    'totalValue', 'discountValue', 'downPayment', 'installments'
+  const [purchasingItemId, totalValue, discountValue, downPayment, installments, paymentMethod] = watch([
+    'purchasingItemId', 'totalValue', 'discountValue', 'downPayment', 'installments', 'paymentMethod'
   ]);
 
   useEffect(() => {
@@ -108,6 +110,19 @@ const CustomerRegistrationDialog: React.FC<CustomerRegistrationDialogProps> = ({
     }
   }, [totalValue, discountValue, downPayment, installments, setValue]);
   
+  useEffect(() => {
+    const selectedStockItem = stockItems.find(item => item.id === purchasingItemId);
+    if (selectedStockItem) {
+        if (paymentMethod === 'cash') {
+            setValue('totalValue', selectedStockItem.priceCash);
+            setValue('installments', undefined);
+            setValue('monthlyInstallment', undefined);
+        } else if (paymentMethod === 'installments') {
+            setValue('totalValue', selectedStockItem.priceInstallment);
+        }
+    }
+  }, [paymentMethod, purchasingItemId, setValue, stockItems]);
+
   const handleLocationChange = useCallback((location: { lat: number; lng: number }) => {
     setValue("latitude", location.lat);
     setValue("longitude", location.lng);
@@ -262,7 +277,6 @@ const CustomerRegistrationDialog: React.FC<CustomerRegistrationDialogProps> = ({
                                                 field.onChange(item.id);
                                                 setValue('purchasingItem', item.productName);
                                                 setValue('purchasingItemCode', item.productCode);
-                                                setValue('totalValue', item.price);
                                                 setIsProductPopoverOpen(false);
                                             }}
                                             disabled={item.quantity === 0}
@@ -292,6 +306,31 @@ const CustomerRegistrationDialog: React.FC<CustomerRegistrationDialogProps> = ({
                         {errors.purchasingItemId && <p className="text-xs text-destructive mt-1">{errors.purchasingItemId.message}</p>}
                     </div>
 
+                    <div>
+                      <Label>Payment Method</Label>
+                      <Controller
+                        control={control}
+                        name="paymentMethod"
+                        render={({ field }) => (
+                          <RadioGroup
+                              onValueChange={field.onChange}
+                              defaultValue={field.value}
+                              className="flex space-x-4 pt-2"
+                          >
+                              <div className="flex items-center space-x-2">
+                                  <RadioGroupItem value="cash" id="cash-reg" />
+                                  <Label htmlFor="cash-reg">Cash</Label>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                  <RadioGroupItem value="installments" id="installments-reg" />
+                                  <Label htmlFor="installments-reg">Installments</Label>
+                              </div>
+                          </RadioGroup>
+                        )}
+                      />
+                      {errors.paymentMethod && <p className="text-xs text-destructive mt-1">{errors.paymentMethod.message}</p>}
+                    </div>
+
                      <div>
                         <Label htmlFor="totalValue">Total Value (LKR)</Label>
                         <Input id="totalValue" type="number" {...register("totalValue")} />
@@ -305,15 +344,19 @@ const CustomerRegistrationDialog: React.FC<CustomerRegistrationDialogProps> = ({
                         <Label htmlFor="downPayment">Down Payment (LKR, Optional)</Label>
                         <Input id="downPayment" type="number" {...register("downPayment")} />
                     </div>
-                     <div>
-                        <Label htmlFor="installments">Number of Installments (Optional)</Label>
-                        <Input id="installments" type="number" {...register("installments")} />
-                         {errors.installments && <p className="text-xs text-destructive mt-1">{errors.installments.message}</p>}
-                    </div>
-                     <div className="md:col-span-2">
-                        <Label htmlFor="monthlyInstallment">Monthly Installment (LKR)</Label>
-                        <Input id="monthlyInstallment" {...register("monthlyInstallment")} disabled placeholder="Calculated automatically" />
-                    </div>
+                     {paymentMethod === 'installments' && (
+                        <>
+                            <div>
+                                <Label htmlFor="installments">Number of Installments (Optional)</Label>
+                                <Input id="installments" type="number" {...register("installments")} />
+                                {errors.installments && <p className="text-xs text-destructive mt-1">{errors.installments.message}</p>}
+                            </div>
+                            <div className="md:col-span-2">
+                                <Label htmlFor="monthlyInstallment">Monthly Installment (LKR)</Label>
+                                <Input id="monthlyInstallment" {...register("monthlyInstallment")} disabled placeholder="Calculated automatically" />
+                            </div>
+                        </>
+                     )}
                      <div className="md:col-span-2">
                         <Label htmlFor="tokenSerial">Token Serial</Label>
                         <Input id="tokenSerial" {...register("tokenSerial")} />

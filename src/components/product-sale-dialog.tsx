@@ -99,8 +99,8 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
     resolver: zodResolver(formSchema),
   });
   
-  const [totalValue, discountValue, downPayment, installments, paymentMethod] = watch([
-    'totalValue', 'discountValue', 'downPayment', 'installments', 'paymentMethod'
+  const [productId, totalValue, discountValue, downPayment, installments, paymentMethod] = watch([
+    'productId', 'totalValue', 'discountValue', 'downPayment', 'installments', 'paymentMethod'
   ]);
 
   useEffect(() => {
@@ -117,13 +117,19 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
       setValue('monthlyInstallment', undefined);
     }
   }, [totalValue, discountValue, downPayment, installments, paymentMethod, setValue]);
-
+  
   useEffect(() => {
-    if (paymentMethod === 'cash') {
-        setValue('installments', undefined);
-        setValue('monthlyInstallment', undefined);
+    const selectedStockItem = stockItems.find(item => item.id === productId);
+    if (selectedStockItem) {
+        if (paymentMethod === 'cash') {
+            setValue('totalValue', selectedStockItem.priceCash);
+            setValue('installments', undefined);
+            setValue('monthlyInstallment', undefined);
+        } else if (paymentMethod === 'installments') {
+            setValue('totalValue', selectedStockItem.priceInstallment);
+        }
     }
-  }, [paymentMethod, setValue]);
+  }, [paymentMethod, productId, setValue, stockItems]);
 
 
   const onSubmit = async (data: FormValues) => {
@@ -220,7 +226,7 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
                                       
                                       setValue('productName', customer.purchasingItem || '');
                                       setValue('productCode', customer.purchasingItemCode || '');
-                                      setValue('totalValue', customer.totalValue || 0);
+                                      // Price is now set by payment method watcher
                                       setValue('discountValue', customer.discountValue || undefined);
                                       setValue('installments', customer.installments || undefined);
                                       setValue('downPayment', customer.downPayment || undefined);
@@ -296,7 +302,7 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
                                       field.onChange(item.id);
                                       setValue('productName', item.productName);
                                       setValue('productCode', item.productCode);
-                                      setValue('totalValue', item.price);
+                                      // Price is now set by payment method watcher
                                       setIsProductPopoverOpen(false);
                                   }}
                                   disabled={item.quantity === 0}
@@ -325,7 +331,31 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
                 />
                  {errors.productId && <p className="text-xs text-destructive mt-1">{errors.productId.message}</p>}
               </div>
-
+              
+              <div>
+                  <Label>Payment Method</Label>
+                  <Controller
+                    control={control}
+                    name="paymentMethod"
+                    render={({ field }) => (
+                      <RadioGroup
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                          className="flex space-x-4 pt-2"
+                      >
+                          <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="cash" id="cash" />
+                              <Label htmlFor="cash">Cash</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="installments" id="installments" />
+                              <Label htmlFor="installments">Installments</Label>
+                          </div>
+                      </RadioGroup>
+                    )}
+                  />
+                  {errors.paymentMethod && <p className="text-xs text-destructive mt-1">{errors.paymentMethod.message}</p>}
+              </div>
 
               <div>
                 <Label htmlFor="totalValue">Total Value (LKR)</Label>
@@ -349,30 +379,6 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
                   <Input id="remainingToPay" value={remainingToPay !== null ? remainingToPay.toLocaleString() : '...'} disabled />
               </div>
 
-              <div>
-                  <Label>Payment Method</Label>
-                  <Controller
-                    control={control}
-                    name="paymentMethod"
-                    render={({ field }) => (
-                      <RadioGroup
-                          onValueChange={field.onChange}
-                          value={field.value}
-                          className="flex space-x-4 pt-2"
-                      >
-                          <div className="flex items-center space-x-2">
-                              <RadioGroupItem value="cash" id="cash" />
-                              <Label htmlFor="cash">Cash</Label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                              <RadioGroupItem value="installments" id="installments" />
-                              <Label htmlFor="installments">Installments</Label>
-                          </div>
-                      </RadioGroup>
-                    )}
-                  />
-                  {errors.paymentMethod && <p className="text-xs text-destructive mt-1">{errors.paymentMethod.message}</p>}
-              </div>
 
               {paymentMethod === 'installments' && (
                 <>

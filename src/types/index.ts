@@ -1,4 +1,5 @@
 
+
 export type Role =
   | "Salesman"
   | "Team Operation Manager"
@@ -189,7 +190,8 @@ export interface StockItem {
   id: string;
   productName: string;
   productCode?: string;
-  price: number;
+  priceCash: number;
+  priceInstallment: number;
   quantity: number;
   branch: string;
   managedBy: string; // Team Operation Manager's ID

@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -27,7 +28,8 @@ interface StockManagementViewProps {
 const formSchema = z.object({
   productName: z.string().min(2, 'Product name is required.'),
   productCode: z.string().optional(),
-  price: z.coerce.number().min(0, 'Price must be a non-negative number.'),
+  priceCash: z.coerce.number().min(0, 'Price must be a non-negative number.'),
+  priceInstallment: z.coerce.number().min(0, 'Price must be a non-negative number.'),
   quantity: z.coerce.number().min(0, 'Quantity must be a non-negative number.'),
 });
 
@@ -49,7 +51,7 @@ const StockItemDialog: React.FC<{
     if (item) {
       reset(item);
     } else {
-      reset({ productName: '', productCode: '', price: 0, quantity: 0 });
+      reset({ productName: '', productCode: '', priceCash: 0, priceInstallment: 0, quantity: 0 });
     }
   }, [item, reset]);
 
@@ -93,10 +95,17 @@ const StockItemDialog: React.FC<{
               <Label htmlFor="productCode">Product Code (Optional)</Label>
               <Input id="productCode" {...register('productCode')} />
             </div>
-             <div>
-              <Label htmlFor="price">Price (LKR)</Label>
-              <Input id="price" type="number" {...register('price')} />
-              {errors.price && <p className="text-xs text-destructive mt-1">{errors.price.message}</p>}
+             <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="priceCash">Price (Cash Sale)</Label>
+                  <Input id="priceCash" type="number" {...register('priceCash')} />
+                  {errors.priceCash && <p className="text-xs text-destructive mt-1">{errors.priceCash.message}</p>}
+                </div>
+                 <div>
+                  <Label htmlFor="priceInstallment">Price (Installment Sale)</Label>
+                  <Input id="priceInstallment" type="number" {...register('priceInstallment')} />
+                  {errors.priceInstallment && <p className="text-xs text-destructive mt-1">{errors.priceInstallment.message}</p>}
+                </div>
             </div>
             <div>
               <Label htmlFor="quantity">Quantity</Label>
@@ -208,20 +217,22 @@ const StockManagementView: React.FC<StockManagementViewProps> = ({ manager }) =>
                 <TableRow>
                   <TableHead>Product Name</TableHead>
                   <TableHead>Code</TableHead>
-                  <TableHead>Price (LKR)</TableHead>
+                  <TableHead>Price (Cash)</TableHead>
+                  <TableHead>Price (Installment)</TableHead>
                   <TableHead className="text-center">Quantity</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableRow><TableCell colSpan={5} className="h-24 text-center"><LoaderCircle className="mx-auto h-6 w-6 animate-spin"/></TableCell></TableRow>
+                  <TableRow><TableCell colSpan={6} className="h-24 text-center"><LoaderCircle className="mx-auto h-6 w-6 animate-spin"/></TableCell></TableRow>
                 ) : filteredItems.length > 0 ? (
                   filteredItems.map((item) => (
                     <TableRow key={item.id}>
                       <TableCell className="font-medium">{item.productName}</TableCell>
                       <TableCell>{item.productCode || 'N/A'}</TableCell>
-                      <TableCell>{item.price.toLocaleString()}</TableCell>
+                      <TableCell>LKR {item.priceCash.toLocaleString()}</TableCell>
+                      <TableCell>LKR {item.priceInstallment.toLocaleString()}</TableCell>
                       <TableCell className="text-center">{item.quantity}</TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
@@ -253,7 +264,7 @@ const StockManagementView: React.FC<StockManagementViewProps> = ({ manager }) =>
                     </TableRow>
                   ))
                 ) : (
-                  <TableRow><TableCell colSpan={5} className="h-24 text-center">No stock items found.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={6} className="h-24 text-center">No stock items found.</TableCell></TableRow>
                 )}
               </TableBody>
             </Table>
