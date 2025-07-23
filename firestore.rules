@@ -1,10 +1,21 @@
+
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow any authenticated user to read and write to the database.
-    // This is for development purposes and should be secured for production.
+
+    // Allow logged-in users to read commission requests.
+    // This is required for the Storage security rule to verify upload permissions.
+    match /commissionRequests/{requestId} {
+      allow read: if request.auth != null;
+      // Writes are handled by backend logic (Cloud Functions / Server-side code)
+      allow write: if false; 
+    }
+
+    // Default deny all other reads/writes.
+    // Your backend logic will use service account credentials which bypass these rules.
     match /{document=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if false;
     }
   }
 }
