@@ -30,6 +30,7 @@ interface SlipDetails {
   count: number;
   salesmanName: string;
   slipGroupId: string;
+  requestDate: string;
 }
 
 const SlipDetailsDialog: React.FC<{ slip: SlipDetails | null; isOpen: boolean; onOpenChange: (open: boolean) => void; }> = ({ slip, isOpen, onOpenChange }) => {
@@ -66,7 +67,9 @@ const SlipDetailsDialog: React.FC<{ slip: SlipDetails | null; isOpen: boolean; o
             <DialogContent className="max-w-4xl h-[90vh] flex flex-col">
                 <DialogHeader>
                     <DialogTitle>Slip Details</DialogTitle>
-                    <DialogDescription>Submitted by: {slip.salesmanName}</DialogDescription>
+                    <DialogDescription>
+                        Submitted by: {slip.salesmanName} on {format(new Date(slip.requestDate), 'PPP')}
+                    </DialogDescription>
                 </DialogHeader>
                 <div className="grid md:grid-cols-2 gap-6 flex-1 overflow-hidden">
                     <div className="relative bg-muted rounded-lg flex flex-col h-full">
@@ -138,6 +141,7 @@ const SlipManagementView: React.FC<SlipManagementViewProps> = ({ allCommissionRe
             count: 0,
             salesmanName: req.salesmanName,
             slipGroupId: req.slipGroupId,
+            requestDate: req.requestDate, // Add request date here
           };
         }
         slipsWithDetails[req.slipGroupId].count += 1;
@@ -147,14 +151,11 @@ const SlipManagementView: React.FC<SlipManagementViewProps> = ({ allCommissionRe
     const uniqueSlips = Object.values(slipsWithDetails);
     
     return uniqueSlips.reduce((acc, slip) => {
-      const request = allCommissionRequests.find(r => r.slipGroupId === slip.slipGroupId);
-      if (request) {
-        const monthKey = format(new Date(request.requestDate), 'yyyy-MM');
+        const monthKey = format(new Date(slip.requestDate), 'yyyy-MM');
         if (!acc[monthKey]) {
           acc[monthKey] = [];
         }
         acc[monthKey].push(slip);
-      }
       return acc;
     }, {} as Record<string, typeof uniqueSlips>);
   }, [allCommissionRequests]);
@@ -219,9 +220,10 @@ const SlipManagementView: React.FC<SlipManagementViewProps> = ({ allCommissionRe
                     <Image src={slip.url} layout="fill" objectFit="cover" alt={`Deposit slip by ${slip.salesmanName}`} className="group-hover:scale-105 transition-transform duration-300" data-ai-hint="deposit slip" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
                   </div>
-                  <div className="p-3 bg-card absolute bottom-0 w-full">
+                  <div className="p-3 bg-card absolute bottom-0 w-full text-white">
                     <p className="font-semibold text-sm truncate">{slip.salesmanName}</p>
-                    <p className="text-xs text-muted-foreground">{slip.count} token sales</p>
+                    <p className="text-xs text-white/80">{slip.count} token sales</p>
+                    <p className="text-xs text-white/80 mt-1">{format(new Date(slip.requestDate), 'PPP')}</p>
                   </div>
                 </Card>
               ))}
@@ -272,3 +274,5 @@ const SlipManagementView: React.FC<SlipManagementViewProps> = ({ allCommissionRe
 };
 
 export default SlipManagementView;
+
+    
