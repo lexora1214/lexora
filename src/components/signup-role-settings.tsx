@@ -12,7 +12,7 @@ import { LoaderCircle } from "lucide-react";
 import { Role, SignupRoleSettings } from "@/types";
 import { Switch } from "@/components/ui/switch";
 
-const ALL_SIGNUP_ROLES: Role[] = ["Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Branch Manager", "Salesman", "Delivery Boy", "Recovery Officer"];
+const ALL_SIGNUP_ROLES: Role[] = ["Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Branch Admin", "Salesman", "Delivery Boy", "Recovery Officer"];
 
 const SignupRoleSettingsForm: React.FC = () => {
     const { toast } = useToast();
