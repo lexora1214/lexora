@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
@@ -118,7 +119,17 @@ const ManageRecoveryView: React.FC<ManageRecoveryViewProps> = ({ manager, allUse
   const [selectedSale, setSelectedSale] = useState<ProductSale | null>(null);
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
 
-  const recoveryOfficers = useMemo(() => allUsers.filter(u => u.role === 'Recovery Officer' && u.referrerId === manager.id), [allUsers, manager.id]);
+  const teamOperationManager = useMemo(() => {
+    if (manager.role === 'Branch Admin') {
+      return allUsers.find(u => u.id === manager.referrerId);
+    }
+    return manager;
+  }, [manager, allUsers]);
+
+  const recoveryOfficers = useMemo(() => {
+    if (!teamOperationManager) return [];
+    return allUsers.filter(u => u.role === 'Recovery Officer' && u.referrerId === teamOperationManager.id)
+  }, [allUsers, teamOperationManager]);
 
   useEffect(() => {
     // Listen to product sales from the manager's branch

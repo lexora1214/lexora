@@ -120,7 +120,18 @@ const ManageDeliveriesView: React.FC<ManageDeliveriesViewProps> = ({ manager, al
   const [selectedSale, setSelectedSale] = useState<ProductSale | null>(null);
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
 
-  const deliveryBoys = useMemo(() => allUsers.filter(u => u.role === 'Delivery Boy' && u.referrerId === manager.id), [allUsers, manager.id]);
+  // If the user is a Branch Admin, find their Team Operation Manager to get the correct team members.
+  const teamOperationManager = useMemo(() => {
+    if (manager.role === 'Branch Admin') {
+      return allUsers.find(u => u.id === manager.referrerId);
+    }
+    return manager;
+  }, [manager, allUsers]);
+
+  const deliveryBoys = useMemo(() => {
+    if (!teamOperationManager) return [];
+    return allUsers.filter(u => u.role === 'Delivery Boy' && u.referrerId === teamOperationManager.id)
+  }, [allUsers, teamOperationManager]);
 
   useEffect(() => {
     // Listen to product sales from the manager's branch
@@ -288,4 +299,3 @@ const ManageDeliveriesView: React.FC<ManageDeliveriesViewProps> = ({ manager, al
 };
 
 export default ManageDeliveriesView;
-

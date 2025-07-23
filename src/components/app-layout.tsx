@@ -102,13 +102,13 @@ const navItems: NavItem[] = [
     href: "#", 
     icon: Package, 
     label: "Stock", 
-    roles: ["Admin", "Team Operation Manager"],
+    roles: ["Admin", "Team Operation Manager", "Branch Admin"],
     children: [
-      { href: "#", icon: Boxes, label: "Stock Management", roles: ["Team Operation Manager"] },
+      { href: "#", icon: Boxes, label: "Stock Management", roles: ["Team Operation Manager", "Branch Admin"] },
       { href: "#", icon: Package, label: "Global Stock View", roles: ["Admin"] },
     ]
   },
-  { href: "#", icon: ShoppingCart, label: "Record Product Sale", roles: ["Team Operation Manager"] },
+  { href: "#", icon: ShoppingCart, label: "Record Product Sale", roles: ["Team Operation Manager", "Branch Admin"] },
   { href: "#", icon: Wallet, label: "Income Records", roles: ["Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Salesman", "Branch Admin"] },
   { href: "#", icon: Users, label: "My Customers", roles: ["Salesman"] },
   { href: "#", icon: Truck, label: "My Deliveries", roles: ["Delivery Boy"] },
@@ -126,8 +126,8 @@ const navItems: NavItem[] = [
       { href: "#", icon: UserPlus, label: "Add Recovery Officer", roles: ["Team Operation Manager"] },
     ]
   },
-  { href: "#", icon: Truck, label: "Manage Deliveries", roles: ["Team Operation Manager"] },
-  { href: "#", icon: Repeat, label: "Manage Recovery", roles: ["Team Operation Manager"] },
+  { href: "#", icon: Truck, label: "Manage Deliveries", roles: ["Team Operation Manager", "Branch Admin"] },
+  { href: "#", icon: Repeat, label: "Manage Recovery", roles: ["Team Operation Manager", "Branch Admin"] },
   { href: "#", icon: Building, label: "User Management", roles: ["Admin"] },
   { href: "#", icon: Briefcase, label: "Customer Management", roles: ["Admin"]},
   { href: "#", icon: ShieldCheck, label: "Commission Approvals", roles: ["Admin"] },
