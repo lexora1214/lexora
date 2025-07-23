@@ -1,16 +1,4 @@
 
-
-
-
-
-
-
-
-
-
-
-
-
 import { doc, getDoc, setDoc, collection, getDocs, query, where, writeBatch, increment, updateDoc, deleteDoc, addDoc, runTransaction } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -27,7 +15,7 @@ function generateReferralCode(): string {
   return result;
 }
 
-export async function createUserProfile(firebaseUser: FirebaseUser, name: string, mobileNumber: string, role: Role, referralCodeInput: string, branch?: string, salesmanStage?: SalesmanStage): Promise<User> {
+export async function createUserProfile(firebaseUser: FirebaseUser, name: string, mobileNumber: string, role: Role, referralCodeInput: string, branch?: string, salesmanStage?: SalesmanStage, extraData?: Partial<User>): Promise<User> {
   const batch = writeBatch(db);
   let referrerId: string | null = null;
   const isReferralNeeded = role && !['Regional Director', 'Admin'].includes(role);
@@ -77,6 +65,7 @@ export async function createUserProfile(firebaseUser: FirebaseUser, name: string
     createdAt: new Date().toISOString(),
     ...(branch && { branch }),
     ...(role === 'Salesman' && { salesmanStage }),
+    ...extraData,
   };
 
   const userDocRef = doc(db, "users", firebaseUser.uid);

@@ -18,9 +18,9 @@ import { Controller, useForm, SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useToast } from "@/hooks/use-toast";
-import { updateUser } from "@/lib/firestore";
+import { updateUser, getAllUsers } from "@/lib/firestore";
 import { User, Role, SalesmanStage } from "@/types";
-import { LoaderCircle } from "lucide-react";
+import { LoaderCircle, X } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -28,6 +28,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "./ui/command";
+import { Popover, PopoverTrigger, PopoverContent } from "./ui/popover";
+import { Badge } from "./ui/badge";
+import { cn } from "@/lib/utils";
 
 
 const formSchema = z.object({
@@ -36,6 +40,7 @@ const formSchema = z.object({
   role: z.enum(["Salesman", "Team Operation Manager", "Group Operation Manager", "Head Group Manager", "Regional Director", "Admin", "Delivery Boy", "Recovery Officer", "Branch Admin"]),
   branch: z.string().optional(),
   salesmanStage: z.enum(["BUSINESS PROMOTER (stage 01)", "MARKETING EXECUTIVE (stage 02)"]).optional().nullable(),
+  assignedManagerIds: z.array(z.string()).optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -55,6 +60,9 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({
 }) => {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [teamManagers, setTeamManagers] = useState<User[]>([]);
+  const [isManagersPopoverOpen, setIsManagersPopoverOpen] = useState(false);
+
   const {
     register,
     handleSubmit,
@@ -62,11 +70,21 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({
     reset,
     control,
     watch,
+    setValue
   } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
   });
 
   const selectedRole = watch("role");
+  const assignedManagerIds = watch("assignedManagerIds") || [];
+
+  useEffect(() => {
+    const fetchManagers = async () => {
+      const allUsers = await getAllUsers();
+      setTeamManagers(allUsers.filter(u => u.role === 'Team Operation Manager'));
+    };
+    fetchManagers();
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -76,6 +94,7 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({
         mobileNumber: user.mobileNumber || "",
         branch: user.branch || "",
         salesmanStage: user.salesmanStage,
+        assignedManagerIds: user.assignedManagerIds || [],
       });
     }
   }, [user, reset]);
@@ -89,6 +108,7 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({
         name: data.name,
         mobileNumber: data.mobileNumber,
         role: data.role,
+        assignedManagerIds: data.assignedManagerIds,
       };
 
       if (data.role === 'Team Operation Manager' || data.role === 'Branch Admin') {
@@ -125,7 +145,7 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[525px]">
         <form onSubmit={handleSubmit(onSubmit)}>
           <DialogHeader>
             <DialogTitle>Edit User Profile</DialogTitle>
@@ -209,6 +229,56 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({
                           )}
                       />
                   </div>
+              </div>
+            )}
+            {selectedRole === 'Branch Admin' && (
+              <div className="grid grid-cols-4 items-start gap-4">
+                <Label className="text-right pt-2">Assigned Managers</Label>
+                <div className="col-span-3">
+                  <Popover open={isManagersPopoverOpen} onOpenChange={setIsManagersPopoverOpen}>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" role="combobox" aria-expanded={isManagersPopoverOpen} className="w-full justify-start h-auto min-h-10">
+                        {assignedManagerIds.length > 0 ? (
+                          <div className="flex gap-1 flex-wrap">
+                            {assignedManagerIds.map(id => {
+                              const manager = teamManagers.find(m => m.id === id);
+                              return manager ? <Badge key={id} variant="secondary">{manager.name}</Badge> : null;
+                            })}
+                          </div>
+                        ) : (
+                          "Select managers..."
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[300px] p-0">
+                      <Command>
+                        <CommandInput placeholder="Search managers..." />
+                        <CommandList>
+                          <CommandEmpty>No managers found.</CommandEmpty>
+                          <CommandGroup>
+                            {teamManagers.map(manager => (
+                              <CommandItem
+                                key={manager.id}
+                                onSelect={() => {
+                                  const newSelection = assignedManagerIds.includes(manager.id)
+                                    ? assignedManagerIds.filter(id => id !== manager.id)
+                                    : [...assignedManagerIds, manager.id];
+                                  setValue("assignedManagerIds", newSelection);
+                                }}
+                              >
+                                <div className={cn("mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
+                                  assignedManagerIds.includes(manager.id) ? "bg-primary text-primary-foreground" : "opacity-50 [&_svg]:invisible")}>
+                                  <X className="h-4 w-4" />
+                                </div>
+                                <span>{manager.name} ({manager.branch})</span>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                </div>
               </div>
             )}
           </div>

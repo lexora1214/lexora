@@ -120,21 +120,30 @@ const ManageDeliveriesView: React.FC<ManageDeliveriesViewProps> = ({ manager, al
   const [selectedSale, setSelectedSale] = useState<ProductSale | null>(null);
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
 
-  // If the user is a Branch Admin, find their Team Operation Manager to get the correct team members.
-  const teamOperationManager = useMemo(() => {
+  const relevantManagerIds = useMemo(() => {
     if (manager.role === 'Branch Admin') {
-      return allUsers.find(u => u.id === manager.referrerId);
+      return manager.assignedManagerIds || [];
     }
-    return manager;
-  }, [manager, allUsers]);
+    return [manager.id];
+  }, [manager]);
 
   const deliveryBoys = useMemo(() => {
-    if (!teamOperationManager) return [];
-    return allUsers.filter(u => u.role === 'Delivery Boy' && u.referrerId === teamOperationManager.id)
-  }, [allUsers, teamOperationManager]);
+    if (relevantManagerIds.length === 0) return [];
+    return allUsers.filter(u => u.role === 'Delivery Boy' && u.referrerId && relevantManagerIds.includes(u.referrerId))
+  }, [allUsers, relevantManagerIds]);
+
+  const relevantBranches = useMemo(() => {
+      const managerUsers = allUsers.filter(u => relevantManagerIds.includes(u.id));
+      const branches = new Set(managerUsers.map(u => u.branch).filter(Boolean));
+      return Array.from(branches);
+  }, [allUsers, relevantManagerIds]);
+
 
   useEffect(() => {
-    // Listen to product sales from the manager's branch
+    if (relevantBranches.length === 0) {
+        setLoading(false);
+        return;
+    }
     const salesQuery = query(collection(db, "productSales"));
     const salesUnsub = onSnapshot(salesQuery, (querySnapshot) => {
       const salesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProductSale));
@@ -142,7 +151,6 @@ const ManageDeliveriesView: React.FC<ManageDeliveriesViewProps> = ({ manager, al
       setLoading(false);
     });
 
-    // Listen to all customers to link details
     const customersUnsub = onSnapshot(collection(db, "customers"), (snapshot) => {
       const customersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
       setCustomers(customersData);
@@ -152,14 +160,14 @@ const ManageDeliveriesView: React.FC<ManageDeliveriesViewProps> = ({ manager, al
       salesUnsub();
       customersUnsub();
     };
-  }, [manager.branch]);
+  }, [relevantBranches]);
   
   const salesWithCustomerInfo = useMemo(() => {
     return productSales.map(sale => {
       const customer = customers.find(c => c.id === sale.customerId);
       return { ...sale, customer };
-    }).filter(sale => sale.customer?.branch === manager.branch); // Filter sales from the manager's branch
-  }, [productSales, customers, manager.branch]);
+    }).filter(sale => sale.customer?.branch && relevantBranches.includes(sale.customer.branch));
+  }, [productSales, customers, relevantBranches]);
   
   const sortSalesByRequestedDate = (
     a: ProductSale,

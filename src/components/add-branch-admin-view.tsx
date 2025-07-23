@@ -45,13 +45,20 @@ export default function AddBranchAdminView({ manager }: AddBranchAdminViewProps)
 
     try {
       const userCredential = await createUserWithEmailAndPassword(tempAuth, email, password);
+      
+      const userData: Partial<User> = {
+          assignedManagerIds: [manager.id]
+      };
+
       await createUserProfile(
         userCredential.user,
         name,
         mobileNumber,
         "Branch Admin",
         manager.referralCode,
-        manager.branch
+        manager.branch,
+        undefined,
+        userData,
       );
       toast({
         title: "Branch Admin Registered",

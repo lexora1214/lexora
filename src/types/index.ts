@@ -1,7 +1,4 @@
 
-
-
-
 export type Role =
   | "Salesman"
   | "Team Operation Manager"
@@ -29,6 +26,7 @@ export interface User {
   branch?: string;
   salesmanStage?: SalesmanStage | null;
   isDisabled?: boolean;
+  assignedManagerIds?: string[];
 }
 
 export interface Customer {
