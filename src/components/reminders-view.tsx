@@ -29,7 +29,7 @@ import { Calendar as CalendarPicker } from "./ui/calendar";
 import { cn } from "@/lib/utils";
 import { format, isPast, isToday, isTomorrow, startOfToday } from "date-fns";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./ui/accordion";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "./ui/alert-dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "./ui/alert-dialog";
 
 // Form Schema for a new reminder
 const reminderSchema = z.object({
