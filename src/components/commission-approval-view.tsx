@@ -6,7 +6,7 @@ import Image from "next/image";
 import { User, CommissionRequest } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { LoaderCircle, Check, X, ShieldCheck, Users, CheckCheck } from "lucide-react";
+import { LoaderCircle, Check, X, ShieldCheck, Users, CheckCheck, ZoomIn, ZoomOut, RotateCcw } from "lucide-react";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { approveTokenCommission, rejectTokenCommission, approveGroupedCommissions, rejectGroupedCommissions } from "@/lib/firestore";
@@ -20,25 +20,48 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "./ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
-interface CommissionApprovalViewProps {
-  user: User;
-}
-
-// New component for viewing the slip
+// New component for viewing the slip with zoom
 const ViewSlipDialog: React.FC<{ slipUrl: string; isOpen: boolean; onOpenChange: (open: boolean) => void; }> = ({ slipUrl, isOpen, onOpenChange }) => {
+    const [zoom, setZoom] = useState(1);
+
+    useEffect(() => {
+        // Reset zoom when dialog is closed
+        if (!isOpen) {
+            setTimeout(() => setZoom(1), 200); // Reset after closing animation
+        }
+    }, [isOpen]);
+
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-xl">
+            <DialogContent className="max-w-3xl">
                 <DialogHeader>
                     <DialogTitle>Bank Deposit Slip</DialogTitle>
                 </DialogHeader>
-                <div className="mt-4">
-                    <div className="relative w-full h-96">
-                        <Image src={slipUrl} alt="Deposit Slip" layout="fill" objectFit="contain" data-ai-hint="deposit slip" />
+                <div className="mt-4 relative bg-muted rounded-lg overflow-hidden h-[70vh]">
+                    <div className="absolute inset-0 overflow-auto">
+                        <div
+                            className="relative w-full h-full flex items-center justify-center transition-transform duration-200"
+                            style={{ transform: `scale(${zoom})` }}
+                        >
+                            <Image src={slipUrl} alt="Deposit Slip" layout="fill" objectFit="contain" data-ai-hint="deposit slip" />
+                        </div>
                     </div>
                 </div>
+                 <DialogFooter className="sm:justify-center pt-2">
+                    <div className="flex items-center gap-2">
+                        <Button variant="outline" size="icon" onClick={() => setZoom(prev => Math.max(0.5, prev - 0.2))}>
+                            <ZoomOut className="h-4 w-4" />
+                        </Button>
+                        <Button variant="outline" size="icon" onClick={() => setZoom(1)}>
+                            <RotateCcw className="h-4 w-4" />
+                        </Button>
+                        <Button variant="outline" size="icon" onClick={() => setZoom(prev => Math.min(3, prev + 0.2))}>
+                            <ZoomIn className="h-4 w-4" />
+                        </Button>
+                    </div>
+                </DialogFooter>
             </DialogContent>
         </Dialog>
     );
