@@ -6,7 +6,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import { RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { createUserProfile, getSignupRoleSettings } from "@/lib/firestore";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { LoaderCircle } from "lucide-react";
+import { LoaderCircle, CheckCircle } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -23,8 +23,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Role, SalesmanStage } from "@/types";
+import { InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot } from "@/components/ui/input-otp";
 
 const ALL_ROLES: Role[] = ["Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Branch Admin", "Salesman", "Delivery Boy", "Recovery Officer"];
+
+declare global {
+  interface Window {
+    recaptchaVerifier?: RecaptchaVerifier;
+    confirmationResult?: ConfirmationResult;
+  }
+}
 
 export default function SignupPage() {
   const router = useRouter();
@@ -41,10 +49,12 @@ export default function SignupPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [salesmanStage, setSalesmanStage] = useState<SalesmanStage>("BUSINESS PROMOTER (stage 01)");
 
+  const [otp, setOtp] = useState("");
+  const [signupStep, setSignupStep] = useState<'details' | 'otp'>('details');
+
   const isReferralRequired = role && !['Regional Director', 'Admin'].includes(role);
   const isBranchRequired = role === 'Team Operation Manager' || role === 'Branch Admin';
   const isSalesman = role === 'Salesman';
-
 
   useEffect(() => {
     const fetchRoles = async () => {
@@ -54,7 +64,6 @@ export default function SignupPage() {
         setVisibleRoles(settings.visibleRoles);
       } catch (error) {
         console.error("Failed to fetch role settings:", error);
-        // Fallback to all roles being visible on error
         const fallbackRoles: Record<string, boolean> = {};
         ALL_ROLES.forEach(r => fallbackRoles[r] = true);
         setVisibleRoles(fallbackRoles);
@@ -65,78 +74,174 @@ export default function SignupPage() {
     fetchRoles();
   }, []);
 
+  const formatPhoneNumber = (number: string): string => {
+    if (number.startsWith('0')) {
+      return `+94${number.substring(1)}`;
+    }
+    return number;
+  }
 
-  const handleSignup = async (e: React.FormEvent) => {
+  const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
+
     if (password.length < 6) {
-        toast({
-            variant: "destructive",
-            title: "Sign Up Failed",
-            description: "Password must be at least 6 characters long.",
-        });
+        toast({ variant: "destructive", title: "Sign Up Failed", description: "Password must be at least 6 characters long." });
+        setIsLoading(false);
         return;
     }
     if (!/^(0\d{9})$/.test(mobileNumber)) {
-        toast({
-            variant: "destructive",
-            title: "Sign Up Failed",
-            description: "Please enter a valid 10-digit mobile number.",
-        });
+        toast({ variant: "destructive", title: "Sign Up Failed", description: "Please enter a valid 10-digit mobile number." });
+        setIsLoading(false);
         return;
     }
-     if (!role) {
-      toast({
-        variant: "destructive",
-        title: "Sign Up Failed",
-        description: "Please select a role.",
-      });
+    if (!role) {
+      toast({ variant: "destructive", title: "Sign Up Failed", description: "Please select a role." });
+      setIsLoading(false);
       return;
     }
     if (isBranchRequired && !branch.trim()) {
-        toast({
-            variant: "destructive",
-            title: "Sign Up Failed",
-            description: "Branch name is required for this role.",
-        });
+        toast({ variant: "destructive", title: "Sign Up Failed", description: "Branch name is required for this role." });
+        setIsLoading(false);
         return;
     }
     if (isReferralRequired) {
-      if (!referralCode) {
-        toast({
-          variant: "destructive",
-          title: "Sign Up Failed",
-          description: "A referral code is required for this role.",
-        });
-        return;
-      }
-      if (referralCode.length !== 6) {
-        toast({
-          variant: "destructive",
-          title: "Sign Up Failed",
-          description: "Referral code must be 6 characters long.",
-        });
+      if (!referralCode || referralCode.length !== 6) {
+        toast({ variant: "destructive", title: "Sign Up Failed", description: "A valid 6-character referral code is required for this role." });
+        setIsLoading(false);
         return;
       }
     }
-    setIsLoading(true);
+
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      await createUserProfile(userCredential.user, name, mobileNumber, role, referralCode.toUpperCase(), branch, isSalesman ? salesmanStage : undefined);
+      if (!window.recaptchaVerifier) {
+        window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+            'size': 'invisible',
+            'callback': (response: any) => {
+              // reCAPTCHA solved, allow signInWithPhoneNumber.
+            }
+        });
+      }
+      
+      const appVerifier = window.recaptchaVerifier;
+      const formattedPhoneNumber = formatPhoneNumber(mobileNumber);
+      
+      const confirmationResult = await signInWithPhoneNumber(auth, formattedPhoneNumber, appVerifier);
+      window.confirmationResult = confirmationResult;
+      
       toast({
-        title: "Account Created",
-        description: "You have been successfully signed up.",
+        title: "OTP Sent",
+        description: "An OTP has been sent to your mobile number.",
       });
-      router.push("/");
+      setSignupStep('otp');
+
     } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Sign Up Failed",
-        description: error.message,
-      });
+      console.error("Error sending OTP:", error);
+      let errorMessage = "An error occurred while sending the OTP. Please try again.";
+      if (error.code === 'auth/invalid-phone-number') {
+        errorMessage = "The mobile number provided is not valid.";
+      } else if (error.code === 'auth/too-many-requests') {
+        errorMessage = "Too many requests. Please try again later.";
+      }
+      toast({ variant: "destructive", title: "OTP Send Failed", description: errorMessage });
+      
+      // Reset reCAPTCHA if it exists
+      if (window.recaptchaVerifier) {
+        window.recaptchaVerifier.clear();
+      }
+
     } finally {
       setIsLoading(false);
     }
   };
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (otp.length !== 6) {
+      toast({ variant: "destructive", title: "Verification Failed", description: "Please enter a 6-digit OTP." });
+      return;
+    }
+    setIsLoading(true);
+
+    try {
+      const confirmationResult = window.confirmationResult;
+      if (!confirmationResult) {
+        throw new Error("No confirmation result found. Please try signing up again.");
+      }
+      
+      const result = await confirmationResult.confirm(otp);
+      
+      // User is now verified. Proceed with user creation in Firestore.
+      await createUserProfile(result.user, name, mobileNumber, role as Role, referralCode.toUpperCase(), branch, isSalesman ? salesmanStage : undefined);
+      
+      toast({
+        title: "Account Created",
+        description: "You have been successfully signed up.",
+        className: "bg-success text-success-foreground",
+      });
+      router.push("/");
+
+    } catch (error: any) {
+        let errorMessage = error.message;
+        if(error.code === 'auth/invalid-verification-code') {
+            errorMessage = "The OTP you entered is invalid. Please check and try again.";
+        } else if (error.code === 'auth/code-expired') {
+            errorMessage = "The OTP has expired. Please request a new one.";
+        }
+        toast({
+            variant: "destructive",
+            title: "Verification Failed",
+            description: errorMessage,
+        });
+    } finally {
+        setIsLoading(false);
+    }
+  };
+
+  if (signupStep === 'otp') {
+    return (
+      <div className="flex min-h-screen items-center justify-center p-4">
+        <Card className="w-full max-w-sm">
+          <CardHeader className="text-center">
+              <div className="mb-4 flex justify-center">
+                  <CheckCircle className="h-12 w-12 text-success" />
+              </div>
+              <CardTitle className="text-3xl">Verify Your Number</CardTitle>
+              <CardDescription>Enter the 6-digit code we sent to {mobileNumber}.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleVerifyOtp}>
+              <div className="grid gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="otp">Verification Code</Label>
+                     <InputOTP maxLength={6} value={otp} onChange={(value) => setOtp(value)}>
+                        <InputOTPGroup>
+                            <InputOTPSlot index={0} />
+                            <InputOTPSlot index={1} />
+                            <InputOTPSlot index={2} />
+                        </InputOTPGroup>
+                        <InputOTPSeparator />
+                        <InputOTPGroup>
+                            <InputOTPSlot index={3} />
+                            <InputOTPSlot index={4} />
+                            <InputOTPSlot index={5} />
+                        </InputOTPGroup>
+                    </InputOTP>
+                  </div>
+                  <Button type="submit" className="w-full" disabled={isLoading}>
+                      {isLoading && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
+                      Verify & Create Account
+                  </Button>
+              </div>
+            </form>
+            <div className="mt-4 text-center text-sm">
+              <button onClick={() => setSignupStep('details')} className="underline">Back to details</button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center p-4">
@@ -149,7 +254,7 @@ export default function SignupPage() {
             <CardDescription>Enter your details to join the network.</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSignup}>
+          <form onSubmit={handleSendOtp}>
             <div className="grid gap-4">
                 <div className="grid gap-2">
                     <Label htmlFor="name">Full Name</Label>
@@ -235,7 +340,7 @@ export default function SignupPage() {
                 </div>
                 <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
-                    Sign Up
+                    Send OTP & Continue
                 </Button>
             </div>
           </form>
@@ -247,6 +352,7 @@ export default function SignupPage() {
           </div>
         </CardContent>
       </Card>
+      <div id="recaptcha-container"></div>
     </div>
   );
 }
