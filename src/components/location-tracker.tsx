@@ -18,49 +18,16 @@ interface LocationTrackerProps {
 }
 
 const LOCATION_UPDATE_INTERVAL = 10000; // 10 seconds for timeout
-const ACCOUNT_DISABLE_TIMEOUT = 120000; // 2 minutes
 
 const LocationTracker: React.FC<LocationTrackerProps> = ({ user }) => {
   const [showErrorDialog, setShowErrorDialog] = useState(false);
-  const [countdown, setCountdown] = useState(ACCOUNT_DISABLE_TIMEOUT / 1000);
-
   const watchIdRef = useRef<number | null>(null);
-  const disableAccountTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
-
-  const startErrorTimers = useCallback(() => {
-    // Only start timers if they aren't already running
-    if (disableAccountTimerRef.current === null) {
-      // Timer to disable the account after 2 minutes
-      disableAccountTimerRef.current = setTimeout(() => {
-        updateUser(user.id, { isDisabled: true }).catch(console.error);
-        // The component will unmount or the user will be logged out, so timers will be cleared.
-      }, ACCOUNT_DISABLE_TIMEOUT);
-    }
-    
-    if (countdownIntervalRef.current === null) {
-      // Timer to update the visual countdown every second
-      setCountdown(ACCOUNT_DISABLE_TIMEOUT / 1000); // Reset visual countdown
-      countdownIntervalRef.current = setInterval(() => {
-        setCountdown(prev => (prev > 0 ? prev - 1 : 0));
-      }, 1000);
-    }
-  }, [user.id]);
-
-  const clearErrorTimers = useCallback(() => {
-    if (disableAccountTimerRef.current) {
-      clearTimeout(disableAccountTimerRef.current);
-      disableAccountTimerRef.current = null;
-    }
-    if (countdownIntervalRef.current) {
-      clearInterval(countdownIntervalRef.current);
-      countdownIntervalRef.current = null;
-    }
-  }, []);
 
   const handleLocationSuccess = useCallback((position: GeolocationPosition) => {
-    setShowErrorDialog(false);
-    clearErrorTimers();
+    // If the error dialog was showing, hide it and ensure the account is enabled
+    if (showErrorDialog) {
+      setShowErrorDialog(false);
+    }
     
     updateUser(user.id, {
       liveLocation: {
@@ -68,15 +35,18 @@ const LocationTracker: React.FC<LocationTrackerProps> = ({ user }) => {
         longitude: position.coords.longitude,
       },
       lastLocationUpdate: new Date().toISOString(),
-      isDisabled: false, // Ensure account is enabled on success
+      isDisabled: false, // Re-enable account on successful location update
     }).catch(console.error);
-  }, [user.id, clearErrorTimers]);
+  }, [user.id, showErrorDialog]);
   
   const handleLocationError = useCallback((error: GeolocationPositionError) => {
     console.error(`Location Error: ${error.message}`);
-    setShowErrorDialog(true);
-    startErrorTimers();
-  }, [startErrorTimers]);
+    // Show the dialog and immediately disable the account
+    if (!showErrorDialog) {
+        setShowErrorDialog(true);
+        updateUser(user.id, { isDisabled: true }).catch(console.error);
+    }
+  }, [user.id, showErrorDialog]);
 
   useEffect(() => {
     if ('geolocation' in navigator) {
@@ -104,15 +74,8 @@ const LocationTracker: React.FC<LocationTrackerProps> = ({ user }) => {
       if (watchIdRef.current !== null) {
         navigator.geolocation.clearWatch(watchIdRef.current);
       }
-      clearErrorTimers();
     };
-  }, [handleLocationSuccess, handleLocationError, clearErrorTimers]);
-
-  const formatCountdown = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds < 10 ? '0' : ''}${remainingSeconds}`;
-  };
+  }, [handleLocationSuccess, handleLocationError]);
 
   return (
     <AlertDialog open={showErrorDialog}>
@@ -120,15 +83,11 @@ const LocationTracker: React.FC<LocationTrackerProps> = ({ user }) => {
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
             <AlertTriangle className="h-6 w-6 text-destructive" />
-            Location Access Required
+            Account Disabled
           </AlertDialogTitle>
-          <AlertDialogDescription asChild>
+          <AlertDialogDescription>
             <div>
-              This application requires access to your location to function properly. Please enable location services in your browser and for this site.
-              <div className="mt-4 p-4 bg-destructive/10 rounded-lg text-center">
-                  <div className="text-sm text-destructive font-semibold">Your account will be automatically disabled if location is not enabled.</div>
-                  <div className="text-2xl font-mono font-bold text-destructive mt-2">{formatCountdown(countdown)}</div>
-              </div>
+              Your account has been automatically disabled because location access is required. Please enable location services and contact an administrator to regain access.
             </div>
           </AlertDialogDescription>
         </AlertDialogHeader>
