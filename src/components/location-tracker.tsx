@@ -11,7 +11,7 @@ import {
   AlertDialogTitle,
   AlertDialogDescription,
 } from '@/components/ui/alert-dialog';
-import { AlertTriangle, LoaderCircle } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 
 interface LocationTrackerProps {
   user: User;
@@ -23,6 +23,7 @@ const ACCOUNT_DISABLE_TIMEOUT = 120000; // 2 minutes
 const LocationTracker: React.FC<LocationTrackerProps> = ({ user }) => {
   const [showErrorDialog, setShowErrorDialog] = useState(false);
   const [countdown, setCountdown] = useState(ACCOUNT_DISABLE_TIMEOUT / 1000);
+  
   const watchIdRef = useRef<number | null>(null);
   const timeoutIdRef = useRef<NodeJS.Timeout | null>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -39,78 +40,71 @@ const LocationTracker: React.FC<LocationTrackerProps> = ({ user }) => {
   }, []);
 
   const handleLocationSuccess = useCallback((position: GeolocationPosition) => {
-    // If we get a location, clear any pending disable timers.
-    if (showErrorDialog) {
-        setShowErrorDialog(false);
-    }
+    setShowErrorDialog(false);
     clearTimers();
-    setCountdown(ACCOUNT_DISABLE_TIMEOUT / 1000);
-
+    
     updateUser(user.id, {
       liveLocation: {
         latitude: position.coords.latitude,
         longitude: position.coords.longitude,
       },
       lastLocationUpdate: new Date().toISOString(),
-      isDisabled: false, // Re-enable account if it was disabled
+      isDisabled: false,
     }).catch(console.error);
-  }, [user.id, clearTimers, showErrorDialog]);
-
+  }, [user.id, clearTimers]);
+  
   const handleLocationError = useCallback((error: GeolocationPositionError) => {
     console.error(`Location Error: ${error.message}`);
     
     if (!showErrorDialog) {
       setShowErrorDialog(true);
       
-      // Only start the timers if they aren't already running
-      if (timeoutIdRef.current === null) {
-        setCountdown(ACCOUNT_DISABLE_TIMEOUT / 1000); // Reset countdown on new error
-        timeoutIdRef.current = setTimeout(() => {
-          updateUser(user.id, { isDisabled: true }).catch(console.error);
-        }, ACCOUNT_DISABLE_TIMEOUT);
-      }
-      
+      // Start countdown timer if not already running
       if (countdownIntervalRef.current === null) {
+        setCountdown(ACCOUNT_DISABLE_TIMEOUT / 1000); // Reset countdown on new error
         countdownIntervalRef.current = setInterval(() => {
           setCountdown(prev => (prev > 0 ? prev - 1 : 0));
         }, 1000);
+      }
+      
+      // Start account disable timer if not already running
+      if (timeoutIdRef.current === null) {
+        timeoutIdRef.current = setTimeout(() => {
+          updateUser(user.id, { isDisabled: true }).catch(console.error);
+          // Don't clear timers here, so the dialog stays open
+        }, ACCOUNT_DISABLE_TIMEOUT);
       }
     }
   }, [user.id, showErrorDialog]);
 
   useEffect(() => {
-    const startWatching = () => {
-      if ('geolocation' in navigator) {
-        watchIdRef.current = navigator.geolocation.watchPosition(
-          handleLocationSuccess,
-          handleLocationError,
-          {
-            enableHighAccuracy: true,
-            timeout: LOCATION_UPDATE_INTERVAL,
-            maximumAge: 0,
-          }
-        );
-      } else {
-        handleLocationError({
+    if ('geolocation' in navigator) {
+      watchIdRef.current = navigator.geolocation.watchPosition(
+        handleLocationSuccess,
+        handleLocationError,
+        {
+          enableHighAccuracy: true,
+          timeout: LOCATION_UPDATE_INTERVAL,
+          maximumAge: 0,
+        }
+      );
+    } else {
+       handleLocationError({
             code: 2, // Position unavailable
             message: "Geolocation is not supported by this browser.",
             PERMISSION_DENIED: 1,
             POSITION_UNAVAILABLE: 2,
             TIMEOUT: 3,
         });
-      }
-    };
+    }
 
-    startWatching();
-
-    // Cleanup on unmount
     return () => {
       if (watchIdRef.current !== null) {
         navigator.geolocation.clearWatch(watchIdRef.current);
       }
       clearTimers();
     };
-  }, [user.id, handleLocationSuccess, handleLocationError, clearTimers]);
+  }, [handleLocationSuccess, handleLocationError, clearTimers]);
 
   const formatCountdown = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
