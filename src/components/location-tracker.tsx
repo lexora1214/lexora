@@ -17,7 +17,7 @@ interface LocationTrackerProps {
   user: User;
 }
 
-const LOCATION_UPDATE_INTERVAL = 30000; // 30 seconds
+const LOCATION_UPDATE_INTERVAL = 10000; // 10 seconds for timeout
 const ACCOUNT_DISABLE_TIMEOUT = 120000; // 2 minutes
 
 const LocationTracker: React.FC<LocationTrackerProps> = ({ user }) => {
@@ -40,6 +40,8 @@ const LocationTracker: React.FC<LocationTrackerProps> = ({ user }) => {
         setShowErrorDialog(false);
         if (timeoutIdRef.current) clearTimeout(timeoutIdRef.current);
         if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+        timeoutIdRef.current = null;
+        countdownIntervalRef.current = null;
         setCountdown(ACCOUNT_DISABLE_TIMEOUT / 1000);
       }
 
@@ -55,8 +57,10 @@ const LocationTracker: React.FC<LocationTrackerProps> = ({ user }) => {
 
     const handleLocationError = (error: GeolocationPositionError) => {
       console.error(`Location Error: ${error.message}`);
-      setShowErrorDialog(true);
-      clearWatch();
+      
+      if (!showErrorDialog) {
+        setShowErrorDialog(true);
+      }
       
       // Start countdown to disable account
       if (timeoutIdRef.current === null) {
