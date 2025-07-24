@@ -36,10 +36,6 @@ const LiveLocationView: React.FC<LiveLocationViewProps> = ({ allUsers }) => {
 
   const [activeMarker, setActiveMarker] = useState<string | null>(null);
 
-  const salesmenWithLocation = useMemo(() => {
-    return allUsers.filter(user => user.role === 'Salesman' && user.liveLocation && user.lastLocationUpdate);
-  }, [allUsers]);
-
   const now = new Date();
   
   const isUserOnline = (user: User) => {
@@ -50,8 +46,8 @@ const LiveLocationView: React.FC<LiveLocationViewProps> = ({ allUsers }) => {
   }
   
   const onlineSalesmen = useMemo(() => {
-      return salesmenWithLocation.filter(user => isUserOnline(user));
-  }, [salesmenWithLocation]);
+      return allUsers.filter(user => user.role === 'Salesman' && user.liveLocation && user.lastLocationUpdate && isUserOnline(user));
+  }, [allUsers, now]);
 
 
   if (loadError || !navigator.onLine) {
