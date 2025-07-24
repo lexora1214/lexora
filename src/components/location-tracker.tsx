@@ -49,7 +49,7 @@ const LocationTracker: React.FC<LocationTrackerProps> = ({ user }) => {
         longitude: position.coords.longitude,
       },
       lastLocationUpdate: new Date().toISOString(),
-      isDisabled: false,
+      isDisabled: false, // Ensure account is enabled on success
     }).catch(console.error);
   }, [user.id, clearTimers]);
   
@@ -120,11 +120,13 @@ const LocationTracker: React.FC<LocationTrackerProps> = ({ user }) => {
             <AlertTriangle className="h-6 w-6 text-destructive" />
             Location Access Required
           </AlertDialogTitle>
-          <AlertDialogDescription>
-            This application requires access to your location to function properly. Please enable location services in your browser and for this site.
-            <div className="mt-4 p-4 bg-destructive/10 rounded-lg text-center">
-                <p className="text-sm text-destructive font-semibold">Your account will be automatically disabled if location is not enabled.</p>
-                <p className="text-2xl font-mono font-bold text-destructive mt-2">{formatCountdown(countdown)}</p>
+          <AlertDialogDescription asChild>
+            <div>
+              This application requires access to your location to function properly. Please enable location services in your browser and for this site.
+              <div className="mt-4 p-4 bg-destructive/10 rounded-lg text-center">
+                  <div className="text-sm text-destructive font-semibold">Your account will be automatically disabled if location is not enabled.</div>
+                  <div className="text-2xl font-mono font-bold text-destructive mt-2">{formatCountdown(countdown)}</div>
+              </div>
             </div>
           </AlertDialogDescription>
         </AlertDialogHeader>
