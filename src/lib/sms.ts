@@ -69,3 +69,41 @@ export async function sendTokenSms(details: TokenSmsDetails): Promise<void> {
         console.error("Error sending SMS:", error);
     }
 }
+
+export async function sendOtpSms(mobileNumber: string, otp: string): Promise<void> {
+    const userId = process.env.NOTIFY_USER_ID;
+    const apiKey = process.env.NOTIFY_API_KEY;
+    const senderId = process.env.NOTIFY_SENDER_ID;
+
+    if (!userId || !apiKey || !senderId) {
+        throw new Error("SMS credentials are not configured in .env file.");
+    }
+
+    const formattedNumber = formatMobileNumber(mobileNumber);
+    if (!formattedNumber) {
+        throw new Error(`Invalid phone number format: ${mobileNumber}.`);
+    }
+
+    const message = `Your LEXORA verification code is: ${otp}`;
+    const url = new URL("https://app.notify.lk/api/v1/send");
+    url.searchParams.append("user_id", userId);
+    url.searchParams.append("api_key", apiKey);
+    url.searchParams.append("sender_id", senderId);
+    url.searchParams.append("to", formattedNumber);
+    url.searchParams.append("message", message);
+    
+    try {
+        const response = await fetch(url.toString(), { method: 'GET' });
+        const result = await response.json();
+        
+        if (result.status !== 'success') {
+            console.error("Failed to send OTP SMS via notify.lk:", result);
+            throw new Error(`SMS provider error: ${result.data || 'Unknown error'}`);
+        } else {
+            console.log("Successfully sent OTP SMS to:", formattedNumber);
+        }
+    } catch (error) {
+        console.error("Error sending OTP SMS:", error);
+        throw new Error("An external error occurred while sending the OTP.");
+    }
+}
