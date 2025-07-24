@@ -23,15 +23,34 @@ const ACCOUNT_DISABLE_TIMEOUT = 120000; // 2 minutes
 const LocationTracker: React.FC<LocationTrackerProps> = ({ user }) => {
   const [showErrorDialog, setShowErrorDialog] = useState(false);
   const [countdown, setCountdown] = useState(ACCOUNT_DISABLE_TIMEOUT / 1000);
-  
+
   const watchIdRef = useRef<number | null>(null);
-  const timeoutIdRef = useRef<NodeJS.Timeout | null>(null);
+  const disableAccountTimerRef = useRef<NodeJS.Timeout | null>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const clearTimers = useCallback(() => {
-    if (timeoutIdRef.current) {
-      clearTimeout(timeoutIdRef.current);
-      timeoutIdRef.current = null;
+  const startErrorTimers = useCallback(() => {
+    // Only start timers if they aren't already running
+    if (disableAccountTimerRef.current === null) {
+      // Timer to disable the account after 2 minutes
+      disableAccountTimerRef.current = setTimeout(() => {
+        updateUser(user.id, { isDisabled: true }).catch(console.error);
+        // The component will unmount or the user will be logged out, so timers will be cleared.
+      }, ACCOUNT_DISABLE_TIMEOUT);
+    }
+    
+    if (countdownIntervalRef.current === null) {
+      // Timer to update the visual countdown every second
+      setCountdown(ACCOUNT_DISABLE_TIMEOUT / 1000); // Reset visual countdown
+      countdownIntervalRef.current = setInterval(() => {
+        setCountdown(prev => (prev > 0 ? prev - 1 : 0));
+      }, 1000);
+    }
+  }, [user.id]);
+
+  const clearErrorTimers = useCallback(() => {
+    if (disableAccountTimerRef.current) {
+      clearTimeout(disableAccountTimerRef.current);
+      disableAccountTimerRef.current = null;
     }
     if (countdownIntervalRef.current) {
       clearInterval(countdownIntervalRef.current);
@@ -41,7 +60,7 @@ const LocationTracker: React.FC<LocationTrackerProps> = ({ user }) => {
 
   const handleLocationSuccess = useCallback((position: GeolocationPosition) => {
     setShowErrorDialog(false);
-    clearTimers();
+    clearErrorTimers();
     
     updateUser(user.id, {
       liveLocation: {
@@ -51,31 +70,13 @@ const LocationTracker: React.FC<LocationTrackerProps> = ({ user }) => {
       lastLocationUpdate: new Date().toISOString(),
       isDisabled: false, // Ensure account is enabled on success
     }).catch(console.error);
-  }, [user.id, clearTimers]);
+  }, [user.id, clearErrorTimers]);
   
   const handleLocationError = useCallback((error: GeolocationPositionError) => {
     console.error(`Location Error: ${error.message}`);
-    
-    if (!showErrorDialog) {
-      setShowErrorDialog(true);
-      
-      // Start countdown timer if not already running
-      if (countdownIntervalRef.current === null) {
-        setCountdown(ACCOUNT_DISABLE_TIMEOUT / 1000); // Reset countdown on new error
-        countdownIntervalRef.current = setInterval(() => {
-          setCountdown(prev => (prev > 0 ? prev - 1 : 0));
-        }, 1000);
-      }
-      
-      // Start account disable timer if not already running
-      if (timeoutIdRef.current === null) {
-        timeoutIdRef.current = setTimeout(() => {
-          updateUser(user.id, { isDisabled: true }).catch(console.error);
-          // Don't clear timers here, so the dialog stays open
-        }, ACCOUNT_DISABLE_TIMEOUT);
-      }
-    }
-  }, [user.id, showErrorDialog]);
+    setShowErrorDialog(true);
+    startErrorTimers();
+  }, [startErrorTimers]);
 
   useEffect(() => {
     if ('geolocation' in navigator) {
@@ -98,13 +99,14 @@ const LocationTracker: React.FC<LocationTrackerProps> = ({ user }) => {
         });
     }
 
+    // Cleanup function when the component unmounts
     return () => {
       if (watchIdRef.current !== null) {
         navigator.geolocation.clearWatch(watchIdRef.current);
       }
-      clearTimers();
+      clearErrorTimers();
     };
-  }, [handleLocationSuccess, handleLocationError, clearTimers]);
+  }, [handleLocationSuccess, handleLocationError, clearErrorTimers]);
 
   const formatCountdown = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
