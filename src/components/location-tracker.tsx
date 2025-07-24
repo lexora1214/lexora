@@ -18,7 +18,7 @@ interface LocationTrackerProps {
 }
 
 const LOCATION_UPDATE_INTERVAL = 30000; // 30 seconds
-const ACCOUNT_DISABLE_TIMEOUT = 300000; // 5 minutes
+const ACCOUNT_DISABLE_TIMEOUT = 120000; // 2 minutes
 
 const LocationTracker: React.FC<LocationTrackerProps> = ({ user }) => {
   const [showErrorDialog, setShowErrorDialog] = useState(false);

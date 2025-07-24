@@ -25,7 +25,7 @@ const defaultCenter = {
   lng: 80.7718,
 };
 
-const OFFLINE_THRESHOLD_MINUTES = 5;
+const OFFLINE_THRESHOLD_MINUTES = 2;
 
 const LiveLocationView: React.FC<LiveLocationViewProps> = ({ allUsers }) => {
   const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
@@ -48,6 +48,11 @@ const LiveLocationView: React.FC<LiveLocationViewProps> = ({ allUsers }) => {
     const diffMinutes = (now.getTime() - lastUpdate.getTime()) / (1000 * 60);
     return diffMinutes < OFFLINE_THRESHOLD_MINUTES;
   }
+  
+  const onlineSalesmen = useMemo(() => {
+      return salesmenWithLocation.filter(user => isUserOnline(user));
+  }, [salesmenWithLocation]);
+
 
   if (loadError || !navigator.onLine) {
     return (
@@ -71,7 +76,9 @@ const LiveLocationView: React.FC<LiveLocationViewProps> = ({ allUsers }) => {
     <Card>
       <CardHeader>
         <CardTitle>Live Salesman Location</CardTitle>
-        <CardDescription>Track the real-time location of your sales team.</CardDescription>
+        <CardDescription>
+            Showing {onlineSalesmen.length} active salesmen. Markers disappear if location is offline for more than {OFFLINE_THRESHOLD_MINUTES} minutes.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         {!isLoaded ? (
@@ -88,8 +95,7 @@ const LiveLocationView: React.FC<LiveLocationViewProps> = ({ allUsers }) => {
               zoomControl: true,
             }}
           >
-            {salesmenWithLocation.map(user => {
-              const online = isUserOnline(user);
+            {onlineSalesmen.map(user => {
               return (
               <MarkerF
                 key={user.id}
@@ -97,8 +103,8 @@ const LiveLocationView: React.FC<LiveLocationViewProps> = ({ allUsers }) => {
                 onClick={() => setActiveMarker(user.id)}
                 icon={{
                   path: google.maps.SymbolPath.CIRCLE,
-                  scale: online ? 8 : 6,
-                  fillColor: online ? '#10B981' : '#6B7280', // green-500 : gray-500
+                  scale: 8,
+                  fillColor: '#10B981', // green-500
                   fillOpacity: 1,
                   strokeColor: '#FFFFFF',
                   strokeWeight: 2,
@@ -112,8 +118,8 @@ const LiveLocationView: React.FC<LiveLocationViewProps> = ({ allUsers }) => {
                       <p className="text-xs text-muted-foreground mt-1">
                         Last seen: {formatDistanceToNow(new Date(user.lastLocationUpdate!), { addSuffix: true })}
                       </p>
-                      <Badge variant={online ? 'success' : 'secondary'} className="mt-2">
-                        {online ? 'Online' : 'Offline'}
+                      <Badge variant={'success'} className="mt-2">
+                        Online
                       </Badge>
                     </div>
                   </InfoWindowF>
