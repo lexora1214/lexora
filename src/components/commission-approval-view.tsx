@@ -68,7 +68,7 @@ const ViewSlipDialog: React.FC<{ slipUrl: string; isOpen: boolean; onOpenChange:
 };
 
 
-const CommissionApprovalView: React.FC<CommissionApprovalViewProps> = ({ user }) => {
+const CommissionApprovalView: React.FC<{ user: User }> = ({ user }) => {
   const [pendingRequests, setPendingRequests] = useState<CommissionRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -232,22 +232,26 @@ const CommissionApprovalView: React.FC<CommissionApprovalViewProps> = ({ user })
                       <TableCell>{req.salesmanName}</TableCell>
                       <TableCell><Badge variant="outline">{req.tokenSerial}</Badge></TableCell>
                       <TableCell className="text-right">
-                        <div className="flex gap-2 justify-end">
-                           <Button
-                              variant="outline"
-                              size="sm"
-                              disabled={!req.depositSlipUrl}
-                              onClick={() => setSlipToView(req.depositSlipUrl!)}
-                            >
-                              View Slip
+                        {processingId === req.id ? (
+                            <div className="flex justify-end"><LoaderCircle className="h-5 w-5 animate-spin" /></div>
+                        ) : (
+                          <div className="flex gap-2 justify-end">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={!req.depositSlipUrl}
+                                onClick={() => setSlipToView(req.depositSlipUrl!)}
+                              >
+                                View Slip
+                              </Button>
+                            <Button size="sm" variant="outline" className="text-destructive hover:bg-destructive hover:text-destructive-foreground" onClick={() => handleReject(req.id)}>
+                                <X className="mr-2 h-4 w-4" />
                             </Button>
-                           <Button size="sm" variant="outline" className="text-destructive hover:bg-destructive hover:text-destructive-foreground" onClick={() => handleReject(req.id)}>
-                              <X className="mr-2 h-4 w-4" />
-                          </Button>
-                          <Button size="sm" className="bg-success hover:bg-success/90 text-success-foreground" onClick={() => handleApprove(req.id)}>
-                              <Check className="mr-2 h-4 w-4" />
-                          </Button>
-                        </div>
+                            <Button size="sm" className="bg-success hover:bg-success/90 text-success-foreground" onClick={() => handleApprove(req.id)} disabled={!req.depositSlipUrl}>
+                                <Check className="mr-2 h-4 w-4" />
+                            </Button>
+                          </div>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
