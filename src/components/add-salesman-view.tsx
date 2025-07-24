@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { LoaderCircle, UserPlus, FileUp, CheckCircle2 } from "lucide-react";
+import { LoaderCircle, UserPlus, FileUp, CheckCircle2, CheckCircle } from "lucide-react";
 import { User, SalesmanStage, SalesmanDocuments } from "@/types";
 import { createUserProfile } from "@/lib/firestore";
 import { firebaseConfig } from "@/lib/firebase";
@@ -21,6 +21,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { sendOtpSms } from "@/lib/sms";
+import { InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot } from "@/components/ui/input-otp";
 
 interface AddSalesmanViewProps {
   manager: User;
@@ -50,21 +52,40 @@ const FileInput: React.FC<{ label: string, onFileSelect: (file: File) => void, a
     )
 }
 
+type SignupData = {
+  name: string;
+  email: string;
+  mobileNumber: string;
+  password: string;
+  salesmanStage: SalesmanStage;
+  documents: SalesmanDocuments;
+};
+
 export default function AddSalesmanView({ manager }: AddSalesmanViewProps) {
   const { toast } = useToast();
+  
+  // Form state
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [mobileNumber, setMobileNumber] = useState("");
   const [password, setPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const [salesmanStage, setSalesmanStage] = useState<SalesmanStage>("BUSINESS PROMOTER (stage 01)");
   const [documents, setDocuments] = useState<Partial<SalesmanDocuments>>({});
+
+  // UI/Flow state
+  const [isLoading, setIsLoading] = useState(false);
+  const [step, setStep] = useState<'details' | 'otp'>('details');
+  
+  // OTP state
+  const [generatedOtp, setGeneratedOtp] = useState("");
+  const [enteredOtp, setEnteredOtp] = useState("");
+  const [signupData, setSignupData] = useState<SignupData | null>(null);
 
   const handleFileSelect = (docType: keyof SalesmanDocuments, file: File) => {
     setDocuments(prev => ({ ...prev, [docType]: file }));
   };
 
-  const handleSignup = async (e: React.FormEvent) => {
+  const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (password.length < 6) {
         toast({ variant: "destructive", title: "Registration Failed", description: "Password must be at least 6 characters long." });
@@ -81,25 +102,63 @@ export default function AddSalesmanView({ manager }: AddSalesmanViewProps) {
 
     setIsLoading(true);
 
+    try {
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      setGeneratedOtp(otp);
+
+      setSignupData({
+          name, email, mobileNumber, password, salesmanStage,
+          documents: documents as SalesmanDocuments
+      });
+
+      await sendOtpSms(mobileNumber, otp);
+      
+      toast({
+        title: "OTP Sent",
+        description: `An OTP has been sent to the new salesman's mobile number (${mobileNumber}).`,
+      });
+      setStep('otp');
+
+    } catch (error: any) {
+      console.error("Error sending OTP:", error);
+      toast({ variant: "destructive", title: "OTP Send Failed", description: "Could not send OTP. Please check the number and try again." });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyAndCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (enteredOtp.length !== 6 || enteredOtp !== generatedOtp) {
+      toast({ variant: "destructive", title: "Verification Failed", description: "The OTP you entered is incorrect." });
+      return;
+    }
+    if (!signupData) {
+      toast({ variant: "destructive", title: "Verification Failed", description: "Signup data was lost. Please restart the registration." });
+      setStep('details');
+      return;
+    }
+
+    setIsLoading(true);
     const tempAppName = `salesman-signup-${Date.now()}`;
     const tempApp = initializeApp(firebaseConfig, tempAppName);
     const tempAuth = getAuth(tempApp);
 
     try {
-      const userCredential = await createUserWithEmailAndPassword(tempAuth, email, password);
+      const userCredential = await createUserWithEmailAndPassword(tempAuth, signupData.email, signupData.password);
       await createUserProfile(
         userCredential.user,
-        name,
-        mobileNumber,
+        signupData.name,
+        signupData.mobileNumber,
         "Salesman",
         manager.referralCode,
         manager.branch,
-        salesmanStage,
-        documents as SalesmanDocuments
+        signupData.salesmanStage,
+        signupData.documents
       );
       toast({
         title: "Salesman Registered",
-        description: `${name} has been successfully registered. Their account must be enabled by an admin before they can log in.`,
+        description: `${signupData.name} has been successfully registered. Their account must be enabled by an admin before they can log in.`,
         variant: "default",
         className: "bg-success text-success-foreground",
       });
@@ -110,6 +169,8 @@ export default function AddSalesmanView({ manager }: AddSalesmanViewProps) {
       setPassword("");
       setSalesmanStage("BUSINESS PROMOTER (stage 01)");
       setDocuments({});
+      setEnteredOtp("");
+      setStep('details');
 
     } catch (error: any) {
       let errorMessage = error.message;
@@ -123,6 +184,44 @@ export default function AddSalesmanView({ manager }: AddSalesmanViewProps) {
     }
   };
 
+  if (step === 'otp') {
+    return (
+       <Card className="w-full max-w-lg mx-auto">
+          <CardHeader>
+              <CardTitle className="flex items-center gap-2"><CheckCircle /> Verify Mobile Number</CardTitle>
+              <CardDescription>Enter the 6-digit code sent to {mobileNumber}.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleVerifyAndCreateUser}>
+              <div className="grid gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="otp">Verification Code</Label>
+                     <InputOTP maxLength={6} value={enteredOtp} onChange={(value) => setEnteredOtp(value)}>
+                        <InputOTPGroup>
+                            <InputOTPSlot index={0} />
+                            <InputOTPSlot index={1} />
+                            <InputOTPSlot index={2} />
+                        </InputOTPGroup>
+                        <InputOTPSeparator />
+                        <InputOTPGroup>
+                            <InputOTPSlot index={3} />
+                            <InputOTPSlot index={4} />
+                            <InputOTPSlot index={5} />
+                        </InputOTPGroup>
+                    </InputOTP>
+                  </div>
+                  <Button type="submit" className="w-full" disabled={isLoading}>
+                      {isLoading && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
+                      Verify & Create Account
+                  </Button>
+                  <Button variant="link" onClick={() => setStep('details')}>Back to details</Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+    );
+  }
+
   return (
     <Card className="w-full max-w-lg mx-auto">
       <CardHeader>
@@ -133,7 +232,7 @@ export default function AddSalesmanView({ manager }: AddSalesmanViewProps) {
         <CardDescription>Enter the new salesman's details. Their account will be disabled until an admin verifies their documents.</CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSignup}>
+        <form onSubmit={handleSendOtp}>
           <div className="grid gap-4">
             <div className="grid gap-2">
               <Label htmlFor="name">Full Name</Label>
@@ -186,7 +285,7 @@ export default function AddSalesmanView({ manager }: AddSalesmanViewProps) {
             </div>
             <Button type="submit" className="w-full mt-2" disabled={isLoading}>
               {isLoading && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
-              Create Salesman Account
+              Send OTP & Continue
             </Button>
           </div>
         </form>
