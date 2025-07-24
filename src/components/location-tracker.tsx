@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { User } from '@/types';
 import { updateUser } from '@/lib/firestore';
 import {
@@ -27,55 +27,58 @@ const LocationTracker: React.FC<LocationTrackerProps> = ({ user }) => {
   const timeoutIdRef = useRef<NodeJS.Timeout | null>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  useEffect(() => {
-    const clearWatch = () => {
-      if (watchIdRef.current !== null) {
-        navigator.geolocation.clearWatch(watchIdRef.current);
-        watchIdRef.current = null;
-      }
-    };
+  const clearTimers = useCallback(() => {
+    if (timeoutIdRef.current) {
+      clearTimeout(timeoutIdRef.current);
+      timeoutIdRef.current = null;
+    }
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = null;
+    }
+  }, []);
 
-    const handleLocationSuccess = (position: GeolocationPosition) => {
-      if (showErrorDialog) {
+  const handleLocationSuccess = useCallback((position: GeolocationPosition) => {
+    // If we get a location, clear any pending disable timers.
+    if (showErrorDialog) {
         setShowErrorDialog(false);
-        if (timeoutIdRef.current) clearTimeout(timeoutIdRef.current);
-        if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
-        timeoutIdRef.current = null;
-        countdownIntervalRef.current = null;
-        setCountdown(ACCOUNT_DISABLE_TIMEOUT / 1000);
-      }
+    }
+    clearTimers();
+    setCountdown(ACCOUNT_DISABLE_TIMEOUT / 1000);
 
-      updateUser(user.id, {
-        liveLocation: {
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-        },
-        lastLocationUpdate: new Date().toISOString(),
-        isDisabled: false, // Re-enable account if location is restored
-      }).catch(console.error);
-    };
+    updateUser(user.id, {
+      liveLocation: {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+      },
+      lastLocationUpdate: new Date().toISOString(),
+      isDisabled: false, // Re-enable account if it was disabled
+    }).catch(console.error);
+  }, [user.id, clearTimers, showErrorDialog]);
 
-    const handleLocationError = (error: GeolocationPositionError) => {
-      console.error(`Location Error: ${error.message}`);
+  const handleLocationError = useCallback((error: GeolocationPositionError) => {
+    console.error(`Location Error: ${error.message}`);
+    
+    if (!showErrorDialog) {
+      setShowErrorDialog(true);
       
-      if (!showErrorDialog) {
-        setShowErrorDialog(true);
-      }
-      
-      // Start countdown to disable account
+      // Only start the timers if they aren't already running
       if (timeoutIdRef.current === null) {
+        setCountdown(ACCOUNT_DISABLE_TIMEOUT / 1000); // Reset countdown on new error
         timeoutIdRef.current = setTimeout(() => {
           updateUser(user.id, { isDisabled: true }).catch(console.error);
         }, ACCOUNT_DISABLE_TIMEOUT);
       }
-
+      
       if (countdownIntervalRef.current === null) {
         countdownIntervalRef.current = setInterval(() => {
-            setCountdown(prev => (prev > 0 ? prev - 1 : 0));
+          setCountdown(prev => (prev > 0 ? prev - 1 : 0));
         }, 1000);
       }
-    };
+    }
+  }, [user.id, showErrorDialog]);
 
+  useEffect(() => {
     const startWatching = () => {
       if ('geolocation' in navigator) {
         watchIdRef.current = navigator.geolocation.watchPosition(
@@ -100,12 +103,14 @@ const LocationTracker: React.FC<LocationTrackerProps> = ({ user }) => {
 
     startWatching();
 
+    // Cleanup on unmount
     return () => {
-      clearWatch();
-      if (timeoutIdRef.current) clearTimeout(timeoutIdRef.current);
-      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+      }
+      clearTimers();
     };
-  }, [user.id, showErrorDialog]);
+  }, [user.id, handleLocationSuccess, handleLocationError, clearTimers]);
 
   const formatCountdown = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
