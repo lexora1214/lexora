@@ -1,7 +1,7 @@
 
 
 import { doc, getDoc, setDoc, collection, getDocs, query, where, writeBatch, increment, updateDoc, deleteDoc, addDoc, runTransaction, deleteField } from "firebase/firestore";
-import { getAuth } from "firebase/auth";
+import { getAuth, updatePassword } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { db, storage } from "./firebase";
 import { User, Role, Customer, CommissionSettings, IncomeRecord, ProductSale, ProductCommissionSettings, SignupRoleSettings, CommissionRequest, SalesmanStage, SalarySettings, MonthlySalaryPayout, StockItem, SalesmanIncentiveSettings, Reminder, SalesmanDocuments } from "@/types";
@@ -627,6 +627,15 @@ export async function createProductSaleAndDistributeCommissions(
 export async function updateUser(userId: string, data: Partial<User>): Promise<void> {
   const userDocRef = doc(db, "users", userId);
   await updateDoc(userDocRef, data);
+}
+
+export async function updateUserPassword(newPassword: string): Promise<void> {
+    const auth = getAuth();
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+        throw new Error("No user is currently signed in.");
+    }
+    await updatePassword(currentUser, newPassword);
 }
 
 export async function getIncomeRecordsForUser(userId: string): Promise<IncomeRecord[]> {
