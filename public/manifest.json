@@ -1,6 +1,7 @@
+
 {
-  "name": "Lexora",
-  "short_name": "Lexora",
+  "name": "LEXORA",
+  "short_name": "LEXORA",
   "description": "Commission Management and Customer Tracking System for LEXORA",
   "icons": [
     {
@@ -14,9 +15,8 @@
       "type": "image/png"
     }
   ],
-  "theme_color": "#121212",
-  "background_color": "#121212",
   "start_url": "/",
   "display": "standalone",
-  "orientation": "portrait"
+  "background_color": "#121212",
+  "theme_color": "#0077B6"
 }

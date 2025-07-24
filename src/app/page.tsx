@@ -41,17 +41,25 @@ export default function Home() {
 
     const unsubscribe = onSnapshot(userDocRef, (docSnap) => {
       if (docSnap.exists()) {
-        setAppUser({ id: docSnap.id, ...docSnap.data() } as User);
+        const userData = { id: docSnap.id, ...docSnap.data() } as User;
+        setAppUser(userData);
+        // If user is disabled, their view will be handled, but don't redirect
+        if (userData.isDisabled) {
+           console.log("User account is disabled.");
+        }
       } else {
         // The user is authenticated but doesn't have a profile document.
         // This can happen if profile creation fails after signup.
         // Redirecting to login is a safe fallback.
+        console.warn("User authenticated but no profile found in Firestore. Redirecting.");
         router.replace("/login");
       }
       setLoadingUser(false);
     }, (error) => {
       console.error("Error fetching user profile:", error);
-      router.replace("/login");
+      // If there's an error, it might be a network issue.
+      // Don't redirect immediately, Firestore offline cache might have data.
+      // Let the UI decide based on appUser state.
       setLoadingUser(false);
     });
 
@@ -59,7 +67,7 @@ export default function Home() {
     return () => unsubscribe();
   }, [firebaseUser, loadingAuth, router]);
 
-  if (loadingAuth || loadingUser) {
+  if (loadingAuth || (loadingUser && !appUser)) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
         <LoaderCircle className="h-12 w-12 animate-spin text-primary" />
@@ -73,15 +81,20 @@ export default function Home() {
       router.replace("/login");
       return null;
   }
-
+  
+  // This check now correctly handles the initial load where firebaseUser is present but appUser isn't yet.
   if (!appUser) {
-     // This case should ideally not be hit if logic is correct, but as a fallback:
+     // If still loading, show spinner. If not, and still no appUser, something is wrong.
+     if (loadingUser) {
+       return (
+         <div className="flex h-screen w-full items-center justify-center">
+           <LoaderCircle className="h-12 w-12 animate-spin text-primary" />
+         </div>
+       );
+     }
+     // If done loading and no appUser, redirect.
      router.replace("/login");
-     return (
-       <div className="flex h-screen w-full items-center justify-center">
-         <LoaderCircle className="h-12 w-12 animate-spin text-primary" />
-       </div>
-     );
+     return null;
   }
 
   if (appUser.isDisabled) {
