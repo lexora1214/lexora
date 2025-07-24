@@ -7,8 +7,9 @@ import { User } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDistanceToNow } from 'date-fns';
-import { WifiOff } from 'lucide-react';
+import { RefreshCw, WifiOff } from 'lucide-react';
 import { Badge } from './ui/badge';
+import { Button } from './ui/button';
 
 interface LiveLocationViewProps {
   allUsers: User[];
@@ -35,9 +36,16 @@ const LiveLocationView: React.FC<LiveLocationViewProps> = ({ allUsers }) => {
   });
 
   const [activeMarker, setActiveMarker] = useState<string | null>(null);
+  const [map, setMap] = useState<google.maps.Map | null>(null);
+  const [now, setNow] = useState(new Date());
 
-  const now = new Date();
-  
+  useEffect(() => {
+    const interval = setInterval(() => {
+        setNow(new Date());
+    }, 60000); // Update 'now' every minute to re-calculate online status
+    return () => clearInterval(interval);
+  }, []);
+
   const isUserOnline = (user: User) => {
     if (!user.lastLocationUpdate) return false;
     const lastUpdate = new Date(user.lastLocationUpdate);
@@ -48,6 +56,14 @@ const LiveLocationView: React.FC<LiveLocationViewProps> = ({ allUsers }) => {
   const onlineSalesmen = useMemo(() => {
       return allUsers.filter(user => user.role === 'Salesman' && user.liveLocation && user.lastLocationUpdate && isUserOnline(user));
   }, [allUsers, now]);
+
+  const handleRefresh = () => {
+    if (map) {
+        map.panTo(defaultCenter);
+        map.setZoom(8);
+    }
+    setNow(new Date()); // Force re-render of online status
+  };
 
 
   if (loadError || !navigator.onLine) {
@@ -71,10 +87,18 @@ const LiveLocationView: React.FC<LiveLocationViewProps> = ({ allUsers }) => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Live Salesman Location</CardTitle>
-        <CardDescription>
-            Showing {onlineSalesmen.length} active salesmen. Markers disappear if location is offline for more than {OFFLINE_THRESHOLD_MINUTES} minutes.
-        </CardDescription>
+         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+                <CardTitle>Live Salesman Location</CardTitle>
+                <CardDescription>
+                    Showing {onlineSalesmen.length} active salesmen. Markers disappear if location is offline for more than {OFFLINE_THRESHOLD_MINUTES} minutes.
+                </CardDescription>
+            </div>
+            <Button onClick={handleRefresh} variant="outline">
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Refresh Map
+            </Button>
+        </div>
       </CardHeader>
       <CardContent>
         {!isLoaded ? (
@@ -84,6 +108,7 @@ const LiveLocationView: React.FC<LiveLocationViewProps> = ({ allUsers }) => {
             mapContainerStyle={containerStyle}
             center={defaultCenter}
             zoom={8}
+            onLoad={mapInstance => setMap(mapInstance)}
             options={{
               fullscreenControl: false,
               streetViewControl: false,
