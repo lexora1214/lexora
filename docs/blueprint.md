@@ -1,4 +1,4 @@
-# **App Name**: LexoraNet
+# **App Name**: Lexora
 
 ## Core Features:
 

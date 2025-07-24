@@ -6,6 +6,7 @@ import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage
 import { db, storage } from "./firebase";
 import { User, Role, Customer, CommissionSettings, IncomeRecord, ProductSale, ProductCommissionSettings, SignupRoleSettings, CommissionRequest, SalesmanStage, SalarySettings, MonthlySalaryPayout, StockItem, SalesmanIncentiveSettings, Reminder, SalesmanDocuments } from "@/types";
 import type { User as FirebaseUser } from 'firebase/auth';
+import { sendTokenSms } from "./sms";
 
 function generateReferralCode(): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -195,6 +196,16 @@ export async function createCustomer(customerData: Omit<Customer, 'id' | 'saleDa
     batch.set(commissionRequestRef, newRequest);
 
     await batch.commit();
+
+    // Send SMS after successful database commit
+    await sendTokenSms({
+        customerName: newCustomer.name,
+        customerContact: newCustomer.contactInfo,
+        tokenSerial: newCustomer.tokenSerial,
+        downPayment: newCustomer.downPayment,
+        salesmanName: salesman.name,
+        saleDate: newCustomer.saleDate,
+    });
 }
 
 

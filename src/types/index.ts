@@ -46,6 +46,7 @@ export interface Customer {
   saleDate: string;
   commissionStatus: 'pending' | 'approved' | 'rejected';
   tokenIsAvailable: boolean;
+  paymentMethod: 'cash' | 'installments';
 
   // New fields from user request
   whatsappNumber?: string;

@@ -150,6 +150,7 @@ const CustomerRegistrationDialog: React.FC<CustomerRegistrationDialogProps> = ({
         installments: data.paymentMethod === 'cash' ? null : data.installments,
         monthlyInstallment: data.paymentMethod === 'cash' ? null : data.monthlyInstallment,
         requestedDeliveryDate: data.requestedDeliveryDate?.toISOString(),
+        paymentMethod: data.paymentMethod,
     };
 
     createCustomer(customerPayload, salesman).catch((error: any) => {

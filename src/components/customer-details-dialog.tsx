@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React from "react";
@@ -171,6 +172,7 @@ const CustomerDetailsDialog: React.FC<CustomerDetailsDialogProps> = ({
                                   </Badge>
                               }
                           />
+                           <DetailRow icon={DollarSign} label="Down Payment on Registration" value={customer.downPayment ? `LKR ${customer.downPayment.toLocaleString()}` : 'N/A'} />
                       </div>
                   </div>
 
