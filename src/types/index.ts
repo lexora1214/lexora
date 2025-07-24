@@ -28,11 +28,17 @@ export interface User {
   salesmanStage?: SalesmanStage | null;
   isDisabled?: boolean;
   assignedManagerIds?: string[];
-  // New fields for document verification
+  // Document verification
   nicFrontUrl?: string;
   nicBackUrl?: string;
   birthCertificateUrl?: string;
   policeReportUrl?: string;
+  // Live Location
+  liveLocation?: {
+    latitude: number;
+    longitude: number;
+  };
+  lastLocationUpdate?: string;
 }
 
 export interface Customer {

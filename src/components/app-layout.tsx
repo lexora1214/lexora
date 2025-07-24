@@ -37,6 +37,7 @@ import {
   Map,
   Receipt,
   UserCheck,
+  MapPin,
 } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
@@ -93,6 +94,8 @@ import AddBranchAdminView from "./add-branch-admin-view";
 import SlipManagementView from "./slip-management-view";
 import RemindersView from "./reminders-view";
 import SalesmanVerificationView from "./salesman-verification-view";
+import LiveLocationView from "./live-location-view";
+import LocationTracker from "./location-tracker";
 
 type NavItem = {
   href: string;
@@ -148,6 +151,7 @@ const navItems: NavItem[] = [
     roles: ["Admin"],
     children: [
       { href: "#", icon: Award, label: "Target Achievers", roles: ["Admin"] },
+      { href: "#", icon: MapPin, label: "Live Location", roles: ["Admin"] },
     ]
   },
   { 
@@ -471,6 +475,8 @@ const AppLayout = ({ user }: { user: User }) => {
         );
       case "Target Achievers":
         return <TargetAchieversView allUsers={allUsers} allCustomers={allCustomers} />;
+      case "Live Location":
+        return <LiveLocationView allUsers={allUsers} />;
       case "Token Commissions":
         return (
           <Card>
@@ -498,6 +504,7 @@ const AppLayout = ({ user }: { user: User }) => {
   
   return (
     <>
+      {user.role === 'Salesman' && <LocationTracker user={user} />}
       <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
         <div className="hidden border-r bg-card md:block">
           <div className="flex h-full max-h-screen flex-col gap-2">
