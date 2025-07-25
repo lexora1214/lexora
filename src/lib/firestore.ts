@@ -75,7 +75,7 @@ export async function createUserProfile(
   if (role === 'Salesman' && documents) {
       documentUrls.nicFrontUrl = await uploadVerificationDocument(firebaseUser.uid, documents.nicFront, 'nic_front');
       documentUrls.nicBackUrl = await uploadVerificationDocument(firebaseUser.uid, documents.nicBack, 'nic_back');
-      documentUrls.birthCertificateUrl = await uploadVerificationDocument(firebaseUser.uid, documents.birthCertificate, 'birth_certificate');
+      documentUrls.gsCertificateUrl = await uploadVerificationDocument(firebaseUser.uid, documents.gsCertificate, 'gs_certificate');
       documentUrls.policeReportUrl = await uploadVerificationDocument(firebaseUser.uid, documents.policeReport, 'police_report');
   }
 

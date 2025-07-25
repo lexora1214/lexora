@@ -95,7 +95,7 @@ export default function AddSalesmanView({ manager }: AddSalesmanViewProps) {
         toast({ variant: "destructive", title: "Registration Failed", description: "Please enter a valid 10-digit mobile number." });
         return;
     }
-    if (!documents.nicFront || !documents.nicBack || !documents.birthCertificate || !documents.policeReport) {
+    if (!documents.nicFront || !documents.nicBack || !documents.gsCertificate || !documents.policeReport) {
         toast({ variant: "destructive", title: "Registration Failed", description: "All four verification documents are required." });
         return;
     }
@@ -268,7 +268,7 @@ export default function AddSalesmanView({ manager }: AddSalesmanViewProps) {
                 <div className="grid grid-cols-2 gap-4">
                     <FileInput label="NIC Front" onFileSelect={(file) => handleFileSelect('nicFront', file)} acceptedFileTypes=".png,.jpg,.jpeg,.pdf" selectedFile={documents.nicFront || null}/>
                     <FileInput label="NIC Back" onFileSelect={(file) => handleFileSelect('nicBack', file)} acceptedFileTypes=".png,.jpg,.jpeg,.pdf" selectedFile={documents.nicBack || null} />
-                    <FileInput label="Birth Certificate" onFileSelect={(file) => handleFileSelect('birthCertificate', file)} acceptedFileTypes=".png,.jpg,.jpeg,.pdf" selectedFile={documents.birthCertificate || null} />
+                    <FileInput label="GS Certificate" onFileSelect={(file) => handleFileSelect('gsCertificate', file)} acceptedFileTypes=".png,.jpg,.jpeg,.pdf" selectedFile={documents.gsCertificate || null} />
                     <FileInput label="Police Report" onFileSelect={(file) => handleFileSelect('policeReport', file)} acceptedFileTypes=".png,.jpg,.jpeg,.pdf" selectedFile={documents.policeReport || null} />
                 </div>
             </div>

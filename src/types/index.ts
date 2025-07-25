@@ -31,7 +31,7 @@ export interface User {
   // Document verification
   nicFrontUrl?: string;
   nicBackUrl?: string;
-  birthCertificateUrl?: string;
+  gsCertificateUrl?: string;
   policeReportUrl?: string;
   // Live Location
   liveLocation?: {
@@ -241,7 +241,7 @@ export interface Reminder {
 export interface SalesmanDocuments {
     nicFront: File;
     nicBack: File;
-    birthCertificate: File;
+    gsCertificate: File;
     policeReport: File;
 }
 

@@ -106,7 +106,7 @@ const SalesmanVerificationView: React.FC<SalesmanVerificationViewProps> = ({ all
                             <a href={user.nicBackUrl} target="_blank" rel="noopener noreferrer">NIC Back</a>
                           </DropdownMenuItem>
                           <DropdownMenuItem asChild>
-                            <a href={user.birthCertificateUrl} target="_blank" rel="noopener noreferrer">Birth Certificate</a>
+                            <a href={user.gsCertificateUrl} target="_blank" rel="noopener noreferrer">GS Certificate</a>
                           </DropdownMenuItem>
                           <DropdownMenuItem asChild>
                              <a href={user.policeReportUrl} target="_blank" rel="noopener noreferrer">Police Report</a>
