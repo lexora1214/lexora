@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Edit2, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Badge } from "./ui/badge";
 
 interface TreeNodeProps {
   user: User;
@@ -49,7 +50,10 @@ const TreeNode: React.FC<TreeNodeProps> = ({ user, allUsers, level }) => {
                 </Avatar>
                 <div>
                     <p className="font-medium font-headline">{user.name}</p>
-                    <p className="text-sm text-muted-foreground">{user.role}</p>
+                    <div className="flex items-center gap-2">
+                        <p className="text-sm text-muted-foreground">{user.role}</p>
+                        {user.referralCode && <Badge variant="outline">{user.referralCode}</Badge>}
+                    </div>
                 </div>
             </div>
             <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
