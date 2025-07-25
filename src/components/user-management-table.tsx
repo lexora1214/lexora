@@ -77,6 +77,7 @@ const roleOrderMap: Record<Role, number> = {
   'Salesman': 6,
   'Delivery Boy': 7,
   'Recovery Officer': 8,
+  'Branch Admin': 9,
 };
 
 export default function UserManagementTable({ data, allIncomeRecords }: UserManagementTableProps) {
@@ -199,6 +200,14 @@ export default function UserManagementTable({ data, allIncomeRecords }: UserMana
       accessorKey: "mobileNumber",
       header: "Mobile Number",
       cell: ({ row }) => row.original.mobileNumber || 'N/A',
+    },
+    {
+        accessorKey: "referralCode",
+        header: "Referral Code",
+        cell: ({ row }) => {
+            const code = row.original.referralCode;
+            return code ? <Badge variant="outline">{code}</Badge> : 'N/A';
+        },
     },
     {
       accessorKey: "role",
@@ -558,8 +567,9 @@ export default function UserManagementTable({ data, allIncomeRecords }: UserMana
                     if (column.id === 'periodIncome') displayName = 'Income (Period)';
                     if (column.id === 'name') displayName = 'Name';
                     if (column.id === 'email') displayName = 'Email';
-                    if (column.id === 'role') displayName = 'Role';
                     if (column.id === 'mobileNumber') displayName = 'Mobile Number';
+                    if (column.id === 'referralCode') displayName = 'Referral Code';
+                    if (column.id === 'role') displayName = 'Role';
                     if (column.id === 'branch') displayName = 'Branch';
                     if (column.id === 'salesmanStage') displayName = 'Salesman Stage';
                     if (column.id === 'isDisabled') displayName = 'Status';
