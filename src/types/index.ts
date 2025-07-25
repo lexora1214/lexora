@@ -184,6 +184,7 @@ export interface SalarySettings {
   'Team Operation Manager': number;
   'Group Operation Manager': number;
   'Head Group Manager': number;
+  'Regional Director': number;
 }
 
 export interface MonthlySalaryPayout {
@@ -243,3 +244,5 @@ export interface SalesmanDocuments {
     birthCertificate: File;
     policeReport: File;
 }
+
+    

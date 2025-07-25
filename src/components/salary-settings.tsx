@@ -41,6 +41,7 @@ const SALARY_ROLES: (keyof SalarySettings)[] = [
   "Team Operation Manager",
   "Group Operation Manager",
   "Head Group Manager",
+  "Regional Director",
 ];
 
 interface SalarySettingsProps {
@@ -339,3 +340,5 @@ const SalarySettingsForm: React.FC<SalarySettingsProps> = ({ user, allCustomers 
 };
 
 export default SalarySettingsForm;
+
+    

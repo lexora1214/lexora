@@ -962,6 +962,7 @@ const DEFAULT_SALARY_SETTINGS: SalarySettings = {
     "Team Operation Manager": 40000,
     "Group Operation Manager": 45000,
     "Head Group Manager": 55000,
+    "Regional Director": 61000,
 };
 
 export async function getSalarySettings(): Promise<SalarySettings> {
@@ -1274,3 +1275,5 @@ export async function updateReminder(reminderId: string, updates: Partial<Remind
 export async function deleteReminder(reminderId: string): Promise<void> {
     await deleteDoc(doc(db, "reminders", reminderId));
 }
+
+    
