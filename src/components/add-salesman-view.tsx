@@ -170,6 +170,8 @@ export default function AddSalesmanView({ manager }: AddSalesmanViewProps) {
       setSalesmanStage("BUSINESS PROMOTER (stage 01)");
       setDocuments({});
       setEnteredOtp("");
+      setGeneratedOtp("");
+      setSignupData(null);
       setStep('details');
 
     } catch (error: any) {
