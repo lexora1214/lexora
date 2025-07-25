@@ -985,6 +985,7 @@ export async function processMonthlySalaries(adminUser: User, allCustomers: Cust
     const payoutId = now.toISOString();
 
     const allUsers = await getAllUsers();
+    const enabledUsers = allUsers.filter(u => !u.isDisabled);
     const salarySettings = await getSalarySettings();
     const incentiveSettings = await getSalesmanIncentiveSettings();
     const batch = writeBatch(db);
@@ -996,7 +997,7 @@ export async function processMonthlySalaries(adminUser: User, allCustomers: Cust
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
 
-    for (const user of allUsers) {
+    for (const user of enabledUsers) {
         let userTotalPayout = 0;
         let salaryAmount = 0;
         let incentiveAmount = 0;
