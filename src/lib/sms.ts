@@ -76,7 +76,9 @@ export async function sendOtpSms(mobileNumber: string, otp: string): Promise<voi
     const senderId = process.env.NOTIFY_SENDER_ID;
 
     if (!userId || !apiKey || !senderId) {
-        throw new Error("SMS credentials are not configured in .env file.");
+        const errorMessage = "SMS credentials (NOTIFY_USER_ID, NOTIFY_API_KEY, NOTIFY_SENDER_ID) are not configured in the environment file. Cannot send OTP.";
+        console.error(errorMessage);
+        throw new Error(errorMessage);
     }
 
     const formattedNumber = formatMobileNumber(mobileNumber);
@@ -94,6 +96,12 @@ export async function sendOtpSms(mobileNumber: string, otp: string): Promise<voi
     
     try {
         const response = await fetch(url.toString(), { method: 'GET' });
+        
+        if (!response.ok) {
+            // Catches HTTP errors like 500, 404, etc.
+             throw new Error(`SMS service returned an error: ${response.status} ${response.statusText}`);
+        }
+
         const result = await response.json();
         
         if (result.status !== 'success') {
@@ -102,8 +110,8 @@ export async function sendOtpSms(mobileNumber: string, otp: string): Promise<voi
         } else {
             console.log("Successfully sent OTP SMS to:", formattedNumber);
         }
-    } catch (error) {
-        console.error("Error sending OTP SMS:", error);
-        throw new Error("An external error occurred while sending the OTP.");
+    } catch (error: any) {
+        console.error("Error sending OTP SMS:", error.message);
+        throw new Error("An external error occurred while sending the OTP. Check network connectivity and service status.");
     }
 }

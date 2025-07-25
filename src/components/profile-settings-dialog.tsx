@@ -134,7 +134,12 @@ const ProfileSettingsDialog: React.FC<ProfileSettingsDialogProps> = ({
         });
         setStep("password_otp");
     } catch (error: any) {
-        toast({ variant: "destructive", title: "OTP Send Failed", description: error.message });
+      console.error("Error sending OTP:", error);
+      toast({ 
+          variant: "destructive", 
+          title: "OTP Send Failed", 
+          description: "Could not send OTP. Please check the number and try again. If the issue persists, check the server logs." 
+      });
     } finally {
         setIsLoading(false);
     }
@@ -298,4 +303,3 @@ const ProfileSettingsDialog: React.FC<ProfileSettingsDialogProps> = ({
 };
 
 export default ProfileSettingsDialog;
-

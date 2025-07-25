@@ -85,6 +85,19 @@ export default function AddSalesmanView({ manager }: AddSalesmanViewProps) {
     setDocuments(prev => ({ ...prev, [docType]: file }));
   };
 
+  const resetFormState = () => {
+      setName("");
+      setEmail("");
+      setMobileNumber("");
+      setPassword("");
+      setSalesmanStage("BUSINESS PROMOTER (stage 01)");
+      setDocuments({});
+      setEnteredOtp("");
+      setGeneratedOtp("");
+      setSignupData(null);
+      setStep('details');
+  }
+
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (password.length < 6) {
@@ -121,7 +134,11 @@ export default function AddSalesmanView({ manager }: AddSalesmanViewProps) {
 
     } catch (error: any) {
       console.error("Error sending OTP:", error);
-      toast({ variant: "destructive", title: "OTP Send Failed", description: "Could not send OTP. Please check the number and try again." });
+      toast({ 
+          variant: "destructive", 
+          title: "OTP Send Failed", 
+          description: "Could not send OTP. Please check the number and try again. If the issue persists, check the server logs." 
+      });
     } finally {
       setIsLoading(false);
     }
@@ -162,17 +179,7 @@ export default function AddSalesmanView({ manager }: AddSalesmanViewProps) {
         variant: "default",
         className: "bg-success text-success-foreground",
       });
-      // Reset form
-      setName("");
-      setEmail("");
-      setMobileNumber("");
-      setPassword("");
-      setSalesmanStage("BUSINESS PROMOTER (stage 01)");
-      setDocuments({});
-      setEnteredOtp("");
-      setGeneratedOtp("");
-      setSignupData(null);
-      setStep('details');
+      resetFormState();
 
     } catch (error: any) {
       let errorMessage = error.message;

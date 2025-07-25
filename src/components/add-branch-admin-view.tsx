@@ -74,7 +74,11 @@ export default function AddBranchAdminView({ manager }: AddBranchAdminViewProps)
 
     } catch (error: any) {
       console.error("Error sending OTP:", error);
-      toast({ variant: "destructive", title: "OTP Send Failed", description: "Could not send OTP. Please check the number and try again." });
+      toast({ 
+          variant: "destructive", 
+          title: "OTP Send Failed", 
+          description: "Could not send OTP. Please check the number and try again. If the issue persists, check the server logs." 
+      });
     } finally {
       setIsLoading(false);
     }
@@ -112,6 +116,7 @@ export default function AddBranchAdminView({ manager }: AddBranchAdminViewProps)
         "Branch Admin",
         manager.referralCode,
         manager.branch,
+        undefined,
         undefined,
         userData,
       );
