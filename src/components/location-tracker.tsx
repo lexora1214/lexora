@@ -24,7 +24,7 @@ const LocationTracker: React.FC<LocationTrackerProps> = ({ user }) => {
   const watchIdRef = useRef<number | null>(null);
 
   const handleLocationSuccess = useCallback((position: GeolocationPosition) => {
-    // If the error dialog was showing, hide it and ensure the account is enabled
+    // If the error dialog was showing, hide it
     if (showErrorDialog) {
       setShowErrorDialog(false);
     }
@@ -35,18 +35,14 @@ const LocationTracker: React.FC<LocationTrackerProps> = ({ user }) => {
         longitude: position.coords.longitude,
       },
       lastLocationUpdate: new Date().toISOString(),
-      isDisabled: false, // Re-enable account on successful location update
     }).catch(console.error);
   }, [user.id, showErrorDialog]);
   
   const handleLocationError = useCallback((error: GeolocationPositionError) => {
     console.error(`Location Error: ${error.message}`);
-    // Show the dialog and immediately disable the account
-    if (!showErrorDialog) {
-        setShowErrorDialog(true);
-        updateUser(user.id, { isDisabled: true }).catch(console.error);
-    }
-  }, [user.id, showErrorDialog]);
+    // Show the dialog to alert the user
+    setShowErrorDialog(true);
+  }, []);
 
   useEffect(() => {
     if ('geolocation' in navigator) {
@@ -83,11 +79,11 @@ const LocationTracker: React.FC<LocationTrackerProps> = ({ user }) => {
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
             <AlertTriangle className="h-6 w-6 text-destructive" />
-            Account Disabled
+            Location Access Required
           </AlertDialogTitle>
           <AlertDialogDescription>
             <div>
-              Your account has been automatically disabled because location access is required. Please enable location services and contact an administrator to regain access.
+              Location tracking is required to use the app. Please enable location services in your browser and for this site to continue.
             </div>
           </AlertDialogDescription>
         </AlertDialogHeader>
