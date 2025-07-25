@@ -70,20 +70,20 @@ export async function sendTokenSms(details: TokenSmsDetails): Promise<void> {
     }
 }
 
-export async function sendOtpSms(mobileNumber: string, otp: string): Promise<void> {
+export async function sendOtpSms(mobileNumber: string, otp: string): Promise<{success: boolean; error?: string}> {
     const userId = process.env.NOTIFY_USER_ID;
     const apiKey = process.env.NOTIFY_API_KEY;
     const senderId = process.env.NOTIFY_SENDER_ID;
 
     if (!userId || !apiKey || !senderId) {
-        const errorMessage = "SMS credentials (NOTIFY_USER_ID, NOTIFY_API_KEY, NOTIFY_SENDER_ID) are not configured in the environment file. Cannot send OTP.";
-        console.error(errorMessage);
-        throw new Error(errorMessage);
+        const errorMessage = "SMS service is not configured. Please contact an administrator.";
+        console.error("Missing SMS credentials (NOTIFY_USER_ID, NOTIFY_API_KEY, NOTIFY_SENDER_ID).");
+        return { success: false, error: errorMessage };
     }
 
     const formattedNumber = formatMobileNumber(mobileNumber);
     if (!formattedNumber) {
-        throw new Error(`Invalid phone number format: ${mobileNumber}.`);
+        return { success: false, error: `Invalid phone number format: ${mobileNumber}.` };
     }
 
     const message = `Your LEXORA verification code is: ${otp}`;
@@ -98,20 +98,22 @@ export async function sendOtpSms(mobileNumber: string, otp: string): Promise<voi
         const response = await fetch(url.toString(), { method: 'GET' });
         
         if (!response.ok) {
-            // Catches HTTP errors like 500, 404, etc.
-             throw new Error(`SMS service returned an error: ${response.status} ${response.statusText}`);
+            const errorText = `SMS service returned an error: ${response.status} ${response.statusText}`;
+            console.error(errorText);
+            return { success: false, error: "The SMS service is currently unavailable. Please try again later." };
         }
 
         const result = await response.json();
         
         if (result.status !== 'success') {
             console.error("Failed to send OTP SMS via notify.lk:", result);
-            throw new Error(`SMS provider error: ${result.data || 'Unknown error'}`);
+            return { success: false, error: `SMS provider error: ${result.data || 'Unknown error'}` };
         } else {
             console.log("Successfully sent OTP SMS to:", formattedNumber);
+            return { success: true };
         }
     } catch (error: any) {
         console.error("Error sending OTP SMS:", error.message);
-        throw new Error("An external error occurred while sending the OTP. Check network connectivity and service status.");
+        return { success: false, error: "An external error occurred while sending the OTP. Check network connectivity and service status." };
     }
 }

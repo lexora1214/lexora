@@ -19,7 +19,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { updateUser, updateUserPassword } from "@/lib/firestore";
-import { sendOtpSms } from "@/lib/sms";
+import { changePassword } from "@/app/actions";
 import { User } from "@/types";
 import { LoaderCircle, KeyRound, MessageSquareWarning } from "lucide-react";
 import { InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot } from "@/components/ui/input-otp";
@@ -123,22 +123,28 @@ const ProfileSettingsDialog: React.FC<ProfileSettingsDialogProps> = ({
   const onPasswordSubmit: SubmitHandler<PasswordFormValues> = async (data) => {
     setIsLoading(true);
     try {
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
-        setGeneratedOtp(otp);
-        setNewPassword(data.newPassword);
-        
-        await sendOtpSms(user.mobileNumber, otp);
-        toast({
-            title: "OTP Sent",
-            description: "An OTP has been sent to your registered mobile number.",
-        });
-        setStep("password_otp");
+        const result = await changePassword(data.newPassword);
+        if (result.success) {
+            setGeneratedOtp(result.otp);
+            setNewPassword(data.newPassword);
+            toast({
+                title: "OTP Sent",
+                description: "An OTP has been sent to your registered mobile number.",
+            });
+            setStep("password_otp");
+        } else {
+             toast({ 
+                variant: "destructive", 
+                title: "OTP Send Failed", 
+                description: result.error
+            });
+        }
     } catch (error: any) {
-      console.error("Error sending OTP:", error);
+      console.error("Error initiating password change:", error);
       toast({ 
           variant: "destructive", 
-          title: "OTP Send Failed", 
-          description: "Could not send OTP. Please check the number and try again. If the issue persists, check the server logs." 
+          title: "Action Failed", 
+          description: "Could not initiate password change. Please try again." 
       });
     } finally {
         setIsLoading(false);

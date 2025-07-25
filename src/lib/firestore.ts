@@ -6,7 +6,7 @@ import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage
 import { db, storage } from "./firebase";
 import { User, Role, Customer, CommissionSettings, IncomeRecord, ProductSale, ProductCommissionSettings, SignupRoleSettings, CommissionRequest, SalesmanStage, SalarySettings, MonthlySalaryPayout, StockItem, SalesmanIncentiveSettings, Reminder, SalesmanDocuments } from "@/types";
 import type { User as FirebaseUser } from 'firebase/auth';
-import { sendTokenSms } from "./sms";
+import { sendTokenSms, sendOtpSms as sendSmsForOtp } from "./sms";
 
 function generateReferralCode(): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -1277,4 +1277,7 @@ export async function deleteReminder(reminderId: string): Promise<void> {
     await deleteDoc(doc(db, "reminders", reminderId));
 }
 
-    
+// This function is defined here but imported and used in server actions.
+export async function sendOtpSms(mobileNumber: string, otp: string): Promise<{success: boolean, error?: string}> {
+    return sendSmsForOtp(mobileNumber, otp);
+}
