@@ -1,9 +1,13 @@
-
 {
   "name": "LEXORA",
   "short_name": "LEXORA",
   "description": "Commission Management and Customer Tracking System for LEXORA",
   "icons": [
+    {
+      "src": "/my-logo.png",
+      "sizes": "48x48",
+      "type": "image/png"
+    },
     {
       "src": "/my-logo.png",
       "sizes": "192x192",
