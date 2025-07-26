@@ -150,29 +150,32 @@ export default function UserManagementTable({ data, allIncomeRecords }: UserMana
   };
 
   const tableData = React.useMemo(() => {
-    if (!dateRange || !dateRange.from) {
-      return data.map(user => ({
-        ...user,
-        periodIncome: user.totalIncome,
-      }));
-    }
+    const from = dateRange?.from;
+    const to = dateRange?.to ? new Date(dateRange.to) : from ? new Date(from) : null;
+    if (to) to.setHours(23, 59, 59, 999);
 
-    const from = dateRange.from;
-    const to = dateRange.to ? new Date(dateRange.to) : new Date(from);
-    to.setHours(23, 59, 59, 999);
+    return data.map(user => {
+        let periodIncome = 0;
+        
+        if (!from || !to) {
+            periodIncome = user.totalIncome;
+        } else {
+            const userRecords = allIncomeRecords.filter(record => record.userId === user.id);
+            const filteredRecords = userRecords.filter(record => {
+                const recordDate = new Date(record.saleDate);
+                return recordDate >= from && recordDate <= to;
+            });
+            
+            periodIncome = filteredRecords.reduce((acc, record) => {
+                if (record.sourceType === 'expense') {
+                    return acc - record.amount;
+                }
+                return acc + record.amount;
+            }, 0);
+        }
 
-    const incomeMap = new Map<string, number>();
-    allIncomeRecords.forEach(record => {
-      const recordDate = new Date(record.saleDate);
-      if (recordDate >= from && recordDate <= to) {
-        incomeMap.set(record.userId, (incomeMap.get(record.userId) || 0) + record.amount);
-      }
+        return { ...user, periodIncome };
     });
-
-    return data.map(user => ({
-      ...user,
-      periodIncome: incomeMap.get(user.id) || 0,
-    }));
   }, [data, allIncomeRecords, dateRange]);
 
 
