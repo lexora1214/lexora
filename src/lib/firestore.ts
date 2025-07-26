@@ -957,12 +957,12 @@ export async function payRemainingInstallments(productSaleId: string): Promise<v
 // --- Salary Management ---
 
 const DEFAULT_SALARY_SETTINGS: SalarySettings = {
-    "BUSINESS PROMOTER (stage 01)": 21000,
-    "MARKETING EXECUTIVE (stage 02)": 30000,
-    "Team Operation Manager": 40000,
-    "Group Operation Manager": 45000,
-    "Head Group Manager": 55000,
-    "Regional Director": 61000,
+  "BUSINESS PROMOTER (stage 01)": 21000,
+  "MARKETING EXECUTIVE (stage 02)": 30000,
+  "Team Operation Manager": 40000,
+  "Group Operation Manager": 45000,
+  "Head Group Manager": 55000,
+  "Regional Director": 61000,
 };
 
 export async function getSalarySettings(): Promise<SalarySettings> {
@@ -1276,6 +1276,51 @@ export async function updateReminder(reminderId: string, updates: Partial<Remind
 export async function deleteReminder(reminderId: string): Promise<void> {
     await deleteDoc(doc(db, "reminders", reminderId));
 }
+
+// Expense Management
+export async function addExpenseForSalesman(
+    salesmanId: string, 
+    amount: number, 
+    description: string, 
+    manager: User
+): Promise<void> {
+    if (amount <= 0) {
+        throw new Error("Expense amount must be positive.");
+    }
+
+    const batch = writeBatch(db);
+    const salesmanRef = doc(db, "users", salesmanId);
+    const salesmanSnap = await getDoc(salesmanRef);
+    if (!salesmanSnap.exists()) {
+        throw new Error("Salesman not found.");
+    }
+    const salesman = salesmanSnap.data() as User;
+
+    // 1. Subtract amount from salesman's total income
+    batch.update(salesmanRef, {
+        totalIncome: increment(-amount)
+    });
+
+    // 2. Create an income record with 'expense' type
+    const expenseRecordRef = doc(collection(db, "incomeRecords"));
+    const newExpenseRecord: IncomeRecord = {
+        id: expenseRecordRef.id,
+        userId: salesmanId,
+        amount: amount, // Store as a positive number
+        saleDate: new Date().toISOString(),
+        grantedForRole: salesman.role,
+        salesmanId: salesman.id,
+        salesmanName: salesman.name,
+        sourceType: 'expense',
+        expenseDescription: description,
+        managerId: manager.id,
+        managerName: manager.name
+    };
+    batch.set(expenseRecordRef, newExpenseRecord);
+
+    await batch.commit();
+}
+
 
 // This function is defined here but imported and used in server actions.
 export async function sendOtpSms(mobileNumber: string, otp: string): Promise<{success: boolean, error?: string}> {

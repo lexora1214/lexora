@@ -38,6 +38,7 @@ import {
   Receipt,
   UserCheck,
   MapPin,
+  MinusCircle,
 } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
@@ -96,6 +97,7 @@ import RemindersView from "./reminders-view";
 import SalesmanVerificationView from "./salesman-verification-view";
 import LiveLocationView from "./live-location-view";
 import LocationTracker from "./location-tracker";
+import AddExpenseView from "./add-expense-view";
 
 type NavItem = {
   href: string;
@@ -134,6 +136,7 @@ const navItems: NavItem[] = [
       { href: "#", icon: UserPlus, label: "Add Branch Admin", roles: ["Team Operation Manager"] },
       { href: "#", icon: UserPlus, label: "Add Delivery Boy", roles: ["Team Operation Manager"] },
       { href: "#", icon: UserPlus, label: "Add Recovery Officer", roles: ["Team Operation Manager"] },
+      { href: "#", icon: MinusCircle, label: "Add Expense", roles: ["Team Operation Manager"] },
     ]
   },
   { href: "#", icon: Truck, label: "Manage Deliveries", roles: ["Team Operation Manager", "Branch Admin"] },
@@ -427,6 +430,8 @@ const AppLayout = ({ user }: { user: User }) => {
         return <AddDeliveryBoyView manager={user} />;
       case "Add Recovery Officer":
         return <AddRecoveryOfficerView manager={user} />;
+      case "Add Expense":
+        return <AddExpenseView manager={user} allUsers={allUsers} />;
       case "Manage Deliveries":
         return <ManageDeliveriesView manager={user} allUsers={allUsers} />;
       case "Manage Recovery":

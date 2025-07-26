@@ -137,7 +137,7 @@ export interface IncomeRecord {
   salesmanName: string;
   shopManagerName?: string; // The shop manager who made the product sale
   // Source details
-  sourceType: 'token_sale' | 'product_sale' | 'salary' | 'incentive';
+  sourceType: 'token_sale' | 'product_sale' | 'salary' | 'incentive' | 'expense';
   customerId?: string; // Optional for salary
   customerName?: string; // Optional for salary
   tokenSerial?: string;
@@ -150,6 +150,10 @@ export interface IncomeRecord {
   // Payout ID for salaries
   payoutId?: string;
   incentiveForStage?: SalesmanStage;
+  // Expense details
+  expenseDescription?: string;
+  managerId?: string;
+  managerName?: string;
 }
 
 
@@ -244,5 +248,3 @@ export interface SalesmanDocuments {
     gsCertificate: File;
     policeReport: File;
 }
-
-    

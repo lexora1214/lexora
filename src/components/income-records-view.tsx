@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -13,7 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ArrowUpDown, Calendar as CalendarIcon, CreditCard, LoaderCircle, ShoppingBag, User as UserIcon, FileDown, Award, Wallet, ChevronDown, FileSpreadsheet, FileText } from "lucide-react";
+import { ArrowUpDown, Calendar as CalendarIcon, CreditCard, LoaderCircle, ShoppingBag, User as UserIcon, FileDown, Award, Wallet, ChevronDown, FileSpreadsheet, FileText, MinusCircle } from "lucide-react";
 import { getIncomeRecordsForUser } from "@/lib/firestore";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import {
@@ -38,7 +39,40 @@ interface IncomeRecordsViewProps {
   user: User;
 }
 
-const columns: ColumnDef<IncomeRecord>[] = [
+const IncomeRecordsView: React.FC<IncomeRecordsViewProps> = ({ user }) => {
+  const [records, setRecords] = useState<IncomeRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+    from: startOfMonth(new Date()),
+    to: endOfMonth(new Date()),
+  });
+
+  useEffect(() => {
+    const fetchRecords = async () => {
+      setLoading(true);
+      const incomeData = await getIncomeRecordsForUser(user.id);
+      setRecords(incomeData);
+      setLoading(false);
+    };
+    fetchRecords();
+  }, [user.id]);
+
+  const filteredRecords = React.useMemo(() => {
+    if (!dateRange || !dateRange.from) {
+      return records;
+    }
+    const from = dateRange.from;
+    const to = dateRange.to ? new Date(dateRange.to) : new Date(from);
+    to.setHours(23, 59, 59, 999);
+
+    return records.filter(record => {
+      const saleDate = new Date(record.saleDate);
+      return saleDate >= from && saleDate <= to;
+    });
+  }, [records, dateRange]);
+  
+  const columns: ColumnDef<IncomeRecord>[] = [
     {
         accessorKey: "saleDate",
         header: ({ column }) => (
@@ -60,12 +94,14 @@ const columns: ColumnDef<IncomeRecord>[] = [
             </div>
         ),
         cell: ({ row }) => {
+            const record = row.original;
+            const isExpense = record.sourceType === 'expense';
             const amount = parseFloat(row.getValue("amount"));
             const formatted = new Intl.NumberFormat("en-LK", {
                 style: "currency",
                 currency: "LKR",
             }).format(amount);
-            return <div className="text-right font-medium">{formatted}</div>;
+            return <div className={cn("text-right font-medium", isExpense && "text-destructive")}>{isExpense ? `- ${formatted}` : formatted}</div>;
         },
     },
     {
@@ -74,7 +110,7 @@ const columns: ColumnDef<IncomeRecord>[] = [
         cell: ({row}) => {
             const record = row.original;
             let badgeText: string;
-            let badgeVariant: 'default' | 'secondary' | 'success' | 'destructive' = 'secondary';
+            let badgeVariant: 'default' | 'secondary' | 'success' | 'destructive' | 'outline' = 'secondary';
 
             switch (record.sourceType) {
                 case 'product_sale':
@@ -91,6 +127,10 @@ const columns: ColumnDef<IncomeRecord>[] = [
                     break;
                 case 'incentive':
                     badgeText = 'Incentive';
+                    badgeVariant = 'destructive';
+                    break;
+                case 'expense':
+                    badgeText = 'Expense';
                     badgeVariant = 'destructive';
                     break;
                 default:
@@ -140,6 +180,13 @@ const columns: ColumnDef<IncomeRecord>[] = [
                             <p className="text-sm text-muted-foreground">For {format(new Date(record.saleDate), 'MMMM yyyy')} Target</p>
                         </div>
                     );
+                case 'expense':
+                    return (
+                        <div>
+                            <p className="font-medium">{record.expenseDescription}</p>
+                            <p className="text-sm text-muted-foreground">Added by: {record.managerName}</p>
+                        </div>
+                    );
                 default:
                     return null;
             }
@@ -159,45 +206,14 @@ const columns: ColumnDef<IncomeRecord>[] = [
                     return 'System Payroll';
                 case 'incentive':
                     return 'System Payroll';
+                case 'expense':
+                    return 'N/A';
                 default:
                     return 'N/A'
             }
         },
     },
 ];
-
-const IncomeRecordsView: React.FC<IncomeRecordsViewProps> = ({ user }) => {
-  const [records, setRecords] = useState<IncomeRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [sorting, setSorting] = useState<SortingState>([]);
-  const [dateRange, setDateRange] = useState<DateRange | undefined>({
-    from: startOfMonth(new Date()),
-    to: endOfMonth(new Date()),
-  });
-
-  useEffect(() => {
-    const fetchRecords = async () => {
-      setLoading(true);
-      const incomeData = await getIncomeRecordsForUser(user.id);
-      setRecords(incomeData);
-      setLoading(false);
-    };
-    fetchRecords();
-  }, [user.id]);
-
-  const filteredRecords = React.useMemo(() => {
-    if (!dateRange || !dateRange.from) {
-      return records;
-    }
-    const from = dateRange.from;
-    const to = dateRange.to ? new Date(dateRange.to) : new Date(from);
-    to.setHours(23, 59, 59, 999);
-
-    return records.filter(record => {
-      const saleDate = new Date(record.saleDate);
-      return saleDate >= from && saleDate <= to;
-    });
-  }, [records, dateRange]);
 
   const table = useReactTable({
     data: filteredRecords,
@@ -215,7 +231,7 @@ const IncomeRecordsView: React.FC<IncomeRecordsViewProps> = ({ user }) => {
     },
   });
   
-  const getSourceTypeInfo = (sourceType: 'token_sale' | 'product_sale' | 'salary' | 'incentive' | undefined) => {
+  const getSourceTypeInfo = (sourceType: 'token_sale' | 'product_sale' | 'salary' | 'incentive' | 'expense' | undefined) => {
     switch (sourceType) {
         case 'product_sale':
             return { text: 'Product Sale', variant: 'default' as const };
@@ -225,6 +241,8 @@ const IncomeRecordsView: React.FC<IncomeRecordsViewProps> = ({ user }) => {
             return { text: 'Salary', variant: 'success' as const };
         case 'incentive':
             return { text: 'Incentive', variant: 'destructive' as const };
+        case 'expense':
+            return { text: 'Expense', variant: 'destructive' as const };
         default:
             return { text: 'Unknown', variant: 'outline' as const };
     }
@@ -243,6 +261,8 @@ const IncomeRecordsView: React.FC<IncomeRecordsViewProps> = ({ user }) => {
         return `Monthly salary for ${format(new Date(record.saleDate), 'MMMM yyyy')}`;
     } else if (record.sourceType === 'incentive') {
         return `Incentive for ${format(new Date(record.saleDate), 'MMMM yyyy')} target`;
+    } else if (record.sourceType === 'expense') {
+        return `${record.expenseDescription}. Added by: ${record.managerName || 'N/A'}`;
     }
     return 'N/A';
   };
@@ -254,15 +274,19 @@ const IncomeRecordsView: React.FC<IncomeRecordsViewProps> = ({ user }) => {
     const tableRows: any[] = [];
     const tableColumns = ["Date", "Source", "Details", "Role Granted", "Amount (LKR)"];
 
-    const totalIncome = filteredRecords.reduce((sum, record) => sum + record.amount, 0);
+    const totalIncome = filteredRecords.reduce((sum, record) => {
+        return record.sourceType === 'expense' ? sum - record.amount : sum + record.amount;
+    }, 0);
 
     filteredRecords.forEach(record => {
+      const isExpense = record.sourceType === 'expense';
+      const amount = record.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       const recordData = [
         new Date(record.saleDate).toLocaleDateString(),
         getSourceTypeInfo(record.sourceType).text,
         getDetailText(record),
         record.grantedForRole,
-        record.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+        { content: isExpense ? `- ${amount}` : amount, styles: { textColor: isExpense ? '#dc2626' : '#000' } }
       ];
       tableRows.push(recordData);
     });
@@ -301,7 +325,9 @@ const IncomeRecordsView: React.FC<IncomeRecordsViewProps> = ({ user }) => {
   const handleGenerateCsv = () => {
     if (!user || filteredRecords.length === 0) return;
 
-    const totalIncome = filteredRecords.reduce((sum, record) => sum + record.amount, 0);
+    const totalIncome = filteredRecords.reduce((sum, record) => {
+        return record.sourceType === 'expense' ? sum - record.amount : sum + record.amount;
+    }, 0);
 
     const csvHeader = "Date,Source,Details,Role Granted,Amount (LKR)\n";
     const csvRows = filteredRecords.map(record => {
@@ -309,8 +335,8 @@ const IncomeRecordsView: React.FC<IncomeRecordsViewProps> = ({ user }) => {
         const source = getSourceTypeInfo(record.sourceType).text;
         const details = `"${getDetailText(record).replace(/"/g, '""')}"`;
         const role = record.grantedForRole;
-        const amount = record.amount.toFixed(2);
-        return `${date},${source},${details},${role},${amount}`;
+        const amount = record.sourceType === 'expense' ? -record.amount : record.amount;
+        return `${date},${source},${details},${role},${amount.toFixed(2)}`;
     }).join("\n");
     
     const csvFooter = `\n,,,Total,${totalIncome.toFixed(2)}`;
@@ -452,36 +478,37 @@ const IncomeRecordsView: React.FC<IncomeRecordsViewProps> = ({ user }) => {
                 table.getRowModel().rows.map((row) => {
                     const record = row.original;
                     const sourceTypeInfo = getSourceTypeInfo(record.sourceType);
+                    const isExpense = record.sourceType === 'expense';
                     
                     let detailTitle = '';
                     let detailSubtitle = '';
-                    let saleBy = '';
                     let Icon = ShoppingBag;
 
                     switch (record.sourceType) {
                         case 'product_sale':
                             detailTitle = record.productName || 'Product';
                             detailSubtitle = `for ${record.customerName}`;
-                            saleBy = record.shopManagerName || 'N/A';
                             Icon = ShoppingBag;
                             break;
                         case 'token_sale':
                             detailTitle = 'Token Sale';
                             detailSubtitle = `for ${record.customerName}`;
-                            saleBy = record.salesmanName || 'N/A';
                             Icon = CreditCard;
                             break;
                         case 'salary':
                             detailTitle = 'Monthly Salary';
                             detailSubtitle = `For ${format(new Date(record.saleDate), 'MMMM yyyy')}`;
-                            saleBy = 'System Payroll';
                             Icon = Wallet;
                             break;
                          case 'incentive':
                             detailTitle = 'Monthly Incentive';
                             detailSubtitle = `For ${format(new Date(record.saleDate), 'MMMM yyyy')}`;
-                            saleBy = 'System Payroll';
                             Icon = Award;
+                            break;
+                         case 'expense':
+                            detailTitle = record.expenseDescription || 'Expense';
+                            detailSubtitle = `Added by: ${record.managerName}`;
+                            Icon = MinusCircle;
                             break;
                     }
 
@@ -489,7 +516,9 @@ const IncomeRecordsView: React.FC<IncomeRecordsViewProps> = ({ user }) => {
                         <Card key={record.id} className="p-4 flex flex-col gap-3">
                             <div className="flex justify-between items-start">
                                 <div>
-                                    <p className="font-bold text-lg text-primary">LKR {record.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                                    <p className={cn("font-bold text-lg", isExpense ? "text-destructive" : "text-primary")}>
+                                      {isExpense ? '-' : ''} LKR {record.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </p>
                                     <Badge variant={sourceTypeInfo.variant}>
                                         {sourceTypeInfo.text}
                                     </Badge>
@@ -501,7 +530,7 @@ const IncomeRecordsView: React.FC<IncomeRecordsViewProps> = ({ user }) => {
                             </div>
                             <div className="border-t pt-3 space-y-2 text-sm text-muted-foreground">
                                 <div className="flex items-center gap-2">
-                                    <Icon className="w-4 h-4 text-primary/80"/>
+                                    <Icon className={cn("w-4 h-4", isExpense ? "text-destructive/80" : "text-primary/80")}/>
                                     <p><span className="font-medium text-card-foreground">{detailTitle}</span> {detailSubtitle}</p>
                                 </div>
                                 {record.installmentNumber && (
@@ -515,10 +544,6 @@ const IncomeRecordsView: React.FC<IncomeRecordsViewProps> = ({ user }) => {
                                         <Badge variant="outline" className="font-mono">{record.tokenSerial}</Badge>
                                     </div>
                                 )}
-                                <div className="flex items-center gap-2">
-                                    <UserIcon className="w-4 h-4 text-primary/80"/>
-                                    <p>Sale by: {saleBy}</p>
-                                </div>
                             </div>
                         </Card>
                     )
@@ -556,5 +581,3 @@ const IncomeRecordsView: React.FC<IncomeRecordsViewProps> = ({ user }) => {
 };
 
 export default IncomeRecordsView;
-
-    
