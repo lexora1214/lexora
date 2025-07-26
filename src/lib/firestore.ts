@@ -1298,7 +1298,7 @@ export async function addExpenseForSalesman(
 
     // 1. Subtract amount from salesman's total income
     batch.update(salesmanRef, {
-        totalIncome: increment(-amount)
+        totalIncome: increment(-amount) // Use negative amount to subtract
     });
 
     // 2. Create an income record with 'expense' type
