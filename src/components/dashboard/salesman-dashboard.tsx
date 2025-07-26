@@ -117,7 +117,13 @@ const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ user, allCustomer
   }, [user.id, allCustomers, allIncomeRecords, dateRange]);
 
   const { filteredCustomers, filteredIncomeRecords } = filteredData;
-  const personalIncome = filteredIncomeRecords.reduce((acc, r) => acc + r.amount, 0);
+  
+  const personalIncome = filteredIncomeRecords.reduce((acc, r) => {
+    if (r.sourceType === 'expense') {
+      return acc - r.amount;
+    }
+    return acc + r.amount;
+  }, 0);
 
   // Data for the pie chart
   const usedTokens = filteredCustomers.filter(c => !c.tokenIsAvailable).length;
@@ -266,3 +272,4 @@ const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ user, allCustomer
 };
 
 export default SalesmanDashboard;
+
