@@ -174,7 +174,6 @@ export async function createCustomer(customerData: Omit<Customer, 'id' | 'saleDa
         commissionStatus: 'pending',
         tokenIsAvailable: true,
         branch: salesman.branch,
-        // Ensure null for cash payment if fields are not provided
         downPayment: customerData.downPayment ?? null,
         installments: customerData.paymentMethod === 'cash' ? null : (customerData.installments ?? null),
         monthlyInstallment: customerData.paymentMethod === 'cash' ? null : (customerData.monthlyInstallment ?? null),
@@ -488,33 +487,40 @@ export async function createProductSaleAndDistributeCommissions(
         const saleDate = new Date().toISOString();
         
         // Create a mutable copy of formData to clean it before creating the final object
-        const cleanFormData = { ...formData };
-        if (cleanFormData.paymentMethod === 'cash') {
-            cleanFormData.installments = undefined;
-            cleanFormData.monthlyInstallment = undefined;
-            cleanFormData.downPayment = undefined;
-        }
-        
-        const newSale: ProductSale = {
+        const cleanFormData: Partial<ProductSale> = {
             id: newSaleRef.id,
-            productId: cleanFormData.productId,
-            productName: cleanFormData.productName,
-            productCode: cleanFormData.productCode,
-            price: cleanFormData.totalValue,
-            paymentMethod: cleanFormData.paymentMethod,
+            productId: formData.productId,
+            productName: formData.productName,
+            productCode: formData.productCode,
+            price: formData.totalValue,
+            paymentMethod: formData.paymentMethod,
             customerId: customerId,
             customerName: customerName,
-            tokenSerial: cleanFormData.customerToken,
+            tokenSerial: formData.customerToken,
             saleDate,
             shopManagerId: shopManager.id,
             shopManagerName: shopManager.name,
             deliveryStatus: 'pending',
-            installments: cleanFormData.installments ?? null,
-            monthlyInstallment: cleanFormData.monthlyInstallment ?? null,
-            paidInstallments: cleanFormData.paymentMethod === 'installments' ? 0 : undefined,
-            recoveryStatus: cleanFormData.paymentMethod === 'installments' ? 'pending' : undefined,
-            requestedDeliveryDate: cleanFormData.requestedDeliveryDate?.toISOString()
         };
+
+        if (formData.paymentMethod === 'installments') {
+            cleanFormData.installments = formData.installments ?? null;
+            cleanFormData.monthlyInstallment = formData.monthlyInstallment ?? null;
+            cleanFormData.paidInstallments = 0;
+            cleanFormData.recoveryStatus = 'pending';
+        } else {
+            // Ensure installment fields are not set for cash sales
+            cleanFormData.installments = undefined;
+            cleanFormData.monthlyInstallment = undefined;
+            cleanFormData.paidInstallments = undefined;
+            cleanFormData.recoveryStatus = undefined;
+        }
+
+        if (formData.requestedDeliveryDate) {
+            cleanFormData.requestedDeliveryDate = formData.requestedDeliveryDate.toISOString();
+        }
+        
+        const newSale: ProductSale = cleanFormData as ProductSale;
         
         // --- ALL WRITES HAPPEN LAST ---
         
@@ -525,13 +531,13 @@ export async function createProductSaleAndDistributeCommissions(
         if (customer.tokenIsAvailable) {
             transaction.update(customerDocRef, {
                 tokenIsAvailable: false,
-                purchasingItem: cleanFormData.productName,
-                purchasingItemCode: cleanFormData.productCode ?? null,
-                totalValue: cleanFormData.totalValue,
-                discountValue: cleanFormData.discountValue ?? null,
-                downPayment: cleanFormData.downPayment ?? null,
-                installments: cleanFormData.installments ?? null,
-                monthlyInstallment: cleanFormData.monthlyInstallment ?? null,
+                purchasingItem: newSale.productName,
+                purchasingItemCode: newSale.productCode ?? null,
+                totalValue: newSale.price,
+                discountValue: formData.discountValue ?? null,
+                downPayment: formData.downPayment ?? null,
+                installments: newSale.installments,
+                monthlyInstallment: newSale.monthlyInstallment,
             });
         }
 
@@ -539,7 +545,7 @@ export async function createProductSaleAndDistributeCommissions(
         transaction.set(newSaleRef, newSale);
 
         // WRITE 4+: Distribute commissions if it's a cash payment
-        if (cleanFormData.paymentMethod === 'cash') {
+        if (newSale.paymentMethod === 'cash') {
             const salesman = allUsers.find(u => u.id === customer.salesmanId);
             if (!salesman) {
                 throw new Error(`Could not find the original salesman (ID: ${customer.salesmanId}) for this token.`);
