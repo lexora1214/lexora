@@ -201,6 +201,11 @@ export default function UserManagementTable({ user: loggedInUser, data, allIncom
       filterFn: (row, id, value) => (row.getValue(id) as string).toLowerCase().includes(String(value).toLowerCase()),
     },
     {
+      accessorKey: "nic",
+      header: "NIC",
+      cell: ({ row }) => row.original.nic || 'N/A',
+    },
+    {
       accessorKey: "mobileNumber",
       header: "Mobile Number",
       cell: ({ row }) => row.original.mobileNumber || 'N/A',
@@ -571,6 +576,7 @@ export default function UserManagementTable({ user: loggedInUser, data, allIncom
                     if (column.id === 'periodIncome') displayName = 'Income (Period)';
                     if (column.id === 'name') displayName = 'Name';
                     if (column.id === 'email') displayName = 'Email';
+                    if (column.id === 'nic') displayName = 'NIC';
                     if (column.id === 'mobileNumber') displayName = 'Mobile Number';
                     if (column.id === 'referralCode') displayName = 'Referral Code';
                     if (column.id === 'role') displayName = 'Role';

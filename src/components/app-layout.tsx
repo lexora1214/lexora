@@ -153,9 +153,9 @@ const navItems: NavItem[] = [
     children: [
         { href: "#", icon: DollarSign, label: "Commission Approvals", roles: ["Admin", "Super Admin"] },
         { href: "#", icon: ShieldQuestion, label: "Salary Approvals", roles: ["Super Admin"] },
+        { href: "#", icon: UserCheck, label: "Salesman Verification", roles: ["Admin", "Super Admin"] },
     ]
   },
-  { href: "#", icon: UserCheck, label: "Salesman Verification", roles: ["Admin", "Super Admin"] },
   { href: "#", icon: Receipt, label: "Slip Management", roles: ["Admin", "Super Admin"] },
   { href: "#", icon: Network, label: "Network View", roles: ["Admin", "Super Admin"] },
   { 
@@ -399,13 +399,13 @@ const AppLayout = ({ user }: { user: User }) => {
           case "Salesman":
             return <SalesmanDashboard user={user} allCustomers={allCustomers} allIncomeRecords={allIncomeRecords} allCommissionRequests={allCommissionRequests} allStockItems={allStockItems} />;
           case "Team Operation Manager":
-            return <ManagerDashboard user={user} allUsers={allUsers} allIncomeRecords={allIncomeRecords} />;
+            return <ManagerDashboard user={user} allUsers={allUsers} allIncomeRecords={allIncomeRecords} allCustomers={allCustomers} />;
           case "Delivery Boy":
             return <DeliveryBoyDashboard user={user} />;
           case "Recovery Officer":
             return <RecoveryOfficerDashboard user={user} />;
           default:
-            return <ManagerDashboard user={user} allUsers={allUsers} allIncomeRecords={allIncomeRecords} />;
+            return <ManagerDashboard user={user} allUsers={allUsers} allIncomeRecords={allIncomeRecords} allCustomers={allCustomers} />;
         }
       case "Stock Management":
         return <StockManagementView manager={user} />;

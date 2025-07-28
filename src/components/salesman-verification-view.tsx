@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useMemo } from 'react';
@@ -6,17 +7,8 @@ import { User } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Download, UserCheck, ShieldAlert } from 'lucide-react';
+import { UserCheck, ShieldAlert, Fingerprint } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { updateUser } from '@/lib/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -29,24 +21,24 @@ const SalesmanVerificationView: React.FC<SalesmanVerificationViewProps> = ({ all
   const { toast } = useToast();
   const [processingId, setProcessingId] = useState<string | null>(null);
 
-  const pendingSalesmen = useMemo(() => {
-    return allUsers.filter(user => user.role === 'Salesman' && user.isDisabled);
+  const pendingUsers = useMemo(() => {
+    return allUsers.filter(user => user.isDisabled);
   }, [allUsers]);
 
-  const handleEnableSalesman = async (userId: string) => {
+  const handleEnableUser = async (userId: string) => {
     setProcessingId(userId);
     try {
       await updateUser(userId, { isDisabled: false });
       toast({
-        title: 'Salesman Enabled',
-        description: 'The salesman account has been successfully enabled and can now log in.',
+        title: 'User Enabled',
+        description: 'The user account has been successfully enabled and can now log in.',
         className: 'bg-success text-success-foreground',
       });
     } catch (error: any) {
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: `Failed to enable salesman: ${error.message}`,
+        description: `Failed to enable user: ${error.message}`,
       });
     } finally {
       setProcessingId(null);
@@ -56,9 +48,9 @@ const SalesmanVerificationView: React.FC<SalesmanVerificationViewProps> = ({ all
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Salesman Account Verification</CardTitle>
+        <CardTitle>New User Account Verification</CardTitle>
         <CardDescription>
-          Review the documents for newly registered salesmen and enable their accounts.
+          Review the details for newly registered users and enable their accounts.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -66,15 +58,15 @@ const SalesmanVerificationView: React.FC<SalesmanVerificationViewProps> = ({ all
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Salesman</TableHead>
+                <TableHead>User</TableHead>
                 <TableHead>Registered On</TableHead>
-                <TableHead>Documents</TableHead>
+                <TableHead>NIC</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {pendingSalesmen.length > 0 ? (
-                pendingSalesmen.map(user => (
+              {pendingUsers.length > 0 ? (
+                pendingUsers.map(user => (
                   <TableRow key={user.id}>
                     <TableCell>
                       <div className="flex items-center gap-3">
@@ -90,34 +82,15 @@ const SalesmanVerificationView: React.FC<SalesmanVerificationViewProps> = ({ all
                     </TableCell>
                     <TableCell>{format(new Date(user.createdAt), 'PPP')}</TableCell>
                     <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="outline" size="sm">
-                            <Download className="mr-2 h-4 w-4" /> View Files
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                          <DropdownMenuLabel>Verification Documents</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem asChild>
-                            <a href={user.nicFrontUrl} target="_blank" rel="noopener noreferrer">NIC Front</a>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem asChild>
-                            <a href={user.nicBackUrl} target="_blank" rel="noopener noreferrer">NIC Back</a>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem asChild>
-                            <a href={user.gsCertificateUrl} target="_blank" rel="noopener noreferrer">GS Certificate</a>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem asChild>
-                             <a href={user.policeReportUrl} target="_blank" rel="noopener noreferrer">Police Report</a>
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <div className="flex items-center gap-2">
+                        <Fingerprint className="h-4 w-4 text-muted-foreground" />
+                        <span>{user.nic || "Not Provided"}</span>
+                      </div>
                     </TableCell>
                     <TableCell className="text-right">
                       <Button
                         size="sm"
-                        onClick={() => handleEnableSalesman(user.id)}
+                        onClick={() => handleEnableUser(user.id)}
                         disabled={!!processingId}
                         className="bg-success text-success-foreground hover:bg-success/90"
                       >
@@ -132,7 +105,7 @@ const SalesmanVerificationView: React.FC<SalesmanVerificationViewProps> = ({ all
                   <TableCell colSpan={4} className="h-24 text-center">
                      <div className="flex flex-col items-center justify-center gap-2">
                         <ShieldAlert className="h-8 w-8 text-muted-foreground" />
-                        <p className="text-muted-foreground">No salesmen are pending verification.</p>
+                        <p className="text-muted-foreground">No users are pending verification.</p>
                      </div>
                   </TableCell>
                 </TableRow>
