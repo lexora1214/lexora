@@ -488,33 +488,36 @@ export async function createProductSaleAndDistributeCommissions(
         const newSaleRef = doc(collection(db, "productSales"));
         const saleDate = new Date().toISOString();
         
+        // Create a mutable copy of formData to clean it before creating the final object
+        const cleanFormData = { ...formData };
+        if (cleanFormData.paymentMethod === 'cash') {
+            cleanFormData.installments = undefined;
+            cleanFormData.monthlyInstallment = undefined;
+            cleanFormData.downPayment = undefined;
+        }
+        
         const newSale: ProductSale = {
             id: newSaleRef.id,
-            productId: formData.productId,
-            productName: formData.productName,
-            productCode: formData.productCode,
-            price: formData.totalValue,
-            paymentMethod: formData.paymentMethod,
+            productId: cleanFormData.productId,
+            productName: cleanFormData.productName,
+            productCode: cleanFormData.productCode,
+            price: cleanFormData.totalValue,
+            paymentMethod: cleanFormData.paymentMethod,
             customerId: customerId,
             customerName: customerName,
-            tokenSerial: formData.customerToken,
+            tokenSerial: cleanFormData.customerToken,
             saleDate,
             shopManagerId: shopManager.id,
             shopManagerName: shopManager.name,
             deliveryStatus: 'pending',
-            requestedDeliveryDate: formData.requestedDeliveryDate?.toISOString(),
+            installments: cleanFormData.installments,
+            monthlyInstallment: cleanFormData.monthlyInstallment,
+            paidInstallments: cleanFormData.paymentMethod === 'installments' ? 0 : undefined,
+            recoveryStatus: cleanFormData.paymentMethod === 'installments' ? 'pending' : undefined,
         };
 
-        if (formData.paymentMethod === 'installments') {
-            newSale.installments = formData.installments ?? undefined;
-            newSale.monthlyInstallment = formData.monthlyInstallment ?? undefined;
-            newSale.paidInstallments = 0;
-            newSale.recoveryStatus = 'pending';
-        } else {
-             newSale.installments = undefined;
-            newSale.monthlyInstallment = undefined;
-            newSale.paidInstallments = undefined;
-            newSale.recoveryStatus = undefined;
+        if (cleanFormData.requestedDeliveryDate) {
+            newSale.requestedDeliveryDate = cleanFormData.requestedDeliveryDate.toISOString();
         }
         
         // --- ALL WRITES HAPPEN LAST ---
@@ -526,13 +529,13 @@ export async function createProductSaleAndDistributeCommissions(
         if (customer.tokenIsAvailable) {
             transaction.update(customerDocRef, {
                 tokenIsAvailable: false,
-                purchasingItem: formData.productName,
-                purchasingItemCode: formData.productCode ?? null,
-                totalValue: formData.totalValue,
-                discountValue: formData.discountValue ?? null,
-                downPayment: formData.downPayment ?? null,
-                installments: formData.installments ?? null,
-                monthlyInstallment: formData.monthlyInstallment ?? null,
+                purchasingItem: cleanFormData.productName,
+                purchasingItemCode: cleanFormData.productCode ?? null,
+                totalValue: cleanFormData.totalValue,
+                discountValue: cleanFormData.discountValue ?? null,
+                downPayment: cleanFormData.downPayment ?? null,
+                installments: cleanFormData.installments ?? null,
+                monthlyInstallment: cleanFormData.monthlyInstallment ?? null,
             });
         }
 
@@ -540,7 +543,7 @@ export async function createProductSaleAndDistributeCommissions(
         transaction.set(newSaleRef, newSale);
 
         // WRITE 4+: Distribute commissions if it's a cash payment
-        if (formData.paymentMethod === 'cash') {
+        if (cleanFormData.paymentMethod === 'cash') {
             const salesman = allUsers.find(u => u.id === customer.salesmanId);
             if (!salesman) {
                 throw new Error(`Could not find the original salesman (ID: ${customer.salesmanId}) for this token.`);

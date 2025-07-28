@@ -140,16 +140,8 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
         throw new Error("Invalid customer selected.");
       }
 
-      // Explicitly nullify installment fields if payment is cash
-      const payload = {...data};
-      if (payload.paymentMethod === 'cash') {
-        payload.installments = undefined;
-        payload.monthlyInstallment = undefined;
-        payload.downPayment = undefined;
-      }
-
       await createProductSaleAndDistributeCommissions(
-        payload,
+        data,
         shopManager,
         selectedCustomer.id,
         selectedCustomer.name,
@@ -227,10 +219,17 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
                                       
                                       setValue('productName', customer.purchasingItem || '');
                                       setValue('productCode', customer.purchasingItemCode || '');
-                                      // Price is now set by payment method watcher
+                                      setValue('paymentMethod', customer.paymentMethod || 'cash');
                                       setValue('discountValue', customer.discountValue || undefined);
-                                      setValue('installments', customer.installments || undefined);
                                       setValue('downPayment', customer.downPayment || undefined);
+                                      setValue('installments', customer.installments || undefined);
+                                      
+                                      if(customer.paymentMethod === 'cash') {
+                                        setValue('totalValue', selectedStockItem?.priceCash || customer.totalValue || 0);
+                                      } else {
+                                        setValue('totalValue', selectedStockItem?.priceInstallment || customer.totalValue || 0);
+                                      }
+
                                       if (customer.requestedDeliveryDate) {
                                         setValue('requestedDeliveryDate', new Date(customer.requestedDeliveryDate));
                                       } else {
