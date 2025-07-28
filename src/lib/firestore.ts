@@ -91,7 +91,7 @@ export async function createUserProfile(
     totalIncome: 0,
     avatar: ``,
     createdAt: new Date().toISOString(),
-    isDisabled: role === 'Salesman', // Salesmen are disabled by default
+    isDisabled: true, // New users are disabled by default
     ...(branch && { branch }),
     ...(role === 'Salesman' && { salesmanStage }),
     ...documentUrls,

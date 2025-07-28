@@ -19,6 +19,7 @@ export interface User {
   name: string;
   email: string;
   mobileNumber: string;
+  nic?: string;
   role: Role;
   referrerId: string | null;
   referralCode: string;
@@ -262,5 +263,3 @@ export interface SalesmanDocuments {
     gsCertificate: File;
     policeReport: File;
 }
-
-    

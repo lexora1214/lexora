@@ -34,8 +34,9 @@ export default function LoginPage() {
         await signOut(auth);
         toast({
           variant: "destructive",
-          title: "Login Failed",
-          description: "Your account is disabled. Please contact an administrator.",
+          title: "Account Disabled",
+          description: "Your account requires admin approval before you can log in.",
+          duration: 8000,
         });
         setIsLoading(false);
         return;

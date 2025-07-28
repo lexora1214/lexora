@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -32,6 +33,7 @@ type SignupData = {
   email: string;
   mobileNumber: string;
   password: string;
+  nic: string;
   role: Role;
   branch?: string;
   referralCode: string;
@@ -46,6 +48,7 @@ export default function SignupPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [mobileNumber, setMobileNumber] = useState("");
+  const [nic, setNic] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<Role | "">("");
   const [branch, setBranch] = useState("");
@@ -100,6 +103,11 @@ export default function SignupPage() {
         setIsLoading(false);
         return;
     }
+    if (!nic || (nic.length !== 10 && nic.length !== 12)) {
+        toast({ variant: "destructive", title: "Sign Up Failed", description: "Please enter a valid NIC number." });
+        setIsLoading(false);
+        return;
+    }
     if (!role) {
       toast({ variant: "destructive", title: "Sign Up Failed", description: "Please select a role." });
       setIsLoading(false);
@@ -124,7 +132,7 @@ export default function SignupPage() {
 
       // Store form data to be used after OTP verification
       setSignupData({
-        name, email, mobileNumber, password, role,
+        name, email, mobileNumber, password, nic, role,
         branch: isBranchRequired ? branch : undefined,
         referralCode,
         salesmanStage: isSalesman ? salesmanStage : undefined,
@@ -178,15 +186,18 @@ export default function SignupPage() {
         signupData.role as Role,
         signupData.referralCode.toUpperCase(),
         signupData.branch,
-        signupData.salesmanStage
+        signupData.salesmanStage,
+        undefined, // Documents are not uploaded here
+        { nic: signupData.nic }
       );
       
       toast({
         title: "Account Created",
-        description: "You have been successfully signed up.",
+        description: "You have been successfully signed up. Your account requires admin approval before you can log in.",
         className: "bg-success text-success-foreground",
+        duration: 8000,
       });
-      router.push("/");
+      router.push("/login");
 
     } catch (error: any) {
         let errorMessage = error.message;
@@ -272,6 +283,10 @@ export default function SignupPage() {
                  <div className="grid gap-2">
                     <Label htmlFor="mobileNumber">Mobile Number</Label>
                     <Input id="mobileNumber" type="tel" placeholder="0712345678" required value={mobileNumber} onChange={(e) => setMobileNumber(e.target.value)} />
+                </div>
+                <div className="grid gap-2">
+                    <Label htmlFor="nic">NIC Number</Label>
+                    <Input id="nic" placeholder="e.g. 991234567V or 199912345678" required value={nic} onChange={(e) => setNic(e.target.value)} />
                 </div>
                 <div className="grid gap-2">
                     <Label htmlFor="password">Password</Label>

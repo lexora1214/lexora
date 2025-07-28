@@ -9,16 +9,26 @@ import { doc, onSnapshot } from "firebase/firestore";
 import AppLayout from "@/components/app-layout";
 import { User } from "@/types";
 import { LoaderCircle, Ban } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { signOut } from "firebase/auth";
 
-const DisabledUserView = () => (
-  <div className="flex flex-col items-center justify-center h-screen bg-auth-gradient text-center p-4">
-    <Ban className="h-16 w-16 text-destructive mb-4" />
-    <h1 className="text-2xl font-bold text-foreground mb-2">Account Disabled</h1>
-    <p className="text-muted-foreground">
-      Your account has been disabled. Please contact an administrator to regain access.
-    </p>
-  </div>
-);
+const DisabledUserView = () => {
+  const router = useRouter();
+  const handleLogout = async () => {
+    await signOut(auth);
+    router.push("/login");
+  };
+  return (
+    <div className="flex flex-col items-center justify-center h-screen bg-auth-gradient text-center p-4">
+      <Ban className="h-16 w-16 text-destructive mb-4" />
+      <h1 className="text-2xl font-bold text-foreground mb-2">Account Disabled</h1>
+      <p className="text-muted-foreground mb-6 max-w-sm">
+        Your account is currently disabled. It may be pending administrator approval or has been deactivated. Please contact an administrator for assistance.
+      </p>
+      <Button onClick={handleLogout}>Back to Login</Button>
+    </div>
+  );
+};
 
 
 export default function Home() {
