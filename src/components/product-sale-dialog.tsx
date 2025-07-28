@@ -139,9 +139,15 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
       if (!selectedCustomer) {
         throw new Error("Invalid customer selected.");
       }
+      
+      const submissionData = { ...data };
+      if (submissionData.paymentMethod === 'cash') {
+          submissionData.installments = undefined;
+          submissionData.monthlyInstallment = undefined;
+      }
 
       await createProductSaleAndDistributeCommissions(
-        data,
+        submissionData,
         shopManager,
         selectedCustomer.id,
         selectedCustomer.name,
@@ -439,3 +445,4 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
 };
 
 export default ProductSaleDialog;
+

@@ -175,8 +175,8 @@ export async function createCustomer(customerData: Omit<Customer, 'id' | 'saleDa
         tokenIsAvailable: true,
         branch: salesman.branch,
         downPayment: customerData.downPayment ?? null,
-        installments: customerData.paymentMethod === 'cash' ? null : (customerData.installments ?? null),
-        monthlyInstallment: customerData.paymentMethod === 'cash' ? null : (customerData.monthlyInstallment ?? null),
+        installments: customerData.installments ?? null,
+        monthlyInstallment: customerData.monthlyInstallment ?? null,
     };
 
     batch.set(newCustomerRef, newCustomer);
@@ -487,7 +487,7 @@ export async function createProductSaleAndDistributeCommissions(
         const saleDate = new Date().toISOString();
         
         // Create the new product sale record
-        const newSaleData: ProductSale = {
+        let newSaleData: ProductSale = {
             id: newSaleRef.id,
             productId: formData.productId,
             productName: formData.productName,
@@ -501,12 +501,18 @@ export async function createProductSaleAndDistributeCommissions(
             shopManagerId: shopManager.id,
             shopManagerName: shopManager.name,
             deliveryStatus: 'pending',
-            installments: formData.paymentMethod === 'installments' ? formData.installments ?? null : null,
-            monthlyInstallment: formData.paymentMethod === 'installments' ? formData.monthlyInstallment ?? null : null,
-            paidInstallments: formData.paymentMethod === 'installments' ? 0 : undefined,
-            recoveryStatus: formData.paymentMethod === 'installments' ? 'pending' : undefined,
-            requestedDeliveryDate: formData.requestedDeliveryDate ? formData.requestedDeliveryDate.toISOString() : undefined,
         };
+
+        if (formData.requestedDeliveryDate) {
+          newSaleData.requestedDeliveryDate = formData.requestedDeliveryDate.toISOString();
+        }
+
+        if (newSaleData.paymentMethod === 'installments') {
+            newSaleData.installments = formData.installments ?? null;
+            newSaleData.monthlyInstallment = formData.monthlyInstallment ?? null;
+            newSaleData.paidInstallments = 0;
+            newSaleData.recoveryStatus = 'pending';
+        }
 
         
         // --- ALL WRITES HAPPEN LAST ---
@@ -1377,3 +1383,4 @@ export async function addExpenseForSalesman(
 export async function sendOtpSms(mobileNumber: string, otp: string): Promise<{success: boolean, error?: string}> {
     return sendSmsForOtp(mobileNumber, otp);
 }
+
