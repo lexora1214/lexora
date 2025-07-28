@@ -13,11 +13,11 @@ import { format } from 'date-fns';
 import { updateUser } from '@/lib/firestore';
 import { useToast } from '@/hooks/use-toast';
 
-interface SalesmanVerificationViewProps {
+interface NewUserVerificationViewProps {
   allUsers: User[];
 }
 
-const SalesmanVerificationView: React.FC<SalesmanVerificationViewProps> = ({ allUsers }) => {
+const NewUserVerificationView: React.FC<NewUserVerificationViewProps> = ({ allUsers }) => {
   const { toast } = useToast();
   const [processingId, setProcessingId] = useState<string | null>(null);
 
@@ -48,7 +48,7 @@ const SalesmanVerificationView: React.FC<SalesmanVerificationViewProps> = ({ all
   return (
     <Card>
       <CardHeader>
-        <CardTitle>New User Account Verification</CardTitle>
+        <CardTitle>New User Verification</CardTitle>
         <CardDescription>
           Review the details for newly registered users and enable their accounts.
         </CardDescription>
@@ -118,4 +118,4 @@ const SalesmanVerificationView: React.FC<SalesmanVerificationViewProps> = ({ all
   );
 };
 
-export default SalesmanVerificationView;
+export default NewUserVerificationView;

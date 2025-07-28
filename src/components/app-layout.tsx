@@ -95,7 +95,7 @@ import TargetAchieversView from "./target-achievers-view";
 import AddBranchAdminView from "./add-branch-admin-view";
 import SlipManagementView from "./slip-management-view";
 import RemindersView from "./reminders-view";
-import SalesmanVerificationView from "./salesman-verification-view";
+import NewUserVerificationView from "./new-user-verification-view";
 import LiveLocationView from "./live-location-view";
 import LocationTracker from "./location-tracker";
 import AddExpenseView from "./add-expense-view";
@@ -153,7 +153,7 @@ const navItems: NavItem[] = [
     children: [
         { href: "#", icon: DollarSign, label: "Commission Approvals", roles: ["Admin", "Super Admin"] },
         { href: "#", icon: ShieldQuestion, label: "Salary Approvals", roles: ["Super Admin"] },
-        { href: "#", icon: UserCheck, label: "Salesman Verification", roles: ["Admin", "Super Admin"] },
+        { href: "#", icon: UserCheck, label: "New User Verification", roles: ["Admin", "Super Admin"] },
     ]
   },
   { href: "#", icon: Receipt, label: "Slip Management", roles: ["Admin", "Super Admin"] },
@@ -477,8 +477,8 @@ const AppLayout = ({ user }: { user: User }) => {
         );
       case "Commission Approvals":
         return <CommissionApprovalView user={user} />;
-      case "Salesman Verification":
-        return <SalesmanVerificationView allUsers={allUsers} />;
+      case "New User Verification":
+        return <NewUserVerificationView allUsers={allUsers} />;
       case "Slip Management":
         return <SlipManagementView allCommissionRequests={allCommissionRequests} />;
       case "Network View":
