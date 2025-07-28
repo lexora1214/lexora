@@ -486,8 +486,8 @@ export async function createProductSaleAndDistributeCommissions(
         const newSaleRef = doc(collection(db, "productSales"));
         const saleDate = new Date().toISOString();
         
-        // Create a mutable copy of formData to clean it before creating the final object
-        const cleanFormData: Partial<ProductSale> = {
+        // Create the new product sale record
+        const newSaleData: ProductSale = {
             id: newSaleRef.id,
             productId: formData.productId,
             productName: formData.productName,
@@ -501,26 +501,13 @@ export async function createProductSaleAndDistributeCommissions(
             shopManagerId: shopManager.id,
             shopManagerName: shopManager.name,
             deliveryStatus: 'pending',
+            installments: formData.paymentMethod === 'installments' ? formData.installments ?? null : null,
+            monthlyInstallment: formData.paymentMethod === 'installments' ? formData.monthlyInstallment ?? null : null,
+            paidInstallments: formData.paymentMethod === 'installments' ? 0 : undefined,
+            recoveryStatus: formData.paymentMethod === 'installments' ? 'pending' : undefined,
+            requestedDeliveryDate: formData.requestedDeliveryDate ? formData.requestedDeliveryDate.toISOString() : undefined,
         };
 
-        if (formData.paymentMethod === 'installments') {
-            cleanFormData.installments = formData.installments ?? null;
-            cleanFormData.monthlyInstallment = formData.monthlyInstallment ?? null;
-            cleanFormData.paidInstallments = 0;
-            cleanFormData.recoveryStatus = 'pending';
-        } else {
-            // Ensure installment fields are not set for cash sales
-            cleanFormData.installments = undefined;
-            cleanFormData.monthlyInstallment = undefined;
-            cleanFormData.paidInstallments = undefined;
-            cleanFormData.recoveryStatus = undefined;
-        }
-
-        if (formData.requestedDeliveryDate) {
-            cleanFormData.requestedDeliveryDate = formData.requestedDeliveryDate.toISOString();
-        }
-        
-        const newSale: ProductSale = cleanFormData as ProductSale;
         
         // --- ALL WRITES HAPPEN LAST ---
         
@@ -531,28 +518,28 @@ export async function createProductSaleAndDistributeCommissions(
         if (customer.tokenIsAvailable) {
             transaction.update(customerDocRef, {
                 tokenIsAvailable: false,
-                purchasingItem: newSale.productName,
-                purchasingItemCode: newSale.productCode ?? null,
-                totalValue: newSale.price,
+                purchasingItem: newSaleData.productName,
+                purchasingItemCode: newSaleData.productCode ?? null,
+                totalValue: newSaleData.price,
                 discountValue: formData.discountValue ?? null,
                 downPayment: formData.downPayment ?? null,
-                installments: newSale.installments,
-                monthlyInstallment: newSale.monthlyInstallment,
+                installments: newSaleData.installments,
+                monthlyInstallment: newSaleData.monthlyInstallment,
             });
         }
 
         // WRITE 3: Create the new product sale record
-        transaction.set(newSaleRef, newSale);
+        transaction.set(newSaleRef, newSaleData);
 
         // WRITE 4+: Distribute commissions if it's a cash payment
-        if (newSale.paymentMethod === 'cash') {
+        if (newSaleData.paymentMethod === 'cash') {
             const salesman = allUsers.find(u => u.id === customer.salesmanId);
             if (!salesman) {
                 throw new Error(`Could not find the original salesman (ID: ${customer.salesmanId}) for this token.`);
             }
             
             const applicableTier = productSettings.tiers.find(tier => 
-                newSale.price >= tier.minPrice && (tier.maxPrice === null || newSale.price <= tier.maxPrice)
+                newSaleData.price >= tier.minPrice && (tier.maxPrice === null || newSaleData.price <= tier.maxPrice)
             );
             
             if (applicableTier) {
@@ -578,13 +565,13 @@ export async function createProductSaleAndDistributeCommissions(
                                 salesmanName: salesman.name,
                                 shopManagerName: shopManager.name,
                                 sourceType: 'product_sale',
-                                productSaleId: newSale.id,
+                                productSaleId: newSaleData.id,
                                 customerId: customer.id,
                                 customerName: customer.name,
-                                tokenSerial: newSale.tokenSerial,
-                                productName: newSale.productName,
-                                productPrice: newSale.price,
-                                paymentMethod: newSale.paymentMethod,
+                                tokenSerial: newSaleData.tokenSerial,
+                                productName: newSaleData.productName,
+                                productPrice: newSaleData.price,
+                                paymentMethod: newSaleData.paymentMethod,
                             };
                             transaction.set(incomeRecordRef, newIncomeRecord);
                         }
@@ -612,13 +599,13 @@ export async function createProductSaleAndDistributeCommissions(
                                 salesmanName: salesman.name,
                                 shopManagerName: shopManager.name,
                                 sourceType: 'product_sale',
-                                productSaleId: newSale.id,
+                                productSaleId: newSaleData.id,
                                 customerId: customer.id,
                                 customerName: customer.name,
-                                tokenSerial: newSale.tokenSerial,
-                                productName: newSale.productName,
-                                productPrice: newSale.price,
-                                paymentMethod: newSale.paymentMethod,
+                                tokenSerial: newSaleData.tokenSerial,
+                                productName: newSaleData.productName,
+                                productPrice: newSaleData.price,
+                                paymentMethod: newSaleData.paymentMethod,
                             };
                             transaction.set(incomeRecordRef, newIncomeRecord);
                         }
