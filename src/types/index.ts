@@ -150,7 +150,7 @@ export interface IncomeRecord {
   installmentNumber?: number;
   // Payout ID for salaries
   payoutId?: string;
-  incentiveForStage?: SalesmanStage;
+  incentiveForRole?: Role | SalesmanStage;
   // Expense details
   expenseDescription?: string;
   managerId?: string;
@@ -230,15 +230,15 @@ export interface StockItem {
   lastUpdatedAt: string;
 }
 
-export type SalesmanIncentive = {
+export type IncentiveSetting = {
   target: number;
   incentive: number;
 };
 
-export interface SalesmanIncentiveSettings {
-  "BUSINESS PROMOTER (stage 01)": SalesmanIncentive;
-  "MARKETING EXECUTIVE (stage 02)": SalesmanIncentive;
-}
+export type IncentiveSettings = {
+    [key in Role | SalesmanStage]?: IncentiveSetting;
+};
+
 
 export interface Reminder {
   id: string;

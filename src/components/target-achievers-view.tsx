@@ -2,23 +2,24 @@
 "use client";
 
 import React, { useEffect, useState, useMemo } from 'react';
-import { User, Customer, SalesmanIncentiveSettings } from '@/types';
-import { getSalesmanIncentiveSettings } from '@/lib/firestore';
+import { User, Customer, IncentiveSettings } from '@/types';
+import { getIncentiveSettings } from '@/lib/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { LoaderCircle, Award, Target, Calendar as CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
+import { LoaderCircle, Award, Target, ChevronLeft, ChevronRight } from 'lucide-react';
 import { startOfMonth, endOfMonth, format, subMonths, addMonths } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Progress } from './ui/progress';
+import { getDownlineIdsAndUsers } from '@/lib/hierarchy';
 
 interface TargetAchieversViewProps {
   allUsers: User[];
   allCustomers: Customer[];
 }
 
-interface SalesmanProgressInfo {
+interface UserProgressInfo {
   user: User;
   salesCount: number;
   target: number;
@@ -28,40 +29,61 @@ interface SalesmanProgressInfo {
 }
 
 const TargetAchieversView: React.FC<TargetAchieversViewProps> = ({ allUsers, allCustomers }) => {
-  const [incentiveSettings, setIncentiveSettings] = useState<SalesmanIncentiveSettings | null>(null);
+  const [incentiveSettings, setIncentiveSettings] = useState<IncentiveSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState<Date>(new Date());
 
   useEffect(() => {
-    getSalesmanIncentiveSettings()
+    getIncentiveSettings()
       .then(setIncentiveSettings)
       .catch(err => console.error("Failed to fetch incentive settings:", err))
       .finally(() => setLoading(false));
   }, []);
 
-  const salesmenProgress = useMemo(() => {
+  const userProgress = useMemo(() => {
     if (!incentiveSettings) return [];
 
     const monthStart = startOfMonth(selectedMonth);
     const monthEnd = endOfMonth(selectedMonth);
+    
+    const progressList: UserProgressInfo[] = [];
 
-    const salesmen = allUsers.filter(u => u.role === 'Salesman' && u.salesmanStage);
-    const progressList: SalesmanProgressInfo[] = [];
+    const eligibleUsers = allUsers.filter(u => 
+        u.role === 'Salesman' ||
+        u.role === 'Team Operation Manager' ||
+        u.role === 'Group Operation Manager' ||
+        u.role === 'Head Group Manager' ||
+        u.role === 'Regional Director'
+    );
 
-    for (const salesman of salesmen) {
-      const stageSettings = incentiveSettings[salesman.salesmanStage!];
-      if (stageSettings) {
-        const salesCount = allCustomers.filter(c =>
-          c.salesmanId === salesman.id &&
-          c.commissionStatus === 'approved' &&
-          new Date(c.saleDate) >= monthStart &&
-          new Date(c.saleDate) <= monthEnd
-        ).length;
+    for (const user of eligibleUsers) {
+      const incentiveRoleKey = user.salesmanStage || user.role;
+      const stageSettings = incentiveSettings[incentiveRoleKey];
+
+      if (stageSettings && stageSettings.target > 0) {
+        let salesCount = 0;
+        
+        if (user.role === 'Salesman') {
+           salesCount = allCustomers.filter(c =>
+              c.salesmanId === user.id &&
+              c.commissionStatus === 'approved' &&
+              new Date(c.saleDate) >= monthStart &&
+              new Date(c.saleDate) <= monthEnd
+            ).length;
+        } else { // Manager roles
+            const { ids: downlineIds } = getDownlineIdsAndUsers(user.id, allUsers);
+            salesCount = allCustomers.filter(c => 
+                downlineIds.includes(c.salesmanId) &&
+                c.commissionStatus === 'approved' &&
+                new Date(c.saleDate) >= monthStart &&
+                new Date(c.saleDate) <= monthEnd
+            ).length;
+        }
         
         const isAchieved = salesCount >= stageSettings.target;
 
         progressList.push({
-          user: salesman,
+          user: user,
           salesCount,
           target: stageSettings.target,
           incentive: isAchieved ? stageSettings.incentive : 0,
@@ -90,10 +112,10 @@ const TargetAchieversView: React.FC<TargetAchieversViewProps> = ({ allUsers, all
             <div>
                 <CardTitle className="flex items-center gap-2">
                     <Target className="h-6 w-6 text-primary" />
-                    Salesmen Monthly Performance
+                    Monthly Performance Report
                 </CardTitle>
                 <CardDescription>
-                    Review token sale targets and achievements for all salesmen.
+                    Review token sale targets and achievements for all salesmen and managers.
                 </CardDescription>
             </div>
             <div className="flex items-center gap-2">
@@ -114,16 +136,16 @@ const TargetAchieversView: React.FC<TargetAchieversViewProps> = ({ allUsers, all
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Salesman</TableHead>
-                <TableHead>Stage</TableHead>
+                <TableHead>Employee</TableHead>
+                <TableHead>Role / Stage</TableHead>
                 <TableHead className="w-[200px]">Progress</TableHead>
                 <TableHead className="text-center">Sales / Target</TableHead>
                 <TableHead className="text-right">Incentive Earned</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {salesmenProgress.length > 0 ? (
-                salesmenProgress.map(({ user, salesCount, target, incentive, progress, isAchieved }) => (
+              {userProgress.length > 0 ? (
+                userProgress.map(({ user, salesCount, target, incentive, progress, isAchieved }) => (
                   <TableRow key={user.id}>
                     <TableCell>
                       <div className="flex items-center gap-3">
@@ -134,7 +156,7 @@ const TargetAchieversView: React.FC<TargetAchieversViewProps> = ({ allUsers, all
                         <div className="font-medium">{user.name}</div>
                       </div>
                     </TableCell>
-                    <TableCell><Badge variant="outline">{user.salesmanStage}</Badge></TableCell>
+                    <TableCell><Badge variant="outline">{user.salesmanStage || user.role}</Badge></TableCell>
                     <TableCell>
                         <div className="flex items-center gap-2">
                             <Progress value={progress} className="w-full h-2" />
@@ -157,7 +179,7 @@ const TargetAchieversView: React.FC<TargetAchieversViewProps> = ({ allUsers, all
               ) : (
                 <TableRow>
                   <TableCell colSpan={5} className="h-24 text-center">
-                    No salesmen found.
+                    No employees with set targets found.
                   </TableCell>
                 </TableRow>
               )}

@@ -90,7 +90,7 @@ import { useOfflineSync } from "@/hooks/use-offline-sync";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 import StockManagementView from "./stock-management-view";
 import AdminStockView from "./admin-stock-view";
-import IncentiveSettings from "./incentive-settings";
+import IncentiveManagementView from "./incentive-management-view";
 import TargetAchieversView from "./target-achievers-view";
 import AddBranchAdminView from "./add-branch-admin-view";
 import SlipManagementView from "./slip-management-view";
@@ -145,7 +145,16 @@ const navItems: NavItem[] = [
   { href: "#", icon: Repeat, label: "Manage Recovery", roles: ["Team Operation Manager", "Branch Admin"] },
   { href: "#", icon: Building, label: "User Management", roles: ["Admin", "Super Admin"] },
   { href: "#", icon: Briefcase, label: "Customer Management", roles: ["Admin", "Super Admin"]},
-  { href: "#", icon: ShieldCheck, label: "Commission Approvals", roles: ["Admin", "Super Admin"] },
+  { 
+    href: "#", 
+    icon: ShieldCheck, 
+    label: "Approvals", 
+    roles: ["Admin", "Super Admin"],
+    children: [
+        { href: "#", icon: DollarSign, label: "Commission Approvals", roles: ["Admin", "Super Admin"] },
+        { href: "#", icon: ShieldQuestion, label: "Salary Approvals", roles: ["Super Admin"] },
+    ]
+  },
   { href: "#", icon: UserCheck, label: "Salesman Verification", roles: ["Admin", "Super Admin"] },
   { href: "#", icon: Receipt, label: "Slip Management", roles: ["Admin", "Super Admin"] },
   { href: "#", icon: Network, label: "Network View", roles: ["Admin", "Super Admin"] },
@@ -168,8 +177,7 @@ const navItems: NavItem[] = [
       { href: "#", icon: DollarSign, label: "Token Commissions", roles: ["Admin", "Super Admin"] },
       { href: "#", icon: Briefcase, label: "Product Commissions", roles: ["Admin", "Super Admin"] },
       { href: "#", icon: Wallet, label: "Salary Management", roles: ["Admin", "Super Admin"] },
-      { href: "#", icon: ShieldQuestion, label: "Salary Approvals", roles: ["Super Admin"] },
-      { href: "#", icon: Award, label: "Incentive Management", roles: ["Admin", "Super Admin"] },
+      { href: "#", icon: Award, label: "Incentives", roles: ["Admin", "Super Admin"] },
       { href: "#", icon: SlidersHorizontal, label: "Signup Roles", roles: ["Admin", "Super Admin"] },
     ]
   },
@@ -308,6 +316,9 @@ const AppLayout = ({ user }: { user: User }) => {
   const [loading, setLoading] = React.useState(true);
   const [isMobileSheetOpen, setIsMobileSheetOpen] = React.useState(false);
   const [isProfileSettingsOpen, setIsProfileSettingsOpen] = React.useState(false);
+  const [insights, setInsights] = React.useState<string[]>([]);
+  const [isGeneratingInsights, setIsGeneratingInsights] = React.useState(false);
+  const [insightsError, setInsightsError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     // For Branch Admins, since they don't have a dashboard, set the default view to something they can see.
@@ -502,8 +513,8 @@ const AppLayout = ({ user }: { user: User }) => {
         return <SalarySettingsForm user={user} allCustomers={allCustomers} />;
       case "Salary Approvals":
         return <SalaryApprovalView user={user} />;
-      case "Incentive Management":
-        return <IncentiveSettings />;
+      case "Incentives":
+        return <IncentiveManagementView />;
       case "Signup Roles":
         return <SignupRoleSettingsForm />;
       case "Insights":

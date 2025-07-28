@@ -4,9 +4,10 @@ import { doc, getDoc, setDoc, collection, getDocs, query, where, writeBatch, inc
 import { getAuth, updatePassword } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { db, storage } from "./firebase";
-import { User, Role, Customer, CommissionSettings, IncomeRecord, ProductSale, ProductCommissionSettings, SignupRoleSettings, CommissionRequest, SalesmanStage, SalarySettings, MonthlySalaryPayout, StockItem, SalesmanIncentiveSettings, Reminder, SalesmanDocuments, SalaryChangeRequest } from "@/types";
+import { User, Role, Customer, CommissionSettings, IncomeRecord, ProductSale, ProductCommissionSettings, SignupRoleSettings, CommissionRequest, SalesmanStage, SalarySettings, MonthlySalaryPayout, StockItem, IncentiveSettings, Reminder, SalesmanDocuments, SalaryChangeRequest } from "@/types";
 import type { User as FirebaseUser } from 'firebase/auth';
 import { sendTokenSms, sendOtpSms as sendSmsForOtp } from "./sms";
+import { getDownlineIdsAndUsers } from "./hierarchy";
 
 function generateReferralCode(): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -37,7 +38,7 @@ export async function createUserProfile(
 ): Promise<User> {
   const batch = writeBatch(db);
   let referrerId: string | null = null;
-  const isReferralNeeded = role && !['Regional Director', 'Admin'].includes(role);
+  const isReferralNeeded = role && !['Regional Director', 'Admin', 'Super Admin'].includes(role);
 
   if (isReferralNeeded) {
     if (!referralCodeInput || referralCodeInput.length !== 6) {
@@ -275,7 +276,7 @@ export async function approveTokenCommission(requestId: string, admin: User): Pr
 
     const adminCommission = settings.admin;
     if (adminCommission > 0) {
-        const adminUsers = allUsers.filter(u => u.role === 'Admin');
+        const adminUsers = allUsers.filter(u => u.role === 'Admin' || u.role === 'Super Admin');
         for (const adminUser of adminUsers) {
             const userRef = doc(db, "users", adminUser.id);
             batch.update(userRef, { totalIncome: increment(adminCommission) });
@@ -286,7 +287,7 @@ export async function approveTokenCommission(requestId: string, admin: User): Pr
                 userId: adminUser.id,
                 amount: adminCommission,
                 saleDate: processedDate,
-                grantedForRole: 'Admin',
+                grantedForRole: adminUser.role,
                 salesmanId: salesman.id,
                 salesmanName: salesman.name,
                 sourceType: 'token_sale',
@@ -590,7 +591,7 @@ export async function createProductSaleAndDistributeCommissions(
                 if (adminCommissionInfo) {
                     const adminCommission = adminCommissionInfo.cash;
                     if (adminCommission > 0) {
-                        const adminUsers = allUsers.filter(u => u.role === 'Admin');
+                        const adminUsers = allUsers.filter(u => u.role === 'Admin' || u.role === 'Super Admin');
                         for (const adminUser of adminUsers) {
                             const userRef = doc(db, "users", adminUser.id);
                             transaction.update(userRef, { totalIncome: increment(adminCommission) });
@@ -601,7 +602,7 @@ export async function createProductSaleAndDistributeCommissions(
                                 userId: adminUser.id,
                                 amount: adminCommission,
                                 saleDate: saleDate,
-                                grantedForRole: 'Admin',
+                                grantedForRole: adminUser.role,
                                 salesmanId: salesman.id,
                                 salesmanName: salesman.name,
                                 shopManagerName: shopManager.name,
@@ -825,7 +826,7 @@ export async function markInstallmentPaid(productSaleId: string): Promise<void> 
     if (adminCommissionInfo && saleData.installments) {
       const perInstallmentAdminCommission = adminCommissionInfo.installments / saleData.installments;
       if (perInstallmentAdminCommission > 0) {
-        const adminUsers = allUsers.filter(u => u.role === 'Admin');
+        const adminUsers = allUsers.filter(u => u.role === 'Admin' || u.role === 'Super Admin');
         for (const adminUser of adminUsers) {
           const userRef = doc(db, "users", adminUser.id);
           batch.update(userRef, { totalIncome: increment(perInstallmentAdminCommission) });
@@ -836,7 +837,7 @@ export async function markInstallmentPaid(productSaleId: string): Promise<void> 
             userId: adminUser.id,
             amount: perInstallmentAdminCommission,
             saleDate: paymentDate,
-            grantedForRole: 'Admin',
+            grantedForRole: adminUser.role,
             salesmanId: salesman.id,
             salesmanName: salesman.name,
             shopManagerName: saleData.shopManagerName,
@@ -929,7 +930,7 @@ export async function payRemainingInstallments(productSaleId: string): Promise<v
         if (adminCommissionInfo && installments) {
             const perInstallmentAdminCommission = adminCommissionInfo.installments / installments;
             if (perInstallmentAdminCommission > 0) {
-                const adminUsers = allUsers.filter(u => u.role === 'Admin');
+                const adminUsers = allUsers.filter(u => u.role === 'Admin' || u.role === 'Super Admin');
                 for (const adminUser of adminUsers) {
                     const userRef = doc(db, "users", adminUser.id);
                     batch.update(userRef, { totalIncome: increment(perInstallmentAdminCommission) });
@@ -937,7 +938,7 @@ export async function payRemainingInstallments(productSaleId: string): Promise<v
                     const incomeRecordRef = doc(collection(db, "incomeRecords"));
                     batch.set(incomeRecordRef, {
                         id: incomeRecordRef.id, userId: adminUser.id, amount: perInstallmentAdminCommission, saleDate: paymentDate,
-                        grantedForRole: 'Admin', salesmanId: salesman.id, salesmanName: salesman.name,
+                        grantedForRole: adminUser.role, salesmanId: salesman.id, salesmanName: salesman.name,
                         shopManagerName: saleData.shopManagerName, sourceType: 'product_sale', productSaleId: saleData.id,
                         customerId: saleData.customerId, customerName: saleData.customerName, tokenSerial: saleData.tokenSerial,
                         productName: saleData.productName, productPrice: saleData.price, paymentMethod: saleData.paymentMethod,
@@ -1049,7 +1050,7 @@ export async function processMonthlySalaries(adminUser: User, allCustomers: Cust
     const allUsers = await getAllUsers();
     const enabledUsers = allUsers.filter(u => !u.isDisabled);
     const salarySettings = await getSalarySettings();
-    const incentiveSettings = await getSalesmanIncentiveSettings();
+    const incentiveSettings = await getIncentiveSettings();
     const batch = writeBatch(db);
 
     let usersPaid = 0;
@@ -1064,7 +1065,6 @@ export async function processMonthlySalaries(adminUser: User, allCustomers: Cust
         let salaryAmount = 0;
         let incentiveAmount = 0;
         
-        // Determine base salary
         let salaryRoleKey: keyof SalarySettings | undefined;
         if (user.role === 'Salesman' && user.salesmanStage) {
             salaryRoleKey = user.salesmanStage;
@@ -1075,20 +1075,30 @@ export async function processMonthlySalaries(adminUser: User, allCustomers: Cust
             salaryAmount = salarySettings[salaryRoleKey] ?? 0;
         }
 
-        // Determine incentive for salesmen
-        if (user.role === 'Salesman' && user.salesmanStage) {
-            const stageSettings = incentiveSettings[user.salesmanStage];
-            if (stageSettings) {
-                const monthlySalesCount = allCustomers.filter(c => 
+        const incentiveRoleKey = (user.salesmanStage || user.role) as Role | SalesmanStage;
+        const incentiveConfig = incentiveSettings[incentiveRoleKey];
+
+        if (incentiveConfig && incentiveConfig.target > 0) {
+            let salesCount = 0;
+            if (user.role === 'Salesman') {
+                salesCount = allCustomers.filter(c => 
                     c.salesmanId === user.id &&
                     c.commissionStatus === 'approved' &&
                     new Date(c.saleDate) >= startOfMonth &&
                     new Date(c.saleDate) <= endOfMonth
                 ).length;
-                
-                if (monthlySalesCount >= stageSettings.target) {
-                    incentiveAmount = stageSettings.incentive;
-                }
+            } else { // Manager roles
+                const { ids: downlineIds } = getDownlineIdsAndUsers(user.id, allUsers);
+                salesCount = allCustomers.filter(c => 
+                    downlineIds.includes(c.salesmanId) &&
+                    c.commissionStatus === 'approved' &&
+                    new Date(c.saleDate) >= startOfMonth &&
+                    new Date(c.saleDate) <= endOfMonth
+                ).length;
+            }
+
+            if (salesCount >= incentiveConfig.target) {
+                incentiveAmount = incentiveConfig.incentive;
             }
         }
         
@@ -1101,39 +1111,22 @@ export async function processMonthlySalaries(adminUser: User, allCustomers: Cust
             const userRef = doc(db, "users", user.id);
             batch.update(userRef, { totalIncome: increment(userTotalPayout) });
 
-            // Create income record for salary
             if (salaryAmount > 0) {
                 const salaryRecordRef = doc(collection(db, "incomeRecords"));
-                const newSalaryRecord: IncomeRecord = {
-                    id: salaryRecordRef.id,
-                    userId: user.id,
-                    amount: salaryAmount,
-                    saleDate: payoutDate,
-                    grantedForRole: user.role,
-                    salesmanId: user.id,
-                    salesmanName: user.name,
-                    sourceType: 'salary',
-                    payoutId: payoutId,
-                };
-                batch.set(salaryRecordRef, newSalaryRecord);
+                batch.set(salaryRecordRef, {
+                    id: salaryRecordRef.id, userId: user.id, amount: salaryAmount, saleDate: payoutDate,
+                    grantedForRole: user.role, salesmanId: user.id, salesmanName: user.name,
+                    sourceType: 'salary', payoutId: payoutId,
+                });
             }
 
-            // Create income record for incentive
             if (incentiveAmount > 0) {
                  const incentiveRecordRef = doc(collection(db, "incomeRecords"));
-                 const newIncentiveRecord: IncomeRecord = {
-                    id: incentiveRecordRef.id,
-                    userId: user.id,
-                    amount: incentiveAmount,
-                    saleDate: payoutDate,
-                    grantedForRole: user.role,
-                    salesmanId: user.id,
-                    salesmanName: user.name,
-                    sourceType: 'incentive',
-                    payoutId: payoutId,
-                    incentiveForStage: user.salesmanStage,
-                };
-                batch.set(incentiveRecordRef, newIncentiveRecord);
+                 batch.set(incentiveRecordRef, {
+                    id: incentiveRecordRef.id, userId: user.id, amount: incentiveAmount, saleDate: payoutDate,
+                    grantedForRole: user.role, salesmanId: user.id, salesmanName: user.name,
+                    sourceType: 'incentive', payoutId: payoutId, incentiveForRole: incentiveRoleKey,
+                });
             }
         }
     }
@@ -1238,33 +1231,37 @@ export async function deleteStockItem(itemId: string): Promise<void> {
     await deleteDoc(itemDocRef);
 }
 
-// --- Salesman Incentive Settings ---
+// --- Incentive Settings ---
 
-const DEFAULT_SALESMAN_INCENTIVE_SETTINGS: SalesmanIncentiveSettings = {
-    "BUSINESS PROMOTER (stage 01)": {
-        target: 40,
-        incentive: 10000,
-    },
-    "MARKETING EXECUTIVE (stage 02)": {
-        target: 60,
-        incentive: 15000,
-    },
+const DEFAULT_INCENTIVE_SETTINGS: IncentiveSettings = {
+    "BUSINESS PROMOTER (stage 01)": { target: 40, incentive: 10000 },
+    "MARKETING EXECUTIVE (stage 02)": { target: 60, incentive: 15000 },
+    "Team Operation Manager": { target: 500, incentive: 25000 },
 };
 
-export async function getSalesmanIncentiveSettings(): Promise<SalesmanIncentiveSettings> {
-    const settingsDocRef = doc(db, "settings", "salesmanIncentives");
+export async function getIncentiveSettings(): Promise<IncentiveSettings> {
+    const settingsDocRef = doc(db, "settings", "incentives");
     const settingsDocSnap = await getDoc(settingsDocRef);
     if (settingsDocSnap.exists()) {
-        const data = settingsDocSnap.data();
-        return { ...DEFAULT_SALESMAN_INCENTIVE_SETTINGS, ...data };
+        const data = settingsDocSnap.data() as IncentiveSettings;
+        return { ...DEFAULT_INCENTIVE_SETTINGS, ...data };
     }
-    await setDoc(settingsDocRef, DEFAULT_SALESMAN_INCENTIVE_SETTINGS);
-    return DEFAULT_SALESMAN_INCENTIVE_SETTINGS;
+    await setDoc(settingsDocRef, DEFAULT_INCENTIVE_SETTINGS);
+    return DEFAULT_INCENTIVE_SETTINGS;
 }
 
-export async function updateSalesmanIncentiveSettings(data: SalesmanIncentiveSettings): Promise<void> {
-    const settingsDocRef = doc(db, "settings", "salesmanIncentives");
+export async function updateIncentiveSettings(data: IncentiveSettings): Promise<void> {
+    const settingsDocRef = doc(db, "settings", "incentives");
     await setDoc(settingsDocRef, data, { merge: true });
+}
+
+export async function getSalesmanIncentiveSettings(): Promise<IncentiveSettings> {
+    const settingsDocRef = doc(db, "settings", "incentives");
+    const settingsDocSnap = await getDoc(settingsDocRef);
+    if (settingsDocSnap.exists()) {
+        return settingsDocSnap.data() as IncentiveSettings;
+    }
+    return {};
 }
 
 // Slip Management
