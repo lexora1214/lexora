@@ -47,6 +47,7 @@ const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ user, allUsers, all
       };
 
       const countMonthlySales = () => {
+          if (!allCustomers) return; // Guard against undefined array
           const today = new Date();
           const start = startOfMonth(today);
           const end = endOfMonth(today);
@@ -255,5 +256,3 @@ const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ user, allUsers, all
 };
 
 export default ManagerDashboard;
-
-    
