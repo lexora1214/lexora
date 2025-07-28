@@ -165,6 +165,7 @@ export async function createCustomer(customerData: Omit<Customer, 'id' | 'saleDa
     
     const newCustomerRef = doc(collection(db, "customers"));
     const saleDate = new Date().toISOString();
+    
     const newCustomer: Customer = {
         ...customerData,
         id: newCustomerRef.id,
@@ -173,13 +174,11 @@ export async function createCustomer(customerData: Omit<Customer, 'id' | 'saleDa
         commissionStatus: 'pending',
         tokenIsAvailable: true,
         branch: salesman.branch,
+        // Ensure null for cash payment if fields are not provided
+        downPayment: customerData.downPayment ?? null,
+        installments: customerData.paymentMethod === 'cash' ? null : (customerData.installments ?? null),
+        monthlyInstallment: customerData.paymentMethod === 'cash' ? null : (customerData.monthlyInstallment ?? null),
     };
-
-    if (newCustomer.paymentMethod === 'cash') {
-        newCustomer.installments = null;
-        newCustomer.monthlyInstallment = null;
-        newCustomer.downPayment = null;
-    }
 
     batch.set(newCustomerRef, newCustomer);
 
@@ -510,15 +509,12 @@ export async function createProductSaleAndDistributeCommissions(
             shopManagerId: shopManager.id,
             shopManagerName: shopManager.name,
             deliveryStatus: 'pending',
-            installments: cleanFormData.installments,
-            monthlyInstallment: cleanFormData.monthlyInstallment,
+            installments: cleanFormData.installments ?? null,
+            monthlyInstallment: cleanFormData.monthlyInstallment ?? null,
             paidInstallments: cleanFormData.paymentMethod === 'installments' ? 0 : undefined,
             recoveryStatus: cleanFormData.paymentMethod === 'installments' ? 'pending' : undefined,
+            requestedDeliveryDate: cleanFormData.requestedDeliveryDate?.toISOString()
         };
-
-        if (cleanFormData.requestedDeliveryDate) {
-            newSale.requestedDeliveryDate = cleanFormData.requestedDeliveryDate.toISOString();
-        }
         
         // --- ALL WRITES HAPPEN LAST ---
         

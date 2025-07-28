@@ -220,8 +220,8 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
                                       setValue('productName', customer.purchasingItem || '');
                                       setValue('productCode', customer.purchasingItemCode || '');
                                       setValue('paymentMethod', customer.paymentMethod || 'cash');
-                                      setValue('discountValue', customer.discountValue || undefined);
-                                      setValue('downPayment', customer.downPayment || undefined);
+                                      setValue('discountValue', customer.discountValue || 0);
+                                      setValue('downPayment', customer.downPayment || 0);
                                       setValue('installments', customer.installments || undefined);
                                       
                                       if(customer.paymentMethod === 'cash') {
