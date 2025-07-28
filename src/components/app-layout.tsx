@@ -39,6 +39,7 @@ import {
   UserCheck,
   MapPin,
   MinusCircle,
+  ShieldQuestion,
 } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
@@ -98,6 +99,7 @@ import SalesmanVerificationView from "./salesman-verification-view";
 import LiveLocationView from "./live-location-view";
 import LocationTracker from "./location-tracker";
 import AddExpenseView from "./add-expense-view";
+import SalaryApprovalView from "./salary-approval-view";
 
 type NavItem = {
   href: string;
@@ -166,6 +168,7 @@ const navItems: NavItem[] = [
       { href: "#", icon: DollarSign, label: "Token Commissions", roles: ["Admin", "Super Admin"] },
       { href: "#", icon: Briefcase, label: "Product Commissions", roles: ["Admin", "Super Admin"] },
       { href: "#", icon: Wallet, label: "Salary Management", roles: ["Admin", "Super Admin"] },
+      { href: "#", icon: ShieldQuestion, label: "Salary Approvals", roles: ["Super Admin"] },
       { href: "#", icon: Award, label: "Incentive Management", roles: ["Admin", "Super Admin"] },
       { href: "#", icon: SlidersHorizontal, label: "Signup Roles", roles: ["Admin", "Super Admin"] },
     ]
@@ -497,6 +500,8 @@ const AppLayout = ({ user }: { user: User }) => {
         return <ProductCommissionSettings />;
       case "Salary Management":
         return <SalarySettingsForm user={user} allCustomers={allCustomers} />;
+      case "Salary Approvals":
+        return <SalaryApprovalView user={user} />;
       case "Incentive Management":
         return <IncentiveSettings />;
       case "Signup Roles":

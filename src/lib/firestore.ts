@@ -4,7 +4,7 @@ import { doc, getDoc, setDoc, collection, getDocs, query, where, writeBatch, inc
 import { getAuth, updatePassword } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { db, storage } from "./firebase";
-import { User, Role, Customer, CommissionSettings, IncomeRecord, ProductSale, ProductCommissionSettings, SignupRoleSettings, CommissionRequest, SalesmanStage, SalarySettings, MonthlySalaryPayout, StockItem, SalesmanIncentiveSettings, Reminder, SalesmanDocuments } from "@/types";
+import { User, Role, Customer, CommissionSettings, IncomeRecord, ProductSale, ProductCommissionSettings, SignupRoleSettings, CommissionRequest, SalesmanStage, SalarySettings, MonthlySalaryPayout, StockItem, SalesmanIncentiveSettings, Reminder, SalesmanDocuments, SalaryChangeRequest } from "@/types";
 import type { User as FirebaseUser } from 'firebase/auth';
 import { sendTokenSms, sendOtpSms as sendSmsForOtp } from "./sms";
 
@@ -975,10 +975,72 @@ export async function getSalarySettings(): Promise<SalarySettings> {
     return DEFAULT_SALARY_SETTINGS;
 }
 
-export async function updateSalarySettings(data: SalarySettings): Promise<void> {
+export async function updateSalarySettings(newSettings: SalarySettings, updatingUser: User): Promise<void> {
     const settingsDocRef = doc(db, "settings", "salaries");
-    await setDoc(settingsDocRef, data, { merge: true });
+
+    if (updatingUser.role === 'Super Admin') {
+        // Super Admins can update directly
+        await setDoc(settingsDocRef, newSettings, { merge: true });
+    } else if (updatingUser.role === 'Admin') {
+        // Admins create a change request
+        const currentSettings = await getSalarySettings();
+        const requestRef = doc(collection(db, 'salaryChangeRequests'));
+        const newRequest: SalaryChangeRequest = {
+            id: requestRef.id,
+            requestedBy: updatingUser.id,
+            requestedByName: updatingUser.name,
+            requestDate: new Date().toISOString(),
+            status: 'pending',
+            newSettings: newSettings,
+            currentSettings: currentSettings,
+        };
+        await setDoc(requestRef, newRequest);
+    } else {
+        throw new Error("You do not have permission to change salary settings.");
+    }
 }
+
+export async function getPendingSalaryChangeRequests(): Promise<SalaryChangeRequest[]> {
+    const q = query(collection(db, 'salaryChangeRequests'), where('status', '==', 'pending'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(d => d.data() as SalaryChangeRequest).sort((a,b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime());
+}
+
+export async function approveSalaryChangeRequest(requestId: string, superAdmin: User): Promise<void> {
+    const requestRef = doc(db, 'salaryChangeRequests', requestId);
+    const requestSnap = await getDoc(requestRef);
+    if (!requestSnap.exists() || requestSnap.data().status !== 'pending') {
+        throw new Error("Request not found or already processed.");
+    }
+    const requestData = requestSnap.data() as SalaryChangeRequest;
+
+    const batch = writeBatch(db);
+
+    // Apply the new settings
+    const settingsDocRef = doc(db, "settings", "salaries");
+    batch.set(settingsDocRef, requestData.newSettings, { merge: true });
+
+    // Update the request status
+    batch.update(requestRef, {
+        status: 'approved',
+        processedBy: superAdmin.id,
+        processedByName: superAdmin.name,
+        processedDate: new Date().toISOString(),
+    });
+
+    await batch.commit();
+}
+
+export async function rejectSalaryChangeRequest(requestId: string, superAdmin: User): Promise<void> {
+    const requestRef = doc(db, 'salaryChangeRequests', requestId);
+    await updateDoc(requestRef, {
+        status: 'rejected',
+        processedBy: superAdmin.id,
+        processedByName: superAdmin.name,
+        processedDate: new Date().toISOString(),
+    });
+}
+
 
 export async function processMonthlySalaries(adminUser: User, allCustomers: Customer[]): Promise<{ usersPaid: number; totalAmount: number; }> {
     const now = new Date();

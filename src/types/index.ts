@@ -192,6 +192,19 @@ export interface SalarySettings {
   'Regional Director': number;
 }
 
+export interface SalaryChangeRequest {
+  id: string;
+  requestedBy: string;
+  requestedByName: string;
+  requestDate: string;
+  status: 'pending' | 'approved' | 'rejected';
+  newSettings: SalarySettings;
+  currentSettings: SalarySettings;
+  processedBy?: string;
+  processedByName?: string;
+  processedDate?: string;
+}
+
 export interface MonthlySalaryPayout {
     id: string;
     payoutDate: string;

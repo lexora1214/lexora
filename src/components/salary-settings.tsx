@@ -1,16 +1,17 @@
 
+
 "use client";
 
 import React, { useEffect, useState } from "react";
 import { useForm, SubmitHandler } from "react-hook-form";
-import { processMonthlySalaries, getSalarySettings, updateSalarySettings, getSalaryPayouts, reverseSalaryPayout } from "@/lib/firestore";
+import { processMonthlySalaries, getSalarySettings, updateSalarySettings, getSalaryPayouts, reverseSalaryPayout, getPendingSalaryChangeRequests } from "@/lib/firestore";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { LoaderCircle, AlertTriangle, History, Undo2, UserCog, CheckCircle2 } from "lucide-react";
-import { SalarySettings, User, MonthlySalaryPayout, Customer } from "@/types";
+import { LoaderCircle, AlertTriangle, History, Undo2, UserCog, CheckCircle2, ShieldQuestion } from "lucide-react";
+import { SalarySettings, User, MonthlySalaryPayout, Customer, SalaryChangeRequest } from "@/types";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -34,6 +35,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "./ui/badge";
 import PayoutDetailsDialog from "./payout-details-dialog";
+import { Alert, AlertTitle, AlertDescription as AlertDescriptionUI } from "./ui/alert"; // Renamed to avoid conflict
 
 const SALARY_ROLES: (keyof SalarySettings)[] = [
   "BUSINESS PROMOTER (stage 01)",
@@ -56,6 +58,7 @@ const SalarySettingsForm: React.FC<SalarySettingsProps> = ({ user, allCustomers 
     const [isPaying, setIsPaying] = useState(false);
     const [isReversing, setIsReversing] = useState<string | null>(null);
     const [payouts, setPayouts] = useState<MonthlySalaryPayout[]>([]);
+    const [pendingRequest, setPendingRequest] = useState<SalaryChangeRequest | null>(null);
     const [selectedPayout, setSelectedPayout] = useState<MonthlySalaryPayout | null>(null);
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
     const currentMonthYear = format(new Date(), "MMMM yyyy");
@@ -70,12 +73,14 @@ const SalarySettingsForm: React.FC<SalarySettingsProps> = ({ user, allCustomers 
     const fetchInitialData = React.useCallback(async () => {
         setIsFetching(true);
         try {
-            const [settings, payoutsData] = await Promise.all([
+            const [settings, payoutsData, pendingReqs] = await Promise.all([
                 getSalarySettings(),
                 getSalaryPayouts(),
+                getPendingSalaryChangeRequests(),
             ]);
             reset(settings);
             setPayouts(payoutsData);
+            setPendingRequest(pendingReqs.length > 0 ? pendingReqs[0] : null);
         } catch (error) {
             toast({
                 variant: "destructive",
@@ -94,13 +99,22 @@ const SalarySettingsForm: React.FC<SalarySettingsProps> = ({ user, allCustomers 
     const onSettingsSubmit: SubmitHandler<SalarySettings> = async (data) => {
         setIsLoading(true);
         try {
-            await updateSalarySettings(data);
-            toast({
-                title: "Settings Updated",
-                description: "Salary values have been saved successfully.",
-                variant: 'default',
-                className: 'bg-success text-success-foreground'
-            });
+            await updateSalarySettings(data, user);
+            if (user.role === 'Super Admin') {
+                toast({
+                    title: "Settings Updated",
+                    description: "Salary values have been saved successfully.",
+                    variant: 'default',
+                    className: 'bg-success text-success-foreground'
+                });
+            } else {
+                 toast({
+                    title: "Request Submitted",
+                    description: "Your change request has been sent to a Super Admin for approval.",
+                    variant: 'default',
+                });
+                await fetchInitialData(); // Refresh to show pending request
+            }
         } catch (error: any) {
             toast({ variant: "destructive", title: "Update Failed", description: error.message });
         } finally {
@@ -168,19 +182,30 @@ const SalarySettingsForm: React.FC<SalarySettingsProps> = ({ user, allCustomers 
                         <CardTitle>Base Salary Settings</CardTitle>
                         <CardDescription>Define the monthly base salary for each role. This does not include commissions.</CardDescription>
                     </CardHeader>
+                     {pendingRequest && (
+                        <CardContent className="pt-0">
+                            <Alert>
+                                <ShieldQuestion className="h-4 w-4" />
+                                <AlertTitle>Pending Approval</AlertTitle>
+                                <AlertDescriptionUI>
+                                   A salary change request is currently pending approval by a Super Admin. You cannot make new changes until it is processed. Requested by {pendingRequest.requestedByName} on {format(new Date(pendingRequest.requestDate), 'PPP')}.
+                                </AlertDescriptionUI>
+                            </Alert>
+                        </CardContent>
+                    )}
                     <form onSubmit={handleSubmit(onSettingsSubmit)}>
                         <CardContent className="grid gap-6 pt-6">
                             {SALARY_ROLES.map(role => (
                                 <div key={role} className="grid gap-3">
                                     <Label htmlFor={role}>{role}</Label>
-                                    <Input id={role} type="number" {...register(role, { valueAsNumber: true })} />
+                                    <Input id={role} type="number" {...register(role, { valueAsNumber: true })} disabled={!!pendingRequest} />
                                 </div>
                             ))}
                         </CardContent>
                         <CardFooter className="border-t px-6 py-4">
-                            <Button type="submit" disabled={isLoading}>
+                            <Button type="submit" disabled={isLoading || !!pendingRequest}>
                                 {isLoading && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
-                                Save Salary Settings
+                                {user.role === 'Super Admin' ? 'Save Salary Settings' : 'Request Changes'}
                             </Button>
                         </CardFooter>
                     </form>
@@ -340,5 +365,3 @@ const SalarySettingsForm: React.FC<SalarySettingsProps> = ({ user, allCustomers 
 };
 
 export default SalarySettingsForm;
-
-    
