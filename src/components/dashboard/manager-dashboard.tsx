@@ -2,9 +2,9 @@
 "use client";
 
 import React from "react";
-import { User, IncomeRecord } from "@/types";
+import { User, IncomeRecord, Customer, IncentiveSettings } from "@/types";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
-import { DollarSign, Users, Activity, Calendar as CalendarIcon } from "lucide-react";
+import { DollarSign, Users, Activity, Calendar as CalendarIcon, Target } from "lucide-react";
 import { getDownlineIdsAndUsers } from "@/lib/hierarchy";
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
@@ -15,22 +15,56 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { cn } from "@/lib/utils";
+import { getIncentiveSettings } from "@/lib/firestore";
+import { Progress } from "../ui/progress";
 
 interface ManagerDashboardProps {
   user: User;
   allUsers: User[];
   allIncomeRecords: IncomeRecord[];
+  allCustomers: Customer[];
 }
 
-const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ user, allUsers, allIncomeRecords }) => {
+const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ user, allUsers, allIncomeRecords, allCustomers }) => {
   const isMobile = useIsMobile();
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>({
     from: startOfMonth(new Date()),
     to: endOfMonth(new Date()),
   });
+  const [incentiveTarget, setIncentiveTarget] = React.useState(0);
+  const [monthlyTeamSales, setMonthlyTeamSales] = React.useState(0);
+
 
   const { users: downlineUsers, ids: downlineUserIds } = getDownlineIdsAndUsers(user.id, allUsers);
   
+  React.useEffect(() => {
+      const fetchIncentiveData = async () => {
+          const incentiveSettings = await getIncentiveSettings();
+          const roleSettings = incentiveSettings[user.role];
+          if (roleSettings) {
+              setIncentiveTarget(roleSettings.target);
+          }
+      };
+
+      const countMonthlySales = () => {
+          const today = new Date();
+          const start = startOfMonth(today);
+          const end = endOfMonth(today);
+
+          const salesCount = allCustomers.filter(c => 
+              downlineUserIds.includes(c.salesmanId) &&
+              c.commissionStatus === 'approved' &&
+              new Date(c.saleDate) >= start &&
+              new Date(c.saleDate) <= end
+          ).length;
+
+          setMonthlyTeamSales(salesCount);
+      }
+
+      fetchIncentiveData();
+      countMonthlySales();
+  }, [user.role, allCustomers, downlineUserIds]);
+
   const filteredIncomeRecords = React.useMemo(() => {
     if (!dateRange || !dateRange.from) {
       return allIncomeRecords;
@@ -70,6 +104,8 @@ const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ user, allUsers, all
       color: "hsl(var(--primary))",
     },
   };
+  
+  const targetProgress = incentiveTarget > 0 ? (monthlyTeamSales / incentiveTarget) * 100 : 0;
 
   return (
     <div className="flex flex-col gap-6">
@@ -148,6 +184,33 @@ const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ user, allUsers, all
         </Card>
       </div>
 
+      {incentiveTarget > 0 && (
+          <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                    <Target className="h-5 w-5 text-primary" />
+                    Monthly Team Target
+                </CardTitle>
+                <CardDescription>
+                    Your team's progress for {format(new Date(), 'MMMM yyyy')}.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <div className="flex justify-between text-sm text-muted-foreground mb-2">
+                    <span>Progress</span>
+                    <span>{monthlyTeamSales} / {incentiveTarget} Tokens</span>
+                </div>
+                <Progress value={targetProgress} className="h-3" />
+                 <p className="text-xs text-muted-foreground mt-2">
+                    {incentiveTarget - monthlyTeamSales > 0 
+                        ? `${incentiveTarget - monthlyTeamSales} more approved sales to go!`
+                        : `Congratulations! Your team has reached the monthly target.`
+                    }
+                </p>
+            </CardContent>
+          </Card>
+        )}
+
       <Card className="hidden md:block">
         <CardHeader>
           <CardTitle>Top Team Performers</CardTitle>
@@ -192,3 +255,5 @@ const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ user, allUsers, all
 };
 
 export default ManagerDashboard;
+
+    

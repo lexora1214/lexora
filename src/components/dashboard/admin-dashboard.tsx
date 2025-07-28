@@ -47,17 +47,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
     to.setHours(23, 59, 59, 999);
 
     const filteredCustomers = allCustomers.filter(customer => {
-        const saleDate = parseISO(customer.saleDate);
+        const saleDate = new Date(customer.saleDate);
         return saleDate >= from && saleDate <= to;
     });
 
     const filteredIncomeRecords = allIncomeRecords.filter(record => {
-        const saleDate = parseISO(record.saleDate);
+        const saleDate = new Date(record.saleDate);
         return saleDate >= from && saleDate <= to;
     });
 
     const filteredUsers = allUsers.filter(user => {
-        const createdDate = parseISO(user.createdAt);
+        const createdDate = new Date(user.createdAt);
         return createdDate >= from && createdDate <= to;
     });
 
@@ -245,5 +245,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
 };
 
 export default AdminDashboard;
+
+    
 
     

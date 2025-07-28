@@ -262,3 +262,5 @@ export interface SalesmanDocuments {
     gsCertificate: File;
     policeReport: File;
 }
+
+    

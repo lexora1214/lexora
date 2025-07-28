@@ -14,7 +14,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { cn } from "@/lib/utils";
 import TokenUsagePieChart from "../token-usage-pie-chart";
-import { getCommissionSettings, getSalesmanIncentiveSettings } from "@/lib/firestore";
+import { getCommissionSettings, getIncentiveSettings } from "@/lib/firestore";
 import PendingApprovalsDialog from "../pending-approvals-dialog";
 import { Progress } from "../ui/progress";
 
@@ -64,7 +64,7 @@ const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ user, allCustomer
     if (user.role !== 'Salesman' || !user.salesmanStage) return;
 
     const fetchIncentiveData = async () => {
-        const incentiveSettings = await getSalesmanIncentiveSettings();
+        const incentiveSettings = await getIncentiveSettings();
         const stageSettings = incentiveSettings[user.salesmanStage!];
         if (stageSettings) {
             setIncentiveTarget(stageSettings.target);
@@ -273,3 +273,6 @@ const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ user, allCustomer
 
 export default SalesmanDashboard;
 
+
+
+    
