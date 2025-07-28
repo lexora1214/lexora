@@ -37,7 +37,7 @@ import { cn } from "@/lib/utils";
 const formSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
   mobileNumber: z.string().regex(/^0\d{9}$/, { message: "Please enter a valid 10-digit mobile number." }),
-  role: z.enum(["Salesman", "Team Operation Manager", "Group Operation Manager", "Head Group Manager", "Regional Director", "Admin", "Delivery Boy", "Recovery Officer", "Branch Admin"]),
+  role: z.enum(["Salesman", "Team Operation Manager", "Group Operation Manager", "Head Group Manager", "Regional Director", "Admin", "Super Admin", "Delivery Boy", "Recovery Officer", "Branch Admin"]),
   branch: z.string().optional(),
   salesmanStage: z.enum(["BUSINESS PROMOTER (stage 01)", "MARKETING EXECUTIVE (stage 02)"]).optional().nullable(),
   assignedManagerIds: z.array(z.string()).optional(),
@@ -184,6 +184,7 @@ const EditUserDialog: React.FC<EditUserDialogProps> = ({
                                     <SelectValue placeholder="Select a role" />
                                 </SelectTrigger>
                                 <SelectContent>
+                                    <SelectItem value="Super Admin">Super Admin</SelectItem>
                                     <SelectItem value="Admin">Admin</SelectItem>
                                     <SelectItem value="Regional Director">Regional Director</SelectItem>
                                     <SelectItem value="Head Group Manager">Head Group Manager</SelectItem>

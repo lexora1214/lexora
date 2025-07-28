@@ -58,10 +58,10 @@ import { updateUser } from "@/lib/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { Switch } from "./ui/switch";
 import { Label } from "./ui/label";
-import { auth } from "@/lib/firebase";
 
 
 interface UserManagementTableProps {
+  user: User; // The currently logged-in user
   data: User[];
   allIncomeRecords: IncomeRecord[];
 }
@@ -69,6 +69,7 @@ interface UserManagementTableProps {
 type UserWithPeriodIncome = User & { periodIncome: number };
 
 const roleOrderMap: Record<Role, number> = {
+  'Super Admin': 0,
   'Admin': 1,
   'Regional Director': 2,
   'Head Group Manager': 3,
@@ -80,7 +81,7 @@ const roleOrderMap: Record<Role, number> = {
   'Branch Admin': 9,
 };
 
-export default function UserManagementTable({ data, allIncomeRecords }: UserManagementTableProps) {
+export default function UserManagementTable({ user: loggedInUser, data, allIncomeRecords }: UserManagementTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([{ id: 'role', desc: false }]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
@@ -265,9 +266,9 @@ export default function UserManagementTable({ data, allIncomeRecords }: UserMana
       header: "Status",
       cell: ({ row }) => {
           const user = row.original;
-          // Don't allow an admin to disable themselves
-          const authUser = auth.currentUser;
-          const isSelf = authUser?.uid === user.id;
+          const isSelf = loggedInUser?.id === user.id;
+          const canToggle = loggedInUser.role === 'Super Admin' && user.role === 'Admin' && !isSelf;
+          const isAlwaysEnabled = user.role === 'Super Admin' || (loggedInUser.role === 'Admin' && user.role === 'Admin');
 
           return (
              <div className="flex items-center space-x-2">
@@ -275,8 +276,8 @@ export default function UserManagementTable({ data, allIncomeRecords }: UserMana
                     id={`status-switch-${user.id}`}
                     checked={!user.isDisabled}
                     onCheckedChange={(isChecked) => handleStatusChange(user.id, !isChecked)}
-                    disabled={isSelf}
-                    aria-readonly={isSelf}
+                    disabled={isSelf || !canToggle && isAlwaysEnabled}
+                    aria-readonly={isSelf || !canToggle && isAlwaysEnabled}
                 />
                 <Label htmlFor={`status-switch-${user.id}`} className={cn(user.isDisabled ? "text-destructive" : "text-success")}>
                     {user.isDisabled ? 'Disabled' : 'Enabled'}
@@ -351,7 +352,7 @@ export default function UserManagementTable({ data, allIncomeRecords }: UserMana
         );
       },
     },
-  ], [handleEditClick, handleViewIncomesClick, handleStageChange]);
+  ], [loggedInUser, handleEditClick, handleViewIncomesClick, handleStageChange]);
 
   const table = useReactTable({
     data: tableData,

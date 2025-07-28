@@ -108,19 +108,19 @@ type NavItem = {
 };
 
 const navItems: NavItem[] = [
-  { href: "#", icon: LayoutDashboard, label: "Dashboard", roles: ["Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Salesman", "Delivery Boy", "Recovery Officer"] },
+  { href: "#", icon: LayoutDashboard, label: "Dashboard", roles: ["Admin", "Super Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Salesman", "Delivery Boy", "Recovery Officer"] },
   { 
     href: "#", 
     icon: Package, 
     label: "Stock", 
-    roles: ["Admin", "Team Operation Manager", "Branch Admin"],
+    roles: ["Admin", "Super Admin", "Team Operation Manager", "Branch Admin"],
     children: [
       { href: "#", icon: Boxes, label: "Stock Management", roles: ["Team Operation Manager", "Branch Admin"] },
-      { href: "#", icon: Package, label: "Global Stock View", roles: ["Admin"] },
+      { href: "#", icon: Package, label: "Global Stock View", roles: ["Admin", "Super Admin"] },
     ]
   },
   { href: "#", icon: ShoppingCart, label: "Record Product Sale", roles: ["Team Operation Manager", "Branch Admin"] },
-  { href: "#", icon: Wallet, label: "Income Records", roles: ["Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Salesman"] },
+  { href: "#", icon: Wallet, label: "Income Records", roles: ["Admin", "Super Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Salesman"] },
   { href: "#", icon: Users, label: "My Customers", roles: ["Salesman"] },
   { href: "#", icon: Map, label: "Reminders", roles: ["Salesman"] },
   { href: "#", icon: Truck, label: "My Deliveries", roles: ["Delivery Boy"] },
@@ -141,36 +141,36 @@ const navItems: NavItem[] = [
   },
   { href: "#", icon: Truck, label: "Manage Deliveries", roles: ["Team Operation Manager", "Branch Admin"] },
   { href: "#", icon: Repeat, label: "Manage Recovery", roles: ["Team Operation Manager", "Branch Admin"] },
-  { href: "#", icon: Building, label: "User Management", roles: ["Admin"] },
-  { href: "#", icon: Briefcase, label: "Customer Management", roles: ["Admin"]},
-  { href: "#", icon: ShieldCheck, label: "Commission Approvals", roles: ["Admin"] },
-  { href: "#", icon: UserCheck, label: "Salesman Verification", roles: ["Admin"] },
-  { href: "#", icon: Receipt, label: "Slip Management", roles: ["Admin"] },
-  { href: "#", icon: Network, label: "Network View", roles: ["Admin"] },
+  { href: "#", icon: Building, label: "User Management", roles: ["Admin", "Super Admin"] },
+  { href: "#", icon: Briefcase, label: "Customer Management", roles: ["Admin", "Super Admin"]},
+  { href: "#", icon: ShieldCheck, label: "Commission Approvals", roles: ["Admin", "Super Admin"] },
+  { href: "#", icon: UserCheck, label: "Salesman Verification", roles: ["Admin", "Super Admin"] },
+  { href: "#", icon: Receipt, label: "Slip Management", roles: ["Admin", "Super Admin"] },
+  { href: "#", icon: Network, label: "Network View", roles: ["Admin", "Super Admin"] },
   { 
     href: "#", 
     icon: TrendingUp, 
     label: "Reports", 
-    roles: ["Admin"],
+    roles: ["Admin", "Super Admin"],
     children: [
-      { href: "#", icon: Award, label: "Target Achievers", roles: ["Admin"] },
-      { href: "#", icon: MapPin, label: "Live Location", roles: ["Admin"] },
+      { href: "#", icon: Award, label: "Target Achievers", roles: ["Admin", "Super Admin"] },
+      { href: "#", icon: MapPin, label: "Live Location", roles: ["Admin", "Super Admin"] },
     ]
   },
   { 
     href: "#", 
     icon: Settings, 
     label: "Settings", 
-    roles: ["Admin"],
+    roles: ["Admin", "Super Admin"],
     children: [
-      { href: "#", icon: DollarSign, label: "Token Commissions", roles: ["Admin"] },
-      { href: "#", icon: Briefcase, label: "Product Commissions", roles: ["Admin"] },
-      { href: "#", icon: Wallet, label: "Salary Management", roles: ["Admin"] },
-      { href: "#", icon: Award, label: "Incentive Management", roles: ["Admin"] },
-      { href: "#", icon: SlidersHorizontal, label: "Signup Roles", roles: ["Admin"] },
+      { href: "#", icon: DollarSign, label: "Token Commissions", roles: ["Admin", "Super Admin"] },
+      { href: "#", icon: Briefcase, label: "Product Commissions", roles: ["Admin", "Super Admin"] },
+      { href: "#", icon: Wallet, label: "Salary Management", roles: ["Admin", "Super Admin"] },
+      { href: "#", icon: Award, label: "Incentive Management", roles: ["Admin", "Super Admin"] },
+      { href: "#", icon: SlidersHorizontal, label: "Signup Roles", roles: ["Admin", "Super Admin"] },
     ]
   },
-  { href: "#", icon: Lightbulb, label: "Insights", roles: ["Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager"] },
+  { href: "#", icon: Lightbulb, label: "Insights", roles: ["Admin", "Super Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager"] },
 ];
 
 const SidebarNav = ({ user, activeView, setActiveView, onLinkClick }: { user: User, activeView: string, setActiveView: (view: string) => void, onLinkClick?: () => void }) => (
@@ -380,6 +380,7 @@ const AppLayout = ({ user }: { user: User }) => {
       case "Dashboard":
         switch (user.role) {
           case "Admin":
+          case "Super Admin":
             return <AdminDashboard user={user} allUsers={allUsers} allCustomers={allCustomers} allIncomeRecords={allIncomeRecords} setActiveView={setActiveView} />;
           case "Salesman":
             return <SalesmanDashboard user={user} allCustomers={allCustomers} allIncomeRecords={allIncomeRecords} allCommissionRequests={allCommissionRequests} allStockItems={allStockItems} />;
@@ -444,7 +445,7 @@ const AppLayout = ({ user }: { user: User }) => {
               <CardDescription>Manage all employees and system users.</CardDescription>
             </CardHeader>
             <CardContent>
-              <UserManagementTable data={allUsers} allIncomeRecords={allIncomeRecords} />
+              <UserManagementTable user={user} data={allUsers} allIncomeRecords={allIncomeRecords} />
             </CardContent>
           </Card>
         );

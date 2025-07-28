@@ -7,6 +7,7 @@ export type Role =
   | "Head Group Manager"
   | "Regional Director"
   | "Admin"
+  | "Super Admin"
   | "Delivery Boy"
   | "Recovery Officer"
   | "Branch Admin";
