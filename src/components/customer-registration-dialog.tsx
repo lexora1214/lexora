@@ -146,9 +146,9 @@ const CustomerRegistrationDialog: React.FC<CustomerRegistrationDialogProps> = ({
         purchasingItemCode: data.purchasingItemCode,
         totalValue: data.totalValue,
         discountValue: data.discountValue,
-        downPayment: data.paymentMethod === 'cash' ? null : data.downPayment,
-        installments: data.paymentMethod === 'cash' ? null : data.installments,
-        monthlyInstallment: data.paymentMethod === 'cash' ? null : data.monthlyInstallment,
+        downPayment: data.downPayment,
+        installments: data.installments,
+        monthlyInstallment: data.monthlyInstallment,
         requestedDeliveryDate: data.requestedDeliveryDate?.toISOString(),
         paymentMethod: data.paymentMethod,
     };
@@ -343,7 +343,7 @@ const CustomerRegistrationDialog: React.FC<CustomerRegistrationDialogProps> = ({
                     </div>
                     <div>
                         <Label htmlFor="downPayment">Down Payment (LKR, Optional)</Label>
-                        <Input id="downPayment" type="number" {...register("downPayment")} />
+                        <Input id="downPayment" type="text" inputMode="numeric" {...register("downPayment")} />
                     </div>
                      {paymentMethod === 'installments' && (
                         <>

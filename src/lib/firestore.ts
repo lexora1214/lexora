@@ -175,8 +175,8 @@ export async function createCustomer(customerData: Omit<Customer, 'id' | 'saleDa
         tokenIsAvailable: true,
         branch: salesman.branch,
         downPayment: customerData.downPayment || null,
-        installments: customerData.paymentMethod === 'cash' ? null : customerData.installments,
-        monthlyInstallment: customerData.paymentMethod === 'cash' ? null : customerData.monthlyInstallment,
+        installments: customerData.installments || null,
+        monthlyInstallment: customerData.monthlyInstallment || null,
     };
 
     batch.set(newCustomerRef, newCustomer);
@@ -503,22 +503,21 @@ export async function createProductSaleAndDistributeCommissions(
             deliveryStatus: 'pending',
         };
 
-        if (formData.requestedDeliveryDate) {
-          newSaleData.requestedDeliveryDate = formData.requestedDeliveryDate.toISOString();
-        }
-
-         if (formData.paymentMethod === 'installments') {
-            newSaleData.installments = formData.installments;
-            newSaleData.monthlyInstallment = formData.monthlyInstallment;
+        if (formData.paymentMethod === 'installments') {
+            newSaleData.installments = formData.installments ?? null;
+            newSaleData.monthlyInstallment = formData.monthlyInstallment ?? null;
             newSaleData.paidInstallments = 0;
             newSaleData.recoveryStatus = 'pending';
         } else {
-            newSaleData.installments = null;
+             newSaleData.installments = null;
             newSaleData.monthlyInstallment = null;
             newSaleData.paidInstallments = undefined;
             newSaleData.recoveryStatus = undefined;
         }
 
+        if (formData.requestedDeliveryDate) {
+          newSaleData.requestedDeliveryDate = formData.requestedDeliveryDate.toISOString();
+        }
         
         // --- ALL WRITES HAPPEN LAST ---
         
@@ -1388,5 +1387,6 @@ export async function addExpenseForSalesman(
 export async function sendOtpSms(mobileNumber: string, otp: string): Promise<{success: boolean, error?: string}> {
     return sendSmsForOtp(mobileNumber, otp);
 }
+
 
 
