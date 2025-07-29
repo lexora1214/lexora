@@ -410,7 +410,7 @@ const AppLayout = ({ user }: { user: User }) => {
       case "Stock Management":
         return <StockManagementView manager={user} />;
       case "Global Stock View":
-        return <AdminStockView allStockItems={allStockItems} />;
+        return <AdminStockView user={user} allUsers={allUsers} allStockItems={allStockItems} />;
       case "Record Product Sale":
         return <ShopManagerDashboard user={user} openDialogOnLoad />;
       case "Income Records":

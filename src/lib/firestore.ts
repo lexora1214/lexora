@@ -481,8 +481,7 @@ export async function createProductSaleAndDistributeCommissions(
         const saleDate = new Date().toISOString();
         
         // --- CONSTRUCT SALE DATA ---
-        const baseSaleData: Partial<ProductSale> = {
-            id: newSaleRef.id,
+        const baseSaleData: Omit<ProductSale, 'id'> = {
             productId: formData.productId,
             productName: formData.productName,
             productCode: formData.productCode,
@@ -502,16 +501,18 @@ export async function createProductSaleAndDistributeCommissions(
 
         if (formData.paymentMethod === 'installments') {
              newSaleData = {
+                id: newSaleRef.id,
                 ...baseSaleData,
-                installments: formData.installments ?? null,
-                monthlyInstallment: formData.monthlyInstallment ?? null,
+                installments: formData.installments ?? 0,
+                monthlyInstallment: formData.monthlyInstallment ?? 0,
                 paidInstallments: 0,
                 recoveryStatus: 'pending',
-            } as ProductSale;
+            };
         } else { // Cash payment
             newSaleData = {
+                id: newSaleRef.id,
                 ...baseSaleData
-            } as ProductSale;
+            };
         }
         
         // --- ALL WRITES HAPPEN LAST ---
@@ -1216,11 +1217,24 @@ export async function getIncomeRecordsForPayout(payoutId: string): Promise<Incom
 // --- Stock Management ---
 
 export async function addStockItem(item: Omit<StockItem, 'id' | 'lastUpdatedAt'>): Promise<void> {
-    const stockCollection = collection(db, "stock");
-    await addDoc(stockCollection, {
-        ...item,
-        lastUpdatedAt: new Date().toISOString(),
-    });
+  const stockCollection = collection(db, 'stock');
+  const auth = getAuth();
+  const currentUser = auth.currentUser;
+
+  // The 'managedBy' ID should be the logged-in admin, not the branch manager
+  const managedById =
+    currentUser?.uid &&
+    ['Admin', 'Super Admin'].includes(
+      (await getDoc(doc(db, 'users', currentUser.uid))).data()?.role
+    )
+      ? currentUser.uid
+      : item.managedBy;
+      
+  await addDoc(stockCollection, {
+    ...item,
+    managedBy: managedById,
+    lastUpdatedAt: new Date().toISOString(),
+  });
 }
 
 export async function updateStockItem(itemId: string, updates: Partial<Omit<StockItem, 'id' | 'lastUpdatedAt'>>): Promise<void> {
@@ -1390,8 +1404,3 @@ export async function addExpenseForSalesman(
 export async function sendOtpSms(mobileNumber: string, otp: string): Promise<{success: boolean, error?: string}> {
     return sendSmsForOtp(mobileNumber, otp);
 }
-
-
-
-
-
