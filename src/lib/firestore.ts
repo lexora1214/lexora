@@ -174,9 +174,9 @@ export async function createCustomer(customerData: Omit<Customer, 'id' | 'saleDa
         commissionStatus: 'pending',
         tokenIsAvailable: true,
         branch: salesman.branch,
-        downPayment: customerData.downPayment ?? null,
-        installments: customerData.installments ?? null,
-        monthlyInstallment: customerData.monthlyInstallment ?? null,
+        downPayment: customerData.downPayment || null,
+        installments: customerData.paymentMethod === 'cash' ? null : customerData.installments,
+        monthlyInstallment: customerData.paymentMethod === 'cash' ? null : customerData.monthlyInstallment,
     };
 
     batch.set(newCustomerRef, newCustomer);
@@ -507,11 +507,16 @@ export async function createProductSaleAndDistributeCommissions(
           newSaleData.requestedDeliveryDate = formData.requestedDeliveryDate.toISOString();
         }
 
-        if (newSaleData.paymentMethod === 'installments') {
-            newSaleData.installments = formData.installments ?? null;
-            newSaleData.monthlyInstallment = formData.monthlyInstallment ?? null;
+         if (formData.paymentMethod === 'installments') {
+            newSaleData.installments = formData.installments;
+            newSaleData.monthlyInstallment = formData.monthlyInstallment;
             newSaleData.paidInstallments = 0;
             newSaleData.recoveryStatus = 'pending';
+        } else {
+            newSaleData.installments = null;
+            newSaleData.monthlyInstallment = null;
+            newSaleData.paidInstallments = undefined;
+            newSaleData.recoveryStatus = undefined;
         }
 
         
@@ -1383,4 +1388,5 @@ export async function addExpenseForSalesman(
 export async function sendOtpSms(mobileNumber: string, otp: string): Promise<{success: boolean, error?: string}> {
     return sendSmsForOtp(mobileNumber, otp);
 }
+
 
