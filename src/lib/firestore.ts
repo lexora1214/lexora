@@ -499,16 +499,16 @@ export async function createProductSaleAndDistributeCommissions(
         };
 
         let newSaleData: ProductSale;
+
         if (formData.paymentMethod === 'installments') {
-            newSaleData = {
+             newSaleData = {
                 ...baseSaleData,
                 installments: formData.installments ?? null,
                 monthlyInstallment: formData.monthlyInstallment ?? null,
                 paidInstallments: 0,
                 recoveryStatus: 'pending',
             } as ProductSale;
-        } else {
-            // For cash sales, ensure no installment fields are present
+        } else { // Cash payment
             newSaleData = {
                 ...baseSaleData
             } as ProductSale;
@@ -521,16 +521,24 @@ export async function createProductSaleAndDistributeCommissions(
         
         // WRITE 2: Update customer if token was available
         if (customer.tokenIsAvailable) {
-            transaction.update(customerDocRef, {
+            const customerUpdateData: Partial<Customer> = {
                 tokenIsAvailable: false,
                 purchasingItem: newSaleData.productName,
                 purchasingItemCode: newSaleData.productCode ?? null,
                 totalValue: newSaleData.price,
                 discountValue: formData.discountValue ?? null,
                 downPayment: formData.downPayment ?? null,
-                installments: newSaleData.installments,
-                monthlyInstallment: newSaleData.monthlyInstallment,
-            });
+            };
+
+            if (formData.paymentMethod === 'installments') {
+                customerUpdateData.installments = formData.installments ?? null;
+                customerUpdateData.monthlyInstallment = formData.monthlyInstallment ?? null;
+            } else {
+                customerUpdateData.installments = null;
+                customerUpdateData.monthlyInstallment = null;
+            }
+
+            transaction.update(customerDocRef, customerUpdateData);
         }
 
         // WRITE 3: Create the new product sale record
@@ -1382,6 +1390,7 @@ export async function addExpenseForSalesman(
 export async function sendOtpSms(mobileNumber: string, otp: string): Promise<{success: boolean, error?: string}> {
     return sendSmsForOtp(mobileNumber, otp);
 }
+
 
 
 
