@@ -462,16 +462,10 @@ export async function createProductSaleAndDistributeCommissions(
     await runTransaction(db, async (transaction) => {
         // --- ALL READS MUST HAPPEN FIRST ---
         const allUsers = await getAllUsers();
-
-        // READ 1: Stock Item
         const stockItemRef = doc(db, "stock", formData.productId);
         const stockItemDoc = await transaction.get(stockItemRef);
-        
-        // READ 2: Customer
         const customerDocRef = doc(db, "customers", customerId);
         const customerDoc = await transaction.get(customerDocRef);
-        
-        // READ 3: Commission Settings
         const productSettings = await getProductCommissionSettings();
 
         // --- VALIDATION AND DATA PREP ---
@@ -486,8 +480,8 @@ export async function createProductSaleAndDistributeCommissions(
         const newSaleRef = doc(collection(db, "productSales"));
         const saleDate = new Date().toISOString();
         
-        // Create the new product sale record
-        let newSaleData: ProductSale = {
+        // --- CONSTRUCT SALE DATA ---
+        const baseSaleData: Partial<ProductSale> = {
             id: newSaleRef.id,
             productId: formData.productId,
             productName: formData.productName,
@@ -501,22 +495,23 @@ export async function createProductSaleAndDistributeCommissions(
             shopManagerId: shopManager.id,
             shopManagerName: shopManager.name,
             deliveryStatus: 'pending',
+            requestedDeliveryDate: formData.requestedDeliveryDate?.toISOString(),
         };
 
+        let newSaleData: ProductSale;
         if (formData.paymentMethod === 'installments') {
-            newSaleData.installments = formData.installments ?? null;
-            newSaleData.monthlyInstallment = formData.monthlyInstallment ?? null;
-            newSaleData.paidInstallments = 0;
-            newSaleData.recoveryStatus = 'pending';
+            newSaleData = {
+                ...baseSaleData,
+                installments: formData.installments ?? null,
+                monthlyInstallment: formData.monthlyInstallment ?? null,
+                paidInstallments: 0,
+                recoveryStatus: 'pending',
+            } as ProductSale;
         } else {
-             newSaleData.installments = null;
-            newSaleData.monthlyInstallment = null;
-            newSaleData.paidInstallments = undefined;
-            newSaleData.recoveryStatus = undefined;
-        }
-
-        if (formData.requestedDeliveryDate) {
-          newSaleData.requestedDeliveryDate = formData.requestedDeliveryDate.toISOString();
+            // For cash sales, ensure no installment fields are present
+            newSaleData = {
+                ...baseSaleData
+            } as ProductSale;
         }
         
         // --- ALL WRITES HAPPEN LAST ---
@@ -1387,6 +1382,7 @@ export async function addExpenseForSalesman(
 export async function sendOtpSms(mobileNumber: string, otp: string): Promise<{success: boolean, error?: string}> {
     return sendSmsForOtp(mobileNumber, otp);
 }
+
 
 
 
