@@ -5,13 +5,12 @@ import React, { useState } from 'react';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { User, StockItem } from '@/types';
+import { User } from '@/types';
 import { addStockItem } from '@/lib/firestore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LoaderCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -19,7 +18,6 @@ interface AddGlobalStockDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   adminUser: User;
-  branches: string[];
 }
 
 const formSchema = z.object({
@@ -28,15 +26,14 @@ const formSchema = z.object({
   priceCash: z.coerce.number().min(0, 'Price must be a non-negative number.'),
   priceInstallment: z.coerce.number().min(0, 'Price must be a non-negative number.'),
   quantity: z.coerce.number().min(0, 'Quantity must be a non-negative number.'),
-  branch: z.string().min(1, 'A branch must be selected.'),
 });
 
 type FormValues = z.infer<typeof formSchema>;
 
-const AddGlobalStockDialog: React.FC<AddGlobalStockDialogProps> = ({ isOpen, onOpenChange, adminUser, branches }) => {
+const AddGlobalStockDialog: React.FC<AddGlobalStockDialogProps> = ({ isOpen, onOpenChange, adminUser }) => {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const { register, handleSubmit, control, reset, formState: { errors } } = useForm<FormValues>({
+  const { register, handleSubmit, reset, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       productName: '',
@@ -44,15 +41,15 @@ const AddGlobalStockDialog: React.FC<AddGlobalStockDialogProps> = ({ isOpen, onO
       priceCash: 0,
       priceInstallment: 0,
       quantity: 0,
-      branch: '',
     },
   });
 
   const onSubmit: SubmitHandler<FormValues> = async (data) => {
     setIsLoading(true);
     try {
-      await addStockItem({ ...data, managedBy: adminUser.id });
-      toast({ title: "Item Added", description: `${data.productName} added to ${data.branch} stock.`, className: "bg-success text-success-foreground" });
+      // Admins always add to "Main Stock"
+      await addStockItem({ ...data, managedBy: adminUser.id, branch: 'Main Stock' });
+      toast({ title: "Item Added", description: `${data.productName} added to Main Stock.`, className: "bg-success text-success-foreground" });
       onOpenChange(false);
       reset();
     } catch (error: any) {
@@ -67,24 +64,10 @@ const AddGlobalStockDialog: React.FC<AddGlobalStockDialogProps> = ({ isOpen, onO
       <DialogContent>
         <form onSubmit={handleSubmit(onSubmit)}>
           <DialogHeader>
-            <DialogTitle>Add New Stock Item Globally</DialogTitle>
-            <DialogDescription>Enter details for the new product and assign it to a branch.</DialogDescription>
+            <DialogTitle>Add New Item to Main Stock</DialogTitle>
+            <DialogDescription>Enter details for the new product. It will be added to the central main stock and be visible to all branches.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div>
-              <Label htmlFor="branch">Branch</Label>
-              <Select onValueChange={(value) => control._formValues.branch = value} {...register('branch')}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a branch" />
-                </SelectTrigger>
-                <SelectContent>
-                  {branches.map(branchName => (
-                    <SelectItem key={branchName} value={branchName}>{branchName}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {errors.branch && <p className="text-xs text-destructive mt-1">{errors.branch.message}</p>}
-            </div>
             <div>
               <Label htmlFor="productName">Product Name</Label>
               <Input id="productName" {...register('productName')} />

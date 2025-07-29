@@ -139,7 +139,7 @@ const StockManagementView: React.FC<StockManagementViewProps> = ({ manager }) =>
       setLoading(false);
       return;
     }
-    const q = query(collection(db, 'stock'), where('branch', '==', manager.branch));
+    const q = query(collection(db, 'stock'), where('branch', 'in', [manager.branch, 'Main Stock']));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StockItem));
       setStockItems(items.sort((a,b) => a.productName.localeCompare(b.productName)));
@@ -204,11 +204,9 @@ const StockManagementView: React.FC<StockManagementViewProps> = ({ manager }) =>
                     onChange={(e) => setFilter(e.target.value)}
                     className="w-full md:w-auto"
                 />
-                {manager.role === 'Branch Admin' && (
-                    <Button onClick={handleAdd} className="w-full md:w-auto">
-                        <PlusCircle /> Add New Item
-                    </Button>
-                )}
+                <Button onClick={handleAdd} className="w-full md:w-auto">
+                    <PlusCircle /> Add New Item
+                </Button>
             </div>
           </div>
         </CardHeader>

@@ -27,7 +27,7 @@ const AdminStockView: React.FC<AdminStockViewProps> = ({ user, allStockItems, al
 
   const branches = useMemo(() => {
     const branchSet = new Set(allUsers.map(u => u.branch).filter(Boolean));
-    return ['all', ...Array.from(branchSet).sort()];
+    return ['all', 'Main Stock', ...Array.from(branchSet).sort()];
   }, [allUsers]);
 
   const filteredItems = useMemo(() => {
@@ -72,7 +72,7 @@ const AdminStockView: React.FC<AdminStockViewProps> = ({ user, allStockItems, al
                   </Select>
                   {['Admin', 'Super Admin'].includes(user.role) && (
                       <Button onClick={() => setIsAddDialogOpen(true)}>
-                          <PlusCircle className="mr-2 h-4 w-4" /> Add New Item
+                          <PlusCircle className="mr-2 h-4 w-4" /> Add to Main Stock
                       </Button>
                   )}
               </div>
@@ -121,7 +121,6 @@ const AdminStockView: React.FC<AdminStockViewProps> = ({ user, allStockItems, al
         isOpen={isAddDialogOpen}
         onOpenChange={setIsAddDialogOpen}
         adminUser={user}
-        branches={branches.filter(b => b !== 'all')}
       />
     </>
   );
