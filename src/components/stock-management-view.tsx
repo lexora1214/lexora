@@ -204,9 +204,11 @@ const StockManagementView: React.FC<StockManagementViewProps> = ({ manager }) =>
                     onChange={(e) => setFilter(e.target.value)}
                     className="w-full md:w-auto"
                 />
-                <Button onClick={handleAdd} className="w-full md:w-auto">
-                    <PlusCircle /> Add New Item
-                </Button>
+                {manager.role === 'Branch Admin' && (
+                  <Button onClick={handleAdd} className="w-full md:w-auto">
+                      <PlusCircle /> Add New Item
+                  </Button>
+                )}
             </div>
           </div>
         </CardHeader>
