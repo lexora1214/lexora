@@ -99,8 +99,8 @@ const AdminStockView: React.FC<AdminStockViewProps> = ({ user, allStockItems, al
                       <TableCell className="font-medium">{item.productName}</TableCell>
                       <TableCell>{item.productCode || 'N/A'}</TableCell>
                       <TableCell><Badge variant="outline">{item.branch}</Badge></TableCell>
-                      <TableCell>{item.priceCash.toLocaleString()}</TableCell>
-                      <TableCell>{item.priceInstallment.toLocaleString()}</TableCell>
+                      <TableCell>{(item.priceCash ?? 0).toLocaleString()}</TableCell>
+                      <TableCell>{(item.priceInstallment ?? 0).toLocaleString()}</TableCell>
                       <TableCell className="text-center">{item.quantity}</TableCell>
                       <TableCell>{format(new Date(item.lastUpdatedAt), 'PPP p')}</TableCell>
                     </TableRow>
