@@ -55,8 +55,8 @@ const ShopManagerDashboard: React.FC<ShopManagerDashboardProps> = ({ user, openD
       setLoading(false);
     });
     
-    // Listen to stock items for the manager's branch
-    const stockQuery = query(collection(db, "stock"), where("branch", "==", user.branch));
+    // Listen to stock items for the manager's branch and Main Stock
+    const stockQuery = query(collection(db, "stock"), where("branch", "in", [user.branch, "Main Stock"]));
     const stockUnsub = onSnapshot(stockQuery, (snapshot) => {
         const items = snapshot.docs.map(doc => ({id: doc.id, ...doc.data()} as StockItem));
         setStockItems(items);
