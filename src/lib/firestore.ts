@@ -38,7 +38,7 @@ export async function createUserProfile(
 ): Promise<User> {
   const batch = writeBatch(db);
   let referrerId: string | null = null;
-  const isReferralNeeded = role && !['Regional Director', 'Admin', 'Super Admin', 'HR'].includes(role);
+  const isReferralNeeded = role && !['Regional Director', 'Admin', 'Super Admin', 'HR', 'Store Keeper'].includes(role);
 
   if (isReferralNeeded) {
     if (!referralCodeInput || referralCodeInput.length !== 6) {
@@ -54,12 +54,12 @@ export async function createUserProfile(
     
     const referrerDoc = querySnapshot.docs[0];
     referrerId = referrerDoc.id;
-  } else if (role === 'HR') {
-    referrerId = null; // Explicitly set to null for HR role creation by Admin
+  } else if (role === 'HR' || role === 'Store Keeper') {
+    referrerId = null; // Explicitly set to null for HR or Store Keeper role creation by Admin
   }
   
   let newReferralCode = '';
-  const isReferralCodeNeeded = role && !['Salesman', 'Delivery Boy', 'Recovery Officer', 'Branch Admin', 'HR'].includes(role);
+  const isReferralCodeNeeded = role && !['Salesman', 'Delivery Boy', 'Recovery Officer', 'Branch Admin', 'HR', 'Store Keeper'].includes(role);
   
   if (isReferralCodeNeeded) {
     let isCodeUnique = false;
@@ -93,7 +93,7 @@ export async function createUserProfile(
     totalIncome: 0,
     avatar: ``,
     createdAt: new Date().toISOString(),
-    isDisabled: role !== 'HR', // HR user is enabled by default, others are disabled
+    isDisabled: !['HR', 'Store Keeper'].includes(role), // HR and Store Keeper are enabled by default
     ...(branch && { branch }),
     ...(role === 'Salesman' && { salesmanStage }),
     ...documentUrls,
