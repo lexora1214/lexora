@@ -6,7 +6,7 @@ import React, { useState, useEffect } from "react";
 import { User, ProductSale, Customer, StockItem } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ShoppingCart, LoaderCircle, Calendar as CalendarIcon, User as UserIcon } from "lucide-react";
+import { ShoppingCart, LoaderCircle, Calendar as CalendarIcon, User as UserIcon, Hash } from "lucide-react";
 import ProductSaleDialog from "../product-sale-dialog";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -156,6 +156,7 @@ const ShopManagerDashboard: React.FC<ShopManagerDashboardProps> = ({ user, openD
                     <TableRow>
                       <TableHead>Date</TableHead>
                       <TableHead>Product</TableHead>
+                      <TableHead>IMEI</TableHead>
                       <TableHead>Customer</TableHead>
                       <TableHead className="text-right">Price</TableHead>
                     </TableRow>
@@ -165,6 +166,7 @@ const ShopManagerDashboard: React.FC<ShopManagerDashboardProps> = ({ user, openD
                       <TableRow key={sale.id}>
                         <TableCell>{new Date(sale.saleDate).toLocaleDateString()}</TableCell>
                         <TableCell className="font-medium">{sale.productName}</TableCell>
+                        <TableCell><Badge variant="secondary" className="font-mono">{sale.imei}</Badge></TableCell>
                         <TableCell>{sale.customerName}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex flex-col items-end">
@@ -193,6 +195,10 @@ const ShopManagerDashboard: React.FC<ShopManagerDashboardProps> = ({ user, openD
                         <div className="flex items-center gap-2">
                             <UserIcon className="w-4 h-4 text-primary/80"/>
                             <p>Customer: {sale.customerName}</p>
+                        </div>
+                         <div className="flex items-center gap-2">
+                            <Hash className="w-4 h-4 text-primary/80"/>
+                            <p>IMEI: {sale.imei}</p>
                         </div>
                         <div className="flex items-center gap-2">
                             <CalendarIcon className="w-4 h-4 text-primary/80"/>
