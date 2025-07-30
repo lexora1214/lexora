@@ -100,7 +100,7 @@ const SalarySettingsForm: React.FC<SalarySettingsProps> = ({ user, allCustomers 
         setIsLoading(true);
         try {
             await updateSalarySettings(data, user);
-            if (user.role === 'Super Admin') {
+            if (user.role === 'Super Admin' || user.role === 'HR') {
                 toast({
                     title: "Settings Updated",
                     description: "Salary values have been saved successfully.",
@@ -110,7 +110,7 @@ const SalarySettingsForm: React.FC<SalarySettingsProps> = ({ user, allCustomers 
             } else {
                  toast({
                     title: "Request Submitted",
-                    description: "Your change request has been sent to a Super Admin for approval.",
+                    description: "Your change request has been sent to HR for approval.",
                     variant: 'default',
                 });
                 await fetchInitialData(); // Refresh to show pending request
@@ -188,7 +188,7 @@ const SalarySettingsForm: React.FC<SalarySettingsProps> = ({ user, allCustomers 
                                 <ShieldQuestion className="h-4 w-4" />
                                 <AlertTitle>Pending Approval</AlertTitle>
                                 <AlertDescriptionUI>
-                                   A salary change request is currently pending approval by a Super Admin. You cannot make new changes until it is processed. Requested by {pendingRequest.requestedByName} on {format(new Date(pendingRequest.requestDate), 'PPP')}.
+                                   A salary change request is currently pending approval by HR. You cannot make new changes until it is processed. Requested by {pendingRequest.requestedByName} on {format(new Date(pendingRequest.requestDate), 'PPP')}.
                                 </AlertDescriptionUI>
                             </Alert>
                         </CardContent>
@@ -205,7 +205,7 @@ const SalarySettingsForm: React.FC<SalarySettingsProps> = ({ user, allCustomers 
                         <CardFooter className="border-t px-6 py-4">
                             <Button type="submit" disabled={isLoading || !!pendingRequest}>
                                 {isLoading && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
-                                {user.role === 'Super Admin' ? 'Save Salary Settings' : 'Request Changes'}
+                                {['Super Admin', 'HR'].includes(user.role) ? 'Save Salary Settings' : 'Request Changes'}
                             </Button>
                         </CardFooter>
                     </form>
@@ -365,3 +365,5 @@ const SalarySettingsForm: React.FC<SalarySettingsProps> = ({ user, allCustomers 
 };
 
 export default SalarySettingsForm;
+
+    

@@ -90,6 +90,7 @@ const SalaryApprovalView: React.FC<SalaryApprovalViewProps> = ({ user }) => {
 
   const fetchRequests = async () => {
     try {
+      setLoading(true);
       const pendingRequests = await getPendingSalaryChangeRequests();
       setRequests(pendingRequests);
     } catch (error) {
@@ -211,3 +212,5 @@ const SalaryApprovalView: React.FC<SalaryApprovalViewProps> = ({ user }) => {
 };
 
 export default SalaryApprovalView;
+
+    

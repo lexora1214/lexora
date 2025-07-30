@@ -1,4 +1,5 @@
 
+
 import { doc, getDoc, setDoc, collection, getDocs, query, where, writeBatch, increment, updateDoc, deleteDoc, addDoc, runTransaction, deleteField } from "firebase/firestore";
 import { getAuth, updatePassword } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
@@ -981,8 +982,8 @@ export async function getSalarySettings(): Promise<SalarySettings> {
 export async function updateSalarySettings(newSettings: SalarySettings, updatingUser: User): Promise<void> {
     const settingsDocRef = doc(db, "settings", "salaries");
 
-    if (updatingUser.role === 'Super Admin') {
-        // Super Admins can update directly
+    if (['Super Admin', 'HR'].includes(updatingUser.role)) {
+        // Super Admins and HR can update directly
         await setDoc(settingsDocRef, newSettings, { merge: true });
     } else if (updatingUser.role === 'Admin') {
         // Admins create a change request
@@ -1009,7 +1010,7 @@ export async function getPendingSalaryChangeRequests(): Promise<SalaryChangeRequ
     return snapshot.docs.map(d => d.data() as SalaryChangeRequest).sort((a,b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime());
 }
 
-export async function approveSalaryChangeRequest(requestId: string, superAdmin: User): Promise<void> {
+export async function approveSalaryChangeRequest(requestId: string, approver: User): Promise<void> {
     const requestRef = doc(db, 'salaryChangeRequests', requestId);
     const requestSnap = await getDoc(requestRef);
     if (!requestSnap.exists() || requestSnap.data().status !== 'pending') {
@@ -1026,20 +1027,20 @@ export async function approveSalaryChangeRequest(requestId: string, superAdmin: 
     // Update the request status
     batch.update(requestRef, {
         status: 'approved',
-        processedBy: superAdmin.id,
-        processedByName: superAdmin.name,
+        processedBy: approver.id,
+        processedByName: approver.name,
         processedDate: new Date().toISOString(),
     });
 
     await batch.commit();
 }
 
-export async function rejectSalaryChangeRequest(requestId: string, superAdmin: User): Promise<void> {
+export async function rejectSalaryChangeRequest(requestId: string, approver: User): Promise<void> {
     const requestRef = doc(db, 'salaryChangeRequests', requestId);
     await updateDoc(requestRef, {
         status: 'rejected',
-        processedBy: superAdmin.id,
-        processedByName: superAdmin.name,
+        processedBy: approver.id,
+        processedByName: approver.name,
         processedDate: new Date().toISOString(),
     });
 }
@@ -1401,3 +1402,5 @@ export async function addExpenseForSalesman(
 export async function sendOtpSms(mobileNumber: string, otp: string): Promise<{success: boolean, error?: string}> {
     return sendSmsForOtp(mobileNumber, otp);
 }
+
+    
