@@ -89,6 +89,11 @@ const AdminStockView: React.FC<AdminStockViewProps> = ({ user, allStockItems, al
     setIsViewImeisOpen(true);
   };
 
+  const handleAdd = () => {
+    setSelectedItem(undefined);
+    setIsAddDialogOpen(true);
+  };
+
   return (
     <>
       <Card>
@@ -117,6 +122,11 @@ const AdminStockView: React.FC<AdminStockViewProps> = ({ user, allStockItems, al
                           ))}
                       </SelectContent>
                   </Select>
+                  {user.role === 'Store Keeper' && (
+                    <Button onClick={handleAdd} className="w-full md:w-auto">
+                      <PlusCircle className="mr-2 h-4 w-4" /> Add New Item
+                    </Button>
+                  )}
               </div>
           </div>
         </CardHeader>
