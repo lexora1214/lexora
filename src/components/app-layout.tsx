@@ -42,7 +42,9 @@ import {
   ShieldQuestion,
   HeartHandshake,
   History,
-  Warehouse
+  Warehouse,
+  PackagePlus,
+  CheckSquare
 } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
@@ -60,7 +62,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import type { User, Role, Customer, IncomeRecord, ProductSale, CommissionRequest, StockItem, Reminder } from "@/types";
+import type { User, Role, Customer, IncomeRecord, ProductSale, CommissionRequest, StockItem, Reminder, StockTransfer } from "@/types";
 import { getDownlineIdsAndUsers } from "@/lib/hierarchy";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -110,6 +112,8 @@ import SalaryPayoutApprovalView from "./salary-payout-approval-view";
 import PayoutHistoryView from "./payout-history-view";
 import IncentiveApprovalView from "./incentive-approval-view";
 import AddStoreKeeperView from "./add-store-keeper-view";
+import StockAssignmentView from "./stock-assignment-view";
+import StockConfirmationView from "./stock-confirmation-view";
 
 type NavItem = {
   href: string;
@@ -129,6 +133,8 @@ const navItems: NavItem[] = [
     children: [
       { href: "#", icon: Boxes, label: "Stock Management", roles: ["Team Operation Manager", "Branch Admin"] },
       { href: "#", icon: Package, label: "Global Stock View", roles: ["Admin", "Super Admin", "Store Keeper"] },
+      { href: "#", icon: PackagePlus, label: "Assign Stock", roles: ["Store Keeper"] },
+      { href: "#", icon: CheckSquare, label: "Confirm Stock", roles: ["Team Operation Manager"] },
     ]
   },
   { href: "#", icon: ShoppingCart, label: "Record Product Sale", roles: ["Team Operation Manager", "Branch Admin"] },
@@ -336,6 +342,7 @@ const AppLayout = ({ user }: { user: User }) => {
   const [allCommissionRequests, setAllCommissionRequests] = React.useState<CommissionRequest[]>([]);
   const [allStockItems, setAllStockItems] = React.useState<StockItem[]>([]);
   const [allReminders, setAllReminders] = React.useState<Reminder[]>([]);
+  const [stockTransfers, setStockTransfers] = React.useState<StockTransfer[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [isMobileSheetOpen, setIsMobileSheetOpen] = React.useState(false);
   const [isProfileSettingsOpen, setIsProfileSettingsOpen] = React.useState(false);
@@ -389,6 +396,11 @@ const AppLayout = ({ user }: { user: User }) => {
         const remindersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Reminder));
         setAllReminders(remindersData);
     });
+    
+    const stockTransfersUnsub = onSnapshot(collection(db, 'stockTransfers'), {includeMetadataChanges: true}, (snapshot) => {
+        const transferData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data()} as StockTransfer));
+        setStockTransfers(transferData);
+    });
 
     return () => {
       usersUnsub();
@@ -398,6 +410,7 @@ const AppLayout = ({ user }: { user: User }) => {
       commissionRequestsUnsub();
       stockItemsUnsub();
       remindersUnsub();
+      stockTransfersUnsub();
     };
   }, [user.id]);
 
@@ -441,6 +454,10 @@ const AppLayout = ({ user }: { user: User }) => {
         return <StockManagementView manager={user} />;
       case "Global Stock View":
         return <AdminStockView user={user} allUsers={allUsers} allStockItems={allStockItems} />;
+       case "Assign Stock":
+        return <StockAssignmentView storeKeeper={user} allStockItems={allStockItems} allUsers={allUsers} />;
+      case "Confirm Stock":
+        return <StockConfirmationView manager={user} allStockTransfers={stockTransfers} />;
       case "Record Product Sale":
         return <ShopManagerDashboard user={user} openDialogOnLoad />;
       case "Income Records":

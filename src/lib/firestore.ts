@@ -4,7 +4,7 @@ import { doc, getDoc, setDoc, collection, getDocs, query, where, writeBatch, inc
 import { getAuth, updatePassword } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { db, storage } from "./firebase";
-import { User, Role, Customer, CommissionSettings, IncomeRecord, ProductSale, ProductCommissionSettings, SignupRoleSettings, CommissionRequest, SalesmanStage, SalarySettings, MonthlySalaryPayout, StockItem, IncentiveSettings, Reminder, SalesmanDocuments, SalaryChangeRequest, SalaryPayoutRequest, IncentiveChangeRequest } from "@/types";
+import { User, Role, Customer, CommissionSettings, IncomeRecord, ProductSale, ProductCommissionSettings, SignupRoleSettings, CommissionRequest, SalesmanStage, SalarySettings, MonthlySalaryPayout, StockItem, IncentiveSettings, Reminder, SalesmanDocuments, SalaryChangeRequest, SalaryPayoutRequest, IncentiveChangeRequest, StockTransfer, StockTransferItem } from "@/types";
 import type { User as FirebaseUser } from 'firebase/auth';
 import { sendTokenSms, sendOtpSms as sendSmsForOtp } from "./sms";
 import { getDownlineIdsAndUsers } from "./hierarchy";
@@ -1352,6 +1352,95 @@ export async function deleteStockItem(itemId: string): Promise<void> {
     const itemDocRef = doc(db, "stock", itemId);
     await deleteDoc(itemDocRef);
 }
+
+export async function createStockTransfer(transferData: Omit<StockTransfer, 'id'>): Promise<void> {
+    await runTransaction(db, async (transaction) => {
+        const transferRef = doc(collection(db, "stockTransfers"));
+        transaction.set(transferRef, { ...transferData, id: transferRef.id });
+
+        for (const item of transferData.items) {
+            const sourceStockRef = doc(db, "stock", item.productId);
+            const sourceStockSnap = await transaction.get(sourceStockRef);
+
+            if (!sourceStockSnap.exists()) {
+                throw new Error(`Source stock item with ID ${item.productId} not found.`);
+            }
+
+            const sourceStockData = sourceStockSnap.data() as StockItem;
+            const newImeis = (sourceStockData.imeis || []).filter(imei => !item.imeis.includes(imei));
+
+            if (newImeis.length !== (sourceStockData.imeis || []).length - item.imeis.length) {
+                throw new Error(`IMEI mismatch for product ${item.productName}. Some IMEIs to be transferred were not found in source.`);
+            }
+
+            transaction.update(sourceStockRef, {
+                imeis: newImeis,
+                quantity: increment(-item.imeis.length),
+                lastUpdatedAt: new Date().toISOString(),
+            });
+        }
+    });
+}
+
+export async function confirmStockTransfer(transferId: string, confirmer: User): Promise<void> {
+    await runTransaction(db, async (transaction) => {
+        const transferRef = doc(db, 'stockTransfers', transferId);
+        const transferSnap = await transaction.get(transferRef);
+
+        if (!transferSnap.exists() || transferSnap.data().status !== 'pending') {
+            throw new Error('Stock transfer not found or already completed.');
+        }
+
+        const transfer = transferSnap.data() as StockTransfer;
+
+        for (const item of transfer.items) {
+            const q = query(
+                collection(db, 'stock'),
+                where('productCode', '==', item.productCode),
+                where('branch', '==', transfer.toBranch)
+            );
+            const existingStockSnap = await getDocs(q);
+
+            if (!existingStockSnap.empty) {
+                const existingStockDoc = existingStockSnap.docs[0];
+                const existingStockData = existingStockDoc.data() as StockItem;
+                const updatedImeis = [...(existingStockData.imeis || []), ...item.imeis];
+
+                transaction.update(existingStockDoc.ref, {
+                    quantity: increment(item.imeis.length),
+                    imeis: updatedImeis,
+                    lastUpdatedAt: new Date().toISOString(),
+                });
+            } else {
+                const newStockItemRef = doc(collection(db, "stock"));
+                const newStockItem: Omit<StockItem, 'id'> = {
+                    productName: item.productName,
+                    productCode: item.productCode,
+                    // NOTE: Prices should ideally be managed centrally. Here we are copying from the transfer item.
+                    // This assumes the original product had these details, which might not be in the transfer object.
+                    // A better approach might be to fetch the original product details.
+                    // For now, we'll set them to 0 and assume they'll be updated manually if needed.
+                    priceCash: 0,
+                    priceInstallment: 0,
+                    quantity: item.imeis.length,
+                    branch: transfer.toBranch,
+                    managedBy: confirmer.id,
+                    lastUpdatedAt: new Date().toISOString(),
+                    imeis: item.imeis,
+                };
+                 transaction.set(newStockItemRef, newStockItem);
+            }
+        }
+
+        transaction.update(transferRef, {
+            status: 'completed',
+            confirmedById: confirmer.id,
+            confirmedByName: confirmer.name,
+            confirmedAt: new Date().toISOString(),
+        });
+    });
+}
+
 
 // --- Incentive Settings ---
 

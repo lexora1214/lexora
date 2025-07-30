@@ -250,6 +250,27 @@ export interface StockItem {
   imeis?: string[];
 }
 
+export interface StockTransferItem {
+  productId: string;
+  productName: string;
+  productCode?: string;
+  imeis: string[];
+}
+
+export interface StockTransfer {
+  id: string;
+  fromBranch: 'Main Stock';
+  toBranch: string;
+  items: StockTransferItem[];
+  status: 'pending' | 'completed';
+  initiatedById: string;
+  initiatedByName: string;
+  initiatedAt: string;
+  confirmedById?: string;
+  confirmedByName?: string;
+  confirmedAt?: string;
+}
+
 export type IncentiveSetting = {
   target: number;
   incentive: number;
