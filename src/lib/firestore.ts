@@ -1355,12 +1355,14 @@ export async function deleteStockItem(itemId: string): Promise<void> {
 
 export async function createStockTransfer(transferData: Omit<StockTransfer, 'id'>): Promise<void> {
     await runTransaction(db, async (transaction) => {
-        const transferRef = doc(collection(db, "stockTransfers"));
-        transaction.set(transferRef, { ...transferData, id: transferRef.id });
+        // Step 1: Read all necessary documents first.
+        const sourceStockRefs = transferData.items.map(item => doc(db, "stock", item.productId));
+        const sourceStockSnaps = await Promise.all(sourceStockRefs.map(ref => transaction.get(ref)));
 
-        for (const item of transferData.items) {
-            const sourceStockRef = doc(db, "stock", item.productId);
-            const sourceStockSnap = await transaction.get(sourceStockRef);
+        // Step 2: Perform validation and prepare writes.
+        for (let i = 0; i < transferData.items.length; i++) {
+            const item = transferData.items[i];
+            const sourceStockSnap = sourceStockSnaps[i];
 
             if (!sourceStockSnap.exists()) {
                 throw new Error(`Source stock item with ID ${item.productId} not found.`);
@@ -1373,14 +1375,20 @@ export async function createStockTransfer(transferData: Omit<StockTransfer, 'id'
                 throw new Error(`IMEI mismatch for product ${item.productName}. Some IMEIs to be transferred were not found in source.`);
             }
 
-            transaction.update(sourceStockRef, {
+            // Defer the write operation.
+            transaction.update(sourceStockRefs[i], {
                 imeis: newImeis,
                 quantity: increment(-item.imeis.length),
                 lastUpdatedAt: new Date().toISOString(),
             });
         }
+        
+        // Step 3: Perform the final write for the transfer record.
+        const transferRef = doc(collection(db, "stockTransfers"));
+        transaction.set(transferRef, { ...transferData, id: transferRef.id });
     });
 }
+
 
 export async function confirmStockTransfer(transferId: string, confirmer: User): Promise<void> {
     await runTransaction(db, async (transaction) => {
