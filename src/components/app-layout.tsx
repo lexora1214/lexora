@@ -39,6 +39,7 @@ import {
   MapPin,
   MinusCircle,
   ShieldQuestion,
+  HeartHandshake,
 } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
@@ -100,6 +101,7 @@ import LiveLocationView from "./live-location-view";
 import LocationTracker from "./location-tracker";
 import AddExpenseView from "./add-expense-view";
 import SalaryApprovalView from "./salary-approval-view";
+import AddHrView from "./add-hr-view";
 
 type NavItem = {
   href: string;
@@ -143,7 +145,16 @@ const navItems: NavItem[] = [
   },
   { href: "#", icon: Truck, label: "Manage Deliveries", roles: ["Team Operation Manager", "Branch Admin"] },
   { href: "#", icon: Repeat, label: "Manage Recovery", roles: ["Team Operation Manager", "Branch Admin"] },
-  { href: "#", icon: Building, label: "User Management", roles: ["Admin", "Super Admin", "HR"] },
+  { 
+    href: "#", 
+    icon: HeartHandshake, 
+    label: "HR Management", 
+    roles: ["Admin", "Super Admin", "HR"],
+    children: [
+      { href: "#", icon: Building, label: "User Management", roles: ["Admin", "Super Admin", "HR"] },
+      { href: "#", icon: UserPlus, label: "Add HR User", roles: ["Admin", "Super Admin"] },
+    ]
+  },
   { href: "#", icon: Briefcase, label: "Customer Management", roles: ["Admin", "Super Admin"]},
   { 
     href: "#", 
@@ -449,6 +460,8 @@ const AppLayout = ({ user }: { user: User }) => {
         return <AddRecoveryOfficerView manager={user} />;
       case "Add Expense":
         return <AddExpenseView manager={user} allUsers={allUsers} />;
+      case "Add HR User":
+        return <AddHrView adminUser={user} />;
       case "Manage Deliveries":
         return <ManageDeliveriesView manager={user} allUsers={allUsers} />;
       case "Manage Recovery":
