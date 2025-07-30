@@ -156,8 +156,9 @@ const navItems: NavItem[] = [
     roles: ["Admin", "Super Admin", "HR"],
     children: [
       { href: "#", icon: Building, label: "User Management", roles: ["Admin", "Super Admin", "HR"] },
+      { href: "#", icon: UserCheck, label: "New User Verification", roles: ["Super Admin", "HR"] },
       { href: "#", icon: ShieldQuestion, label: "Salary Approvals", roles: ["HR"] },
-      { href: "#", icon: Wallet, label: "Salary Management", roles: ["Admin", "Super Admin"] },
+      { href: "#", icon: Wallet, label: "Salary Management", roles: ["Admin", "Super Admin", "HR"] },
       { href: "#", icon: ShieldCheck, label: "Payout Approvals", roles: ["HR", "Super Admin"] },
       { href: "#", icon: History, label: "Payout History", roles: ["HR", "Super Admin"] },
       { href: "#", icon: UserPlus, label: "Add HR User", roles: ["Admin", "Super Admin"] },
@@ -172,7 +173,6 @@ const navItems: NavItem[] = [
     roles: ["Admin", "Super Admin"],
     children: [
         { href: "#", icon: DollarSign, label: "Commission Approvals", roles: ["Admin", "Super Admin"] },
-        { href: "#", icon: UserCheck, label: "New User Verification", roles: ["Admin", "Super Admin"] },
     ]
   },
   { href: "#", icon: Receipt, label: "Slip Management", roles: ["Admin", "Super Admin"] },
@@ -643,3 +643,4 @@ export default AppLayout;
 
     
     
+
