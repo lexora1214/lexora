@@ -97,6 +97,7 @@ export interface ProductSale {
   productId: string; // Link to the StockItem ID
   productName: string;
   productCode?: string;
+  imei: string;
   price: number;
   paymentMethod: 'cash' | 'installments';
   customerId: string;

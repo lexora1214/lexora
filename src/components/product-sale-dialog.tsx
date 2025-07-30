@@ -2,7 +2,7 @@
 
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { User, Customer, StockItem } from "@/types";
 import {
   Dialog,
@@ -29,10 +29,12 @@ import { ScrollArea } from "./ui/scroll-area";
 import { Badge } from "./ui/badge";
 import { Calendar } from "./ui/calendar";
 import { format } from "date-fns";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 
 const formSchema = z.object({
   customerToken: z.string({ required_error: "Please select a customer token." }),
   productId: z.string({ required_error: "Please select a product." }),
+  imei: z.string({ required_error: "Please select an IMEI number." }),
   productName: z.string(), // Auto-filled
   productCode: z.string().optional(), // Auto-filled
   totalValue: z.coerce.number().min(0, "Total value must be a positive number."),
@@ -102,6 +104,15 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
   const [productId, totalValue, discountValue, downPayment, installments, paymentMethod] = watch([
     'productId', 'totalValue', 'discountValue', 'downPayment', 'installments', 'paymentMethod'
   ]);
+  
+  const branchStockItems = useMemo(() => {
+    return stockItems.filter(item => item.branch === shopManager.branch);
+  }, [stockItems, shopManager.branch]);
+  
+  const selectedProduct = useMemo(() => {
+    return branchStockItems.find(item => item.id === productId);
+  }, [branchStockItems, productId]);
+
 
   useEffect(() => {
     const total = totalValue || 0;
@@ -119,17 +130,16 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
   }, [totalValue, discountValue, downPayment, installments, paymentMethod, setValue]);
   
   useEffect(() => {
-    const selectedStockItem = stockItems.find(item => item.id === productId);
-    if (selectedStockItem) {
+    if (selectedProduct) {
         if (paymentMethod === 'cash') {
-            setValue('totalValue', selectedStockItem.priceCash);
+            setValue('totalValue', selectedProduct.priceCash);
             setValue('installments', undefined);
             setValue('monthlyInstallment', undefined);
         } else if (paymentMethod === 'installments') {
-            setValue('totalValue', selectedStockItem.priceInstallment);
+            setValue('totalValue', selectedProduct.priceInstallment);
         }
     }
-  }, [paymentMethod, productId, setValue, stockItems]);
+  }, [paymentMethod, selectedProduct, setValue]);
 
 
   const onSubmit = async (data: FormValues) => {
@@ -221,7 +231,7 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
                                   onSelect={() => {
                                       field.onChange(customer.tokenSerial);
                                       
-                                      const selectedStockItem = stockItems.find(item => item.productCode === customer.purchasingItemCode);
+                                      const selectedStockItem = branchStockItems.find(item => item.productCode === customer.purchasingItemCode);
                                       
                                       setValue('productName', customer.purchasingItem || '');
                                       setValue('productCode', customer.purchasingItemCode || '');
@@ -289,7 +299,7 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
                           className="w-full justify-between"
                         >
                           {field.value
-                            ? stockItems.find((item) => item.id === field.value)?.productName
+                            ? branchStockItems.find((item) => item.id === field.value)?.productName
                             : "Select product..."}
                           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
@@ -298,9 +308,9 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
                         <Command>
                           <CommandInput placeholder="Search product name or code..." />
                            <CommandList>
-                              <CommandEmpty>No products in stock.</CommandEmpty>
+                              <CommandEmpty>No products in stock for your branch.</CommandEmpty>
                               <CommandGroup>
-                              {stockItems.map((item) => (
+                              {branchStockItems.map((item) => (
                                   <CommandItem
                                   key={item.id}
                                   value={`${item.productName} ${item.productCode || ''}`}
@@ -308,10 +318,10 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
                                       field.onChange(item.id);
                                       setValue('productName', item.productName);
                                       setValue('productCode', item.productCode);
-                                      // Price is now set by payment method watcher
+                                      setValue('imei', '');
                                       setIsProductPopoverOpen(false);
                                   }}
-                                  disabled={item.quantity === 0}
+                                  disabled={(item.imeis?.length ?? 0) === 0}
                                   >
                                   <Check
                                       className={cn(
@@ -323,8 +333,8 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
                                       <p>{item.productName}</p>
                                       {item.productCode && <p className="text-xs text-muted-foreground">{item.productCode}</p>}
                                   </div>
-                                  <Badge variant={item.quantity > 0 ? "success" : "destructive"}>
-                                    {item.quantity} in stock
+                                  <Badge variant={(item.imeis?.length ?? 0) > 0 ? "success" : "destructive"}>
+                                    {item.imeis?.length ?? 0} in stock
                                   </Badge>
                                   </CommandItem>
                               ))}
@@ -337,6 +347,29 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
                 />
                  {errors.productId && <p className="text-xs text-destructive mt-1">{errors.productId.message}</p>}
               </div>
+              
+               {selectedProduct && (selectedProduct.imeis?.length ?? 0) > 0 && (
+                <div>
+                  <Label>IMEI Number</Label>
+                   <Controller
+                      name="imei"
+                      control={control}
+                      render={({ field }) => (
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select an IMEI..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {selectedProduct.imeis!.map(imei => (
+                              <SelectItem key={imei} value={imei}>{imei}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                  {errors.imei && <p className="text-xs text-destructive mt-1">{errors.imei.message}</p>}
+                </div>
+              )}
               
               <div>
                   <Label>Payment Method</Label>
@@ -445,4 +478,3 @@ const ProductSaleDialog: React.FC<ProductSaleDialogProps> = ({
 };
 
 export default ProductSaleDialog;
-

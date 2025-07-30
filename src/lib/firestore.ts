@@ -1,6 +1,6 @@
 
 
-import { doc, getDoc, setDoc, collection, getDocs, query, where, writeBatch, increment, updateDoc, deleteDoc, addDoc, runTransaction, deleteField } from "firebase/firestore";
+import { doc, getDoc, setDoc, collection, getDocs, query, where, writeBatch, increment, updateDoc, deleteDoc, addDoc, runTransaction, deleteField, arrayRemove } from "firebase/firestore";
 import { getAuth, updatePassword } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { db, storage } from "./firebase";
@@ -447,6 +447,7 @@ export async function createProductSaleAndDistributeCommissions(
     productId: string;
     productName: string;
     productCode?: string;
+    imei: string;
     totalValue: number;
     discountValue?: number | null;
     downPayment?: number | null;
@@ -471,9 +472,14 @@ export async function createProductSaleAndDistributeCommissions(
         const productSettings = await getProductCommissionSettings();
 
         // --- VALIDATION AND DATA PREP ---
-        if (!stockItemDoc.exists() || stockItemDoc.data().quantity < 1) {
-            throw new Error("This product is out of stock.");
+        if (!stockItemDoc.exists()) {
+            throw new Error("This product is out of stock or does not exist.");
         }
+        const stockItemData = stockItemDoc.data() as StockItem;
+        if (!stockItemData.imeis?.includes(formData.imei)) {
+             throw new Error("Selected IMEI number is not available for this product.");
+        }
+
         if (!customerDoc.exists()) {
             throw new Error(`No customer found with token: ${formData.customerToken}`);
         }
@@ -487,6 +493,7 @@ export async function createProductSaleAndDistributeCommissions(
             productId: formData.productId,
             productName: formData.productName,
             productCode: formData.productCode,
+            imei: formData.imei,
             price: formData.totalValue,
             paymentMethod: formData.paymentMethod,
             customerId: customerId,
@@ -519,8 +526,12 @@ export async function createProductSaleAndDistributeCommissions(
         
         // --- ALL WRITES HAPPEN LAST ---
         
-        // WRITE 1: Update stock
-        transaction.update(stockItemRef, { quantity: increment(-1), lastUpdatedAt: new Date().toISOString() });
+        // WRITE 1: Update stock (remove IMEI, decrement quantity)
+        transaction.update(stockItemRef, { 
+            quantity: increment(-1),
+            imeis: arrayRemove(formData.imei),
+            lastUpdatedAt: new Date().toISOString() 
+        });
         
         // WRITE 2: Update customer if token was available
         if (customer.tokenIsAvailable) {
