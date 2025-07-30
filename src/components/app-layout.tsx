@@ -42,6 +42,7 @@ import {
   ShieldQuestion,
   HeartHandshake,
   History,
+  Warehouse
 } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
@@ -68,6 +69,7 @@ import ManagerDashboard from "@/components/dashboard/manager-dashboard";
 import SalesmanDashboard from "@/components/dashboard/salesman-dashboard";
 import ShopManagerDashboard from "@/components/dashboard/shop-manager-dashboard";
 import HrDashboard from "@/components/dashboard/hr-dashboard";
+import StoreKeeperDashboard from "@/components/dashboard/store-keeper-dashboard";
 import UserManagementTable from "@/components/user-management-table";
 import CustomerManagementTable from "@/components/customer-management-table";
 import NetworkView from "@/components/network-view";
@@ -107,6 +109,7 @@ import AddHrView from "./add-hr-view";
 import SalaryPayoutApprovalView from "./salary-payout-approval-view";
 import PayoutHistoryView from "./payout-history-view";
 import IncentiveApprovalView from "./incentive-approval-view";
+import AddStoreKeeperView from "./add-store-keeper-view";
 
 type NavItem = {
   href: string;
@@ -117,15 +120,15 @@ type NavItem = {
 };
 
 const navItems: NavItem[] = [
-  { href: "#", icon: LayoutDashboard, label: "Dashboard", roles: ["Admin", "Super Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Salesman", "Delivery Boy", "Recovery Officer", "HR"] },
+  { href: "#", icon: LayoutDashboard, label: "Dashboard", roles: ["Admin", "Super Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Salesman", "Delivery Boy", "Recovery Officer", "HR", "Store Keeper"] },
   { 
     href: "#", 
     icon: Package, 
     label: "Stock", 
-    roles: ["Admin", "Super Admin", "Team Operation Manager", "Branch Admin"],
+    roles: ["Admin", "Super Admin", "Team Operation Manager", "Branch Admin", "Store Keeper"],
     children: [
       { href: "#", icon: Boxes, label: "Stock Management", roles: ["Team Operation Manager", "Branch Admin"] },
-      { href: "#", icon: Package, label: "Global Stock View", roles: ["Admin", "Super Admin"] },
+      { href: "#", icon: Package, label: "Global Stock View", roles: ["Admin", "Super Admin", "Store Keeper"] },
     ]
   },
   { href: "#", icon: ShoppingCart, label: "Record Product Sale", roles: ["Team Operation Manager", "Branch Admin"] },
@@ -164,6 +167,7 @@ const navItems: NavItem[] = [
       { href: "#", icon: ShieldCheck, label: "Payout Approvals", roles: ["HR", "Super Admin"] },
       { href: "#", icon: History, label: "Payout History", roles: ["HR", "Super Admin"] },
       { href: "#", icon: UserPlus, label: "Add HR User", roles: ["Super Admin"] },
+      { href: "#", icon: Warehouse, label: "Add Store Keeper", roles: ["Super Admin"] },
       { href: "#", icon: SlidersHorizontal, label: "Signup Roles", roles: ["Super Admin", "HR"] },
     ]
   },
@@ -344,6 +348,9 @@ const AppLayout = ({ user }: { user: User }) => {
     if (user.role === 'Branch Admin') {
       setActiveView('Stock Management');
     }
+    if (user.role === 'Store Keeper') {
+      setActiveView('Dashboard');
+    }
   }, [user.role]);
 
   React.useEffect(() => {
@@ -417,6 +424,8 @@ const AppLayout = ({ user }: { user: User }) => {
             return <AdminDashboard user={user} allUsers={allUsers} allCustomers={allCustomers} allIncomeRecords={allIncomeRecords} setActiveView={setActiveView} />;
           case "HR":
             return <HrDashboard allUsers={allUsers} />;
+          case "Store Keeper":
+            return <StoreKeeperDashboard allStockItems={allStockItems} setActiveView={setActiveView} />;
           case "Salesman":
             return <SalesmanDashboard user={user} allCustomers={allCustomers} allIncomeRecords={allIncomeRecords} allCommissionRequests={allCommissionRequests} allStockItems={allStockItems} />;
           case "Team Operation Manager":
@@ -470,6 +479,8 @@ const AppLayout = ({ user }: { user: User }) => {
         return <AddExpenseView manager={user} allUsers={allUsers} />;
       case "Add HR User":
         return <AddHrView adminUser={user} />;
+      case "Add Store Keeper":
+        return <AddStoreKeeperView adminUser={user} />;
       case "Manage Deliveries":
         return <ManageDeliveriesView manager={user} allUsers={allUsers} />;
       case "Manage Recovery":
