@@ -1,5 +1,4 @@
 
-
 export type Role =
   | "Salesman"
   | "Team Operation Manager"
@@ -10,7 +9,8 @@ export type Role =
   | "Super Admin"
   | "Delivery Boy"
   | "Recovery Officer"
-  | "Branch Admin";
+  | "Branch Admin"
+  | "HR";
 
 export type SalesmanStage = "BUSINESS PROMOTER (stage 01)" | "MARKETING EXECUTIVE (stage 02)";
 

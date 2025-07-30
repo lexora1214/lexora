@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from "react";
@@ -71,14 +70,15 @@ type UserWithPeriodIncome = User & { periodIncome: number };
 const roleOrderMap: Record<Role, number> = {
   'Super Admin': 0,
   'Admin': 1,
-  'Regional Director': 2,
-  'Head Group Manager': 3,
-  'Group Operation Manager': 4,
-  'Team Operation Manager': 5,
-  'Salesman': 6,
-  'Delivery Boy': 7,
-  'Recovery Officer': 8,
-  'Branch Admin': 9,
+  'HR': 2,
+  'Regional Director': 3,
+  'Head Group Manager': 4,
+  'Group Operation Manager': 5,
+  'Team Operation Manager': 6,
+  'Salesman': 7,
+  'Delivery Boy': 8,
+  'Recovery Officer': 9,
+  'Branch Admin': 10,
 };
 
 export default function UserManagementTable({ user: loggedInUser, data, allIncomeRecords }: UserManagementTableProps) {

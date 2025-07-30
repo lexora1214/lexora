@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React from "react";
@@ -65,6 +64,7 @@ import AdminDashboard from "@/components/dashboard/admin-dashboard";
 import ManagerDashboard from "@/components/dashboard/manager-dashboard";
 import SalesmanDashboard from "@/components/dashboard/salesman-dashboard";
 import ShopManagerDashboard from "@/components/dashboard/shop-manager-dashboard";
+import HrDashboard from "@/components/dashboard/hr-dashboard";
 import UserManagementTable from "@/components/user-management-table";
 import CustomerManagementTable from "@/components/customer-management-table";
 import NetworkView from "@/components/network-view";
@@ -110,7 +110,7 @@ type NavItem = {
 };
 
 const navItems: NavItem[] = [
-  { href: "#", icon: LayoutDashboard, label: "Dashboard", roles: ["Admin", "Super Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Salesman", "Delivery Boy", "Recovery Officer"] },
+  { href: "#", icon: LayoutDashboard, label: "Dashboard", roles: ["Admin", "Super Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Salesman", "Delivery Boy", "Recovery Officer", "HR"] },
   { 
     href: "#", 
     icon: Package, 
@@ -143,7 +143,7 @@ const navItems: NavItem[] = [
   },
   { href: "#", icon: Truck, label: "Manage Deliveries", roles: ["Team Operation Manager", "Branch Admin"] },
   { href: "#", icon: Repeat, label: "Manage Recovery", roles: ["Team Operation Manager", "Branch Admin"] },
-  { href: "#", icon: Building, label: "User Management", roles: ["Admin", "Super Admin"] },
+  { href: "#", icon: Building, label: "User Management", roles: ["Admin", "Super Admin", "HR"] },
   { href: "#", icon: Briefcase, label: "Customer Management", roles: ["Admin", "Super Admin"]},
   { 
     href: "#", 
@@ -396,6 +396,8 @@ const AppLayout = ({ user }: { user: User }) => {
           case "Admin":
           case "Super Admin":
             return <AdminDashboard user={user} allUsers={allUsers} allCustomers={allCustomers} allIncomeRecords={allIncomeRecords} setActiveView={setActiveView} />;
+          case "HR":
+            return <HrDashboard allUsers={allUsers} />;
           case "Salesman":
             return <SalesmanDashboard user={user} allCustomers={allCustomers} allIncomeRecords={allIncomeRecords} allCommissionRequests={allCommissionRequests} allStockItems={allStockItems} />;
           case "Team Operation Manager":

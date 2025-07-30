@@ -1,5 +1,4 @@
 
-
 import { doc, getDoc, setDoc, collection, getDocs, query, where, writeBatch, increment, updateDoc, deleteDoc, addDoc, runTransaction, deleteField } from "firebase/firestore";
 import { getAuth, updatePassword } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
@@ -38,7 +37,7 @@ export async function createUserProfile(
 ): Promise<User> {
   const batch = writeBatch(db);
   let referrerId: string | null = null;
-  const isReferralNeeded = role && !['Regional Director', 'Admin', 'Super Admin'].includes(role);
+  const isReferralNeeded = role && !['Regional Director', 'Admin', 'Super Admin', 'HR'].includes(role);
 
   if (isReferralNeeded) {
     if (!referralCodeInput || referralCodeInput.length !== 6) {
@@ -57,7 +56,7 @@ export async function createUserProfile(
   }
   
   let newReferralCode = '';
-  const isReferralCodeNeeded = role && !['Salesman', 'Delivery Boy', 'Recovery Officer', 'Branch Admin'].includes(role);
+  const isReferralCodeNeeded = role && !['Salesman', 'Delivery Boy', 'Recovery Officer', 'Branch Admin', 'HR'].includes(role);
   
   if (isReferralCodeNeeded) {
     let isCodeUnique = false;
@@ -534,9 +533,6 @@ export async function createProductSaleAndDistributeCommissions(
             if (formData.paymentMethod === 'installments') {
                 customerUpdateData.installments = formData.installments ?? null;
                 customerUpdateData.monthlyInstallment = formData.monthlyInstallment ?? null;
-            } else {
-                customerUpdateData.installments = null;
-                customerUpdateData.monthlyInstallment = null;
             }
 
             transaction.update(customerDocRef, customerUpdateData);
@@ -1233,6 +1229,7 @@ export async function addStockItem(item: Omit<StockItem, 'id' | 'lastUpdatedAt'>
   await addDoc(stockCollection, {
     ...item,
     managedBy: managedById,
+    branch: 'Main Stock',
     lastUpdatedAt: new Date().toISOString(),
   });
 }
