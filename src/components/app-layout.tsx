@@ -156,6 +156,7 @@ const navItems: NavItem[] = [
       { href: "#", icon: ShieldQuestion, label: "Salary Approvals", roles: ["HR"] },
       { href: "#", icon: UserPlus, label: "Add HR User", roles: ["Admin", "Super Admin"] },
       { href: "#", icon: Wallet, label: "Salary Management", roles: ["HR"] },
+      { href: "#", icon: SlidersHorizontal, label: "Signup Roles", roles: ["Super Admin", "HR"] },
     ]
   },
   { href: "#", icon: Briefcase, label: "Customer Management", roles: ["Admin", "Super Admin"]},
@@ -191,7 +192,6 @@ const navItems: NavItem[] = [
       { href: "#", icon: Briefcase, label: "Product Commissions", roles: ["Admin", "Super Admin"] },
       { href: "#", icon: Wallet, label: "Salary Management", roles: ["Admin", "Super Admin"] },
       { href: "#", icon: Award, label: "Incentives", roles: ["Admin", "Super Admin"] },
-      { href: "#", icon: SlidersHorizontal, label: "Signup Roles", roles: ["Admin", "Super Admin"] },
     ]
   },
   { href: "#", icon: Lightbulb, label: "Insights", roles: ["Admin", "Super Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager"] },
@@ -633,4 +633,5 @@ const AppLayout = ({ user }: { user: User }) => {
 
 export default AppLayout;
 
+    
     
