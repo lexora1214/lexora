@@ -1,4 +1,5 @@
 
+
 export type Role =
   | "Salesman"
   | "Team Operation Manager"
@@ -217,6 +218,22 @@ export interface MonthlySalaryPayout {
     reversedBy?: string;
     reversedByName?: string;
     reversalDate?: string;
+}
+
+export interface SalaryPayoutRequest {
+    id: string;
+    requesterId: string;
+    requesterName: string;
+    requestDate: string;
+    month: string; // e.g., "2024-07"
+    status: 'pending' | 'approved' | 'rejected';
+    totalUsersToPay: number;
+    totalAmountToPay: number;
+    // For processing
+    approverId?: string;
+    approverName?: string;
+    processedDate?: string;
+    payoutId?: string; // Link to the actual MonthlySalaryPayout doc
 }
 
 export interface StockItem {

@@ -41,6 +41,7 @@ import {
   MinusCircle,
   ShieldQuestion,
   HeartHandshake,
+  History,
 } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
@@ -103,6 +104,8 @@ import LocationTracker from "./location-tracker";
 import AddExpenseView from "./add-expense-view";
 import SalaryApprovalView from "./salary-approval-view";
 import AddHrView from "./add-hr-view";
+import SalaryPayoutApprovalView from "./salary-payout-approval-view";
+import PayoutHistoryView from "./payout-history-view";
 
 type NavItem = {
   href: string;
@@ -154,8 +157,10 @@ const navItems: NavItem[] = [
     children: [
       { href: "#", icon: Building, label: "User Management", roles: ["Admin", "Super Admin", "HR"] },
       { href: "#", icon: ShieldQuestion, label: "Salary Approvals", roles: ["HR"] },
+      { href: "#", icon: Wallet, label: "Salary Management", roles: ["Admin", "Super Admin"] },
+      { href: "#", icon: ShieldCheck, label: "Payout Approvals", roles: ["HR", "Super Admin"] },
+      { href: "#", icon: History, label: "Payout History", roles: ["HR", "Super Admin"] },
       { href: "#", icon: UserPlus, label: "Add HR User", roles: ["Admin", "Super Admin"] },
-      { href: "#", icon: Wallet, label: "Salary Management", roles: ["HR"] },
       { href: "#", icon: SlidersHorizontal, label: "Signup Roles", roles: ["Super Admin", "HR"] },
     ]
   },
@@ -190,7 +195,6 @@ const navItems: NavItem[] = [
     children: [
       { href: "#", icon: DollarSign, label: "Token Commissions", roles: ["Admin", "Super Admin"] },
       { href: "#", icon: Briefcase, label: "Product Commissions", roles: ["Admin", "Super Admin"] },
-      { href: "#", icon: Wallet, label: "Salary Management", roles: ["Admin", "Super Admin"] },
       { href: "#", icon: Award, label: "Incentives", roles: ["Admin", "Super Admin"] },
     ]
   },
@@ -530,6 +534,10 @@ const AppLayout = ({ user }: { user: User }) => {
         return <SalarySettingsForm user={user} allCustomers={allCustomers} />;
       case "Salary Approvals":
         return <SalaryApprovalView user={user} />;
+      case "Payout Approvals":
+        return <SalaryPayoutApprovalView user={user} allCustomers={allCustomers}/>;
+      case "Payout History":
+        return <PayoutHistoryView />;
       case "Incentives":
         return <IncentiveManagementView />;
       case "Signup Roles":

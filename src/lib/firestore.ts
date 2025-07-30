@@ -4,7 +4,7 @@ import { doc, getDoc, setDoc, collection, getDocs, query, where, writeBatch, inc
 import { getAuth, updatePassword } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { db, storage } from "./firebase";
-import { User, Role, Customer, CommissionSettings, IncomeRecord, ProductSale, ProductCommissionSettings, SignupRoleSettings, CommissionRequest, SalesmanStage, SalarySettings, MonthlySalaryPayout, StockItem, IncentiveSettings, Reminder, SalesmanDocuments, SalaryChangeRequest } from "@/types";
+import { User, Role, Customer, CommissionSettings, IncomeRecord, ProductSale, ProductCommissionSettings, SignupRoleSettings, CommissionRequest, SalesmanStage, SalarySettings, MonthlySalaryPayout, StockItem, IncentiveSettings, Reminder, SalesmanDocuments, SalaryChangeRequest, SalaryPayoutRequest } from "@/types";
 import type { User as FirebaseUser } from 'firebase/auth';
 import { sendTokenSms, sendOtpSms as sendSmsForOtp } from "./sms";
 import { getDownlineIdsAndUsers } from "./hierarchy";
@@ -1045,8 +1045,118 @@ export async function rejectSalaryChangeRequest(requestId: string, approver: Use
     });
 }
 
+export async function getPendingSalaryPayoutRequests(): Promise<SalaryPayoutRequest[]> {
+    const q = query(collection(db, 'salaryPayoutRequests'), where('status', '==', 'pending'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(d => d.data() as SalaryPayoutRequest).sort((a,b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime());
+}
 
-export async function processMonthlySalaries(adminUser: User, allCustomers: Customer[]): Promise<{ usersPaid: number; totalAmount: number; }> {
+export async function rejectSalaryPayoutRequest(requestId: string, approver: User): Promise<void> {
+    const requestRef = doc(db, 'salaryPayoutRequests', requestId);
+    await updateDoc(requestRef, {
+        status: 'rejected',
+        approverId: approver.id,
+        approverName: approver.name,
+        processedDate: new Date().toISOString(),
+    });
+}
+
+export async function createSalaryPayoutRequest(requester: User, allCustomers: Customer[]): Promise<{ totalUsersToPay: number; totalAmountToPay: number; }> {
+    const now = new Date();
+    const monthKey = now.toISOString().slice(0, 7); // e.g., "2024-07"
+    
+    // Check if a request for this month already exists
+    const existingReqQuery = query(collection(db, 'salaryPayoutRequests'), where('month', '==', monthKey));
+    const existingReqSnap = await getDocs(existingReqQuery);
+    if (!existingReqSnap.empty) {
+        const existingReq = existingReqSnap.docs[0].data();
+        if(existingReq.status === 'pending') {
+            throw new Error(`A payout request for ${new Date(monthKey).toLocaleString('default', { month: 'long', year: 'numeric'})} is already pending approval.`);
+        } else if (existingReq.status === 'approved') {
+            throw new Error(`A payout for ${new Date(monthKey).toLocaleString('default', { month: 'long', year: 'numeric'})} has already been processed.`);
+        }
+    }
+
+    const allUsers = await getAllUsers();
+    const enabledUsers = allUsers.filter(u => !u.isDisabled);
+    const salarySettings = await getSalarySettings();
+    const incentiveSettings = await getIncentiveSettings();
+    
+    let totalUsersToPay = 0;
+    let totalAmountToPay = 0;
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+
+    for (const user of enabledUsers) {
+        let userTotalPayout = 0;
+        
+        let salaryRoleKey: keyof SalarySettings | undefined;
+        if (user.role === 'Salesman' && user.salesmanStage) {
+            salaryRoleKey = user.salesmanStage;
+        } else if (Object.keys(DEFAULT_SALARY_SETTINGS).includes(user.role)) {
+            salaryRoleKey = user.role as keyof SalarySettings;
+        }
+        if (salaryRoleKey) {
+            userTotalPayout += salarySettings[salaryRoleKey] ?? 0;
+        }
+        
+        const incentiveRoleKey = (user.salesmanStage || user.role) as Role | SalesmanStage;
+        const incentiveConfig = incentiveSettings[incentiveRoleKey];
+
+        if (incentiveConfig && incentiveConfig.target > 0) {
+            let salesCount = 0;
+            if (user.role === 'Salesman') {
+                salesCount = allCustomers.filter(c => 
+                    c.salesmanId === user.id && c.commissionStatus === 'approved' &&
+                    new Date(c.saleDate) >= startOfMonth && new Date(c.saleDate) <= endOfMonth
+                ).length;
+            } else { // Manager roles
+                const { ids: downlineIds } = getDownlineIdsAndUsers(user.id, allUsers);
+                salesCount = allCustomers.filter(c => 
+                    downlineIds.includes(c.salesmanId) && c.commissionStatus === 'approved' &&
+                    new Date(c.saleDate) >= startOfMonth && new Date(c.saleDate) <= endOfMonth
+                ).length;
+            }
+
+            if (salesCount >= incentiveConfig.target) {
+                userTotalPayout += incentiveConfig.incentive;
+            }
+        }
+        
+        if (userTotalPayout > 0) {
+            totalUsersToPay++;
+            totalAmountToPay += userTotalPayout;
+        }
+    }
+    
+    if (totalUsersToPay === 0) {
+        throw new Error("No users were eligible for a salary payment, so no request was created.");
+    }
+    
+    const requestRef = doc(collection(db, 'salaryPayoutRequests'));
+    const newRequest: SalaryPayoutRequest = {
+        id: requestRef.id,
+        requesterId: requester.id,
+        requesterName: requester.name,
+        requestDate: new Date().toISOString(),
+        month: monthKey,
+        status: 'pending',
+        totalUsersToPay,
+        totalAmountToPay,
+    };
+    
+    await setDoc(requestRef, newRequest);
+    return { totalUsersToPay, totalAmountToPay };
+}
+
+export async function approveSalaryPayout(requestId: string, approver: User, allCustomers: Customer[]): Promise<{ usersPaid: number; totalAmount: number; }> {
+    const requestRef = doc(db, 'salaryPayoutRequests', requestId);
+    const requestSnap = await getDoc(requestRef);
+    if (!requestSnap.exists() || requestSnap.data().status !== 'pending') {
+        throw new Error("Request not found or already processed.");
+    }
+    const requestData = requestSnap.data() as SalaryPayoutRequest;
+    
     const now = new Date();
     const payoutId = now.toISOString();
 
@@ -1060,8 +1170,9 @@ export async function processMonthlySalaries(adminUser: User, allCustomers: Cust
     let totalAmount = 0;
     const payoutDate = now.toISOString();
 
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+    const startOfMonth = new Date(requestData.month);
+    startOfMonth.setDate(1);
+    const endOfMonth = new Date(startOfMonth.getFullYear(), startOfMonth.getMonth() + 1, 0, 23, 59, 59);
 
     for (const user of enabledUsers) {
         let userTotalPayout = 0;
@@ -1085,18 +1196,14 @@ export async function processMonthlySalaries(adminUser: User, allCustomers: Cust
             let salesCount = 0;
             if (user.role === 'Salesman') {
                 salesCount = allCustomers.filter(c => 
-                    c.salesmanId === user.id &&
-                    c.commissionStatus === 'approved' &&
-                    new Date(c.saleDate) >= startOfMonth &&
-                    new Date(c.saleDate) <= endOfMonth
+                    c.salesmanId === user.id && c.commissionStatus === 'approved' &&
+                    new Date(c.saleDate) >= startOfMonth && new Date(c.saleDate) <= endOfMonth
                 ).length;
             } else { // Manager roles
                 const { ids: downlineIds } = getDownlineIdsAndUsers(user.id, allUsers);
                 salesCount = allCustomers.filter(c => 
-                    downlineIds.includes(c.salesmanId) &&
-                    c.commissionStatus === 'approved' &&
-                    new Date(c.saleDate) >= startOfMonth &&
-                    new Date(c.saleDate) <= endOfMonth
+                    downlineIds.includes(c.salesmanId) && c.commissionStatus === 'approved' &&
+                    new Date(c.saleDate) >= startOfMonth && new Date(c.saleDate) <= endOfMonth
                 ).length;
             }
 
@@ -1142,17 +1249,27 @@ export async function processMonthlySalaries(adminUser: User, allCustomers: Cust
     const newPayoutRecord: MonthlySalaryPayout = {
         id: payoutId,
         payoutDate,
-        processedBy: adminUser.id,
-        processedByName: adminUser.name,
+        processedBy: approver.id,
+        processedByName: approver.name,
         totalUsersPaid: usersPaid,
         totalAmountPaid: totalAmount,
     };
     batch.set(payoutDocRef, newPayoutRecord);
+    
+    // Update the original request to approved
+    batch.update(requestRef, {
+        status: 'approved',
+        approverId: approver.id,
+        approverName: approver.name,
+        processedDate: new Date().toISOString(),
+        payoutId: payoutId,
+    });
 
     await batch.commit();
     
     return { usersPaid, totalAmount };
 }
+
 
 export async function getSalaryPayouts(): Promise<MonthlySalaryPayout[]> {
     const payoutsCol = collection(db, "salaryPayouts");
