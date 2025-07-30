@@ -106,6 +106,7 @@ import SalaryApprovalView from "./salary-approval-view";
 import AddHrView from "./add-hr-view";
 import SalaryPayoutApprovalView from "./salary-payout-approval-view";
 import PayoutHistoryView from "./payout-history-view";
+import IncentiveApprovalView from "./incentive-approval-view";
 
 type NavItem = {
   href: string;
@@ -158,6 +159,7 @@ const navItems: NavItem[] = [
       { href: "#", icon: Building, label: "User Management", roles: ["Super Admin", "HR"] },
       { href: "#", icon: UserCheck, label: "New User Verification", roles: ["Super Admin", "HR"] },
       { href: "#", icon: ShieldQuestion, label: "Salary Approvals", roles: ["HR"] },
+      { href: "#", icon: Award, label: "Incentive Approvals", roles: ["HR", "Super Admin"] },
       { href: "#", icon: Wallet, label: "Salary Management", roles: ["Admin", "Super Admin", "HR"] },
       { href: "#", icon: ShieldCheck, label: "Payout Approvals", roles: ["HR", "Super Admin"] },
       { href: "#", icon: History, label: "Payout History", roles: ["HR", "Super Admin"] },
@@ -534,6 +536,8 @@ const AppLayout = ({ user }: { user: User }) => {
         return <SalarySettingsForm user={user} allCustomers={allCustomers} />;
       case "Salary Approvals":
         return <SalaryApprovalView user={user} />;
+      case "Incentive Approvals":
+        return <IncentiveApprovalView user={user} />;
       case "Payout Approvals":
         return <SalaryPayoutApprovalView user={user} allCustomers={allCustomers}/>;
       case "Payout History":
@@ -640,6 +644,3 @@ const AppLayout = ({ user }: { user: User }) => {
 };
 
 export default AppLayout;
-
-    
-    

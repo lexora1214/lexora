@@ -4,7 +4,7 @@ import { doc, getDoc, setDoc, collection, getDocs, query, where, writeBatch, inc
 import { getAuth, updatePassword } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { db, storage } from "./firebase";
-import { User, Role, Customer, CommissionSettings, IncomeRecord, ProductSale, ProductCommissionSettings, SignupRoleSettings, CommissionRequest, SalesmanStage, SalarySettings, MonthlySalaryPayout, StockItem, IncentiveSettings, Reminder, SalesmanDocuments, SalaryChangeRequest, SalaryPayoutRequest } from "@/types";
+import { User, Role, Customer, CommissionSettings, IncomeRecord, ProductSale, ProductCommissionSettings, SignupRoleSettings, CommissionRequest, SalesmanStage, SalarySettings, MonthlySalaryPayout, StockItem, IncentiveSettings, Reminder, SalesmanDocuments, SalaryChangeRequest, SalaryPayoutRequest, IncentiveChangeRequest } from "@/types";
 import type { User as FirebaseUser } from 'firebase/auth';
 import { sendTokenSms, sendOtpSms as sendSmsForOtp } from "./sms";
 import { getDownlineIdsAndUsers } from "./hierarchy";
@@ -1386,9 +1386,65 @@ export async function getIncentiveSettings(): Promise<IncentiveSettings> {
     return DEFAULT_INCENTIVE_SETTINGS;
 }
 
-export async function updateIncentiveSettings(data: IncentiveSettings): Promise<void> {
+export async function updateIncentiveSettings(data: IncentiveSettings, updatingUser: Partial<User>): Promise<void> {
     const settingsDocRef = doc(db, "settings", "incentives");
-    await setDoc(settingsDocRef, data, { merge: true });
+    const userRole = (await getUser(updatingUser.id!))?.role;
+
+    if (userRole === 'Super Admin') {
+      await setDoc(settingsDocRef, data, { merge: true });
+    } else {
+      const currentSettings = await getIncentiveSettings();
+      const requestRef = doc(collection(db, 'incentiveChangeRequests'));
+      const newRequest: IncentiveChangeRequest = {
+        id: requestRef.id,
+        requestedBy: updatingUser.id!,
+        requestedByName: updatingUser.name!,
+        requestDate: new Date().toISOString(),
+        status: 'pending',
+        newSettings: data,
+        currentSettings: currentSettings,
+      };
+      await setDoc(requestRef, newRequest);
+    }
+}
+
+export async function getPendingIncentiveChangeRequests(): Promise<IncentiveChangeRequest[]> {
+    const q = query(collection(db, 'incentiveChangeRequests'), where('status', '==', 'pending'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(d => d.data() as IncentiveChangeRequest).sort((a,b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime());
+}
+
+export async function approveIncentiveChangeRequest(requestId: string, approver: User): Promise<void> {
+    const requestRef = doc(db, 'incentiveChangeRequests', requestId);
+    const requestSnap = await getDoc(requestRef);
+    if (!requestSnap.exists() || requestSnap.data().status !== 'pending') {
+        throw new Error("Request not found or already processed.");
+    }
+    const requestData = requestSnap.data() as IncentiveChangeRequest;
+
+    const batch = writeBatch(db);
+
+    const settingsDocRef = doc(db, "settings", "incentives");
+    batch.set(settingsDocRef, requestData.newSettings, { merge: true });
+
+    batch.update(requestRef, {
+        status: 'approved',
+        processedBy: approver.id,
+        processedByName: approver.name,
+        processedDate: new Date().toISOString(),
+    });
+
+    await batch.commit();
+}
+
+export async function rejectIncentiveChangeRequest(requestId: string, approver: User): Promise<void> {
+    const requestRef = doc(db, 'incentiveChangeRequests', requestId);
+    await updateDoc(requestRef, {
+        status: 'rejected',
+        processedBy: approver.id,
+        processedByName: approver.name,
+        processedDate: new Date().toISOString(),
+    });
 }
 
 export async function getSalesmanIncentiveSettings(): Promise<IncentiveSettings> {
@@ -1521,5 +1577,3 @@ export async function addExpenseForSalesman(
 export async function sendOtpSms(mobileNumber: string, otp: string): Promise<{success: boolean, error?: string}> {
     return sendSmsForOtp(mobileNumber, otp);
 }
-
-    

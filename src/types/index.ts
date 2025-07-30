@@ -257,6 +257,18 @@ export type IncentiveSettings = {
     [key in Role | SalesmanStage]?: IncentiveSetting;
 };
 
+export interface IncentiveChangeRequest {
+  id: string;
+  requestedBy: string;
+  requestedByName: string;
+  requestDate: string;
+  status: 'pending' | 'approved' | 'rejected';
+  newSettings: IncentiveSettings;
+  currentSettings: IncentiveSettings;
+  processedBy?: string;
+  processedByName?: string;
+  processedDate?: string;
+}
 
 export interface Reminder {
   id: string;
