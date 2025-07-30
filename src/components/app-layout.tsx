@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React from "react";
@@ -154,6 +155,7 @@ const navItems: NavItem[] = [
       { href: "#", icon: Building, label: "User Management", roles: ["Admin", "Super Admin", "HR"] },
       { href: "#", icon: ShieldQuestion, label: "Salary Approvals", roles: ["HR"] },
       { href: "#", icon: UserPlus, label: "Add HR User", roles: ["Admin", "Super Admin"] },
+      { href: "#", icon: Wallet, label: "Salary Management", roles: ["HR"] },
     ]
   },
   { href: "#", icon: Briefcase, label: "Customer Management", roles: ["Admin", "Super Admin"]},
