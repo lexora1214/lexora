@@ -114,12 +114,16 @@ export default function AddHrView({ adminUser }: AddHrViewProps) {
         undefined,
         undefined,
         undefined,
-        undefined
+        {
+            // The HR user is created by an Admin, so their referrer is the Admin.
+            // This field can be used for tracking or other purposes if needed later.
+            referrerId: adminUser.id 
+        }
       );
 
       toast({
         title: "HR User Registered",
-        description: `${signupData.name} has been successfully registered. You can now share their login details.`,
+        description: `${signupData.name} has been successfully registered. They can now share their login details.`,
         variant: "default",
         className: "bg-success text-success-foreground",
       });

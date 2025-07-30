@@ -54,6 +54,8 @@ export async function createUserProfile(
     
     const referrerDoc = querySnapshot.docs[0];
     referrerId = referrerDoc.id;
+  } else if (role === 'HR') {
+    referrerId = null; // Explicitly set to null for HR role creation by Admin
   }
   
   let newReferralCode = '';
@@ -91,7 +93,7 @@ export async function createUserProfile(
     totalIncome: 0,
     avatar: ``,
     createdAt: new Date().toISOString(),
-    isDisabled: true, // New users are disabled by default
+    isDisabled: role !== 'HR', // HR user is enabled by default, others are disabled
     ...(branch && { branch }),
     ...(role === 'Salesman' && { salesmanStage }),
     ...documentUrls,
