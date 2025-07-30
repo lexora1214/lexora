@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React from "react";
@@ -108,8 +107,7 @@ import LocationTracker from "./location-tracker";
 import AddExpenseView from "./add-expense-view";
 import SalaryApprovalView from "./salary-approval-view";
 import AddHrView from "./add-hr-view";
-import SalaryPayoutApprovalView from "./salary-payout-approval-view";
-import PayoutHistoryView from "./payout-history-view";
+import SalaryPayoutApprovalView from "./payout-history-view";
 import IncentiveApprovalView from "./incentive-approval-view";
 import AddStoreKeeperView from "./add-store-keeper-view";
 import StockAssignmentView from "./stock-assignment-view";
@@ -455,7 +453,7 @@ const AppLayout = ({ user }: { user: User }) => {
       case "Global Stock View":
         return <AdminStockView user={user} allUsers={allUsers} allStockItems={allStockItems} />;
        case "Assign Stock":
-        return <StockAssignmentView storeKeeper={user} allStockItems={allStockItems} allUsers={allUsers} />;
+        return <StockAssignmentView storeKeeper={user} allStockItems={allStockItems} allUsers={allUsers} allStockTransfers={stockTransfers} />;
       case "Confirm Stock":
         return <StockConfirmationView manager={user} allStockTransfers={stockTransfers} />;
       case "Record Product Sale":
@@ -672,3 +670,5 @@ const AppLayout = ({ user }: { user: User }) => {
 };
 
 export default AppLayout;
+
+    
