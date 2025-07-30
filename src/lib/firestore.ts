@@ -1350,6 +1350,10 @@ export async function updateStockItem(itemId: string, updates: Partial<Omit<Stoc
 
 export async function deleteStockItem(itemId: string): Promise<void> {
     const itemDocRef = doc(db, "stock", itemId);
+    const itemSnap = await getDoc(itemDocRef);
+    if (!itemSnap.exists() || itemSnap.data().branch !== 'Main Stock') {
+        throw new Error("This item cannot be deleted or does not exist in the Main Stock.");
+    }
     await deleteDoc(itemDocRef);
 }
 

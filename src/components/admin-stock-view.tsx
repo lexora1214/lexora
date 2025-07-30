@@ -10,11 +10,24 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from './ui/badge';
 import { format } from 'date-fns';
 import { Button } from './ui/button';
-import { PlusCircle, MoreHorizontal, Edit } from 'lucide-react';
+import { PlusCircle, MoreHorizontal, Edit, Trash2 } from 'lucide-react';
 import AddGlobalStockDialog from './add-global-stock-dialog';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 import { ScrollArea } from './ui/scroll-area';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from './ui/dropdown-menu';
+import { useToast } from '@/hooks/use-toast';
+import { deleteStockItem } from '@/lib/firestore';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 const ViewImeisDialog: React.FC<{
   isOpen: boolean;
@@ -61,6 +74,7 @@ const AdminStockView: React.FC<AdminStockViewProps> = ({ user, allStockItems, al
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isViewImeisOpen, setIsViewImeisOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<StockItem | undefined>(undefined);
+  const { toast } = useToast();
 
   const branches = useMemo(() => {
     const branchSet = new Set(allUsers.map(u => u.branch).filter(Boolean));
@@ -92,6 +106,15 @@ const AdminStockView: React.FC<AdminStockViewProps> = ({ user, allStockItems, al
   const handleAdd = () => {
     setSelectedItem(undefined);
     setIsAddDialogOpen(true);
+  };
+
+  const handleDelete = async (itemId: string) => {
+    try {
+      await deleteStockItem(itemId);
+      toast({ title: 'Item Deleted', description: 'The stock item has been removed from Main Stock.', className: "bg-success text-success-foreground" });
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Error', description: `Could not delete item: ${error.message}` });
+    }
   };
 
   return (
@@ -163,8 +186,28 @@ const AdminStockView: React.FC<AdminStockViewProps> = ({ user, allStockItems, al
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                   <DropdownMenuItem onClick={() => handleViewImeis(item)}>View IMEIs</DropdownMenuItem>
-                                  {user.role === 'Super Admin' && (
-                                    <DropdownMenuItem onClick={() => handleEdit(item)}><Edit className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
+                                  {(user.role === 'Store Keeper' || user.role === 'Super Admin') && item.branch === 'Main Stock' && (
+                                    <>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem onClick={() => handleEdit(item)}><Edit className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
+                                      <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                           <span className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 text-destructive">
+                                            <Trash2 className="mr-2 h-4 w-4"/> Delete
+                                           </span>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                                <AlertDialogDescription>This action will permanently delete "{item.productName}" from Main Stock. This cannot be undone.</AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                <AlertDialogAction onClick={() => handleDelete(item.id)}>Delete</AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                      </AlertDialog>
+                                    </>
                                   )}
                               </DropdownMenuContent>
                           </DropdownMenu>
