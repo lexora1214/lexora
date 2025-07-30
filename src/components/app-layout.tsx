@@ -161,7 +161,7 @@ const navItems: NavItem[] = [
       { href: "#", icon: Wallet, label: "Salary Management", roles: ["Admin", "Super Admin", "HR"] },
       { href: "#", icon: ShieldCheck, label: "Payout Approvals", roles: ["HR", "Super Admin"] },
       { href: "#", icon: History, label: "Payout History", roles: ["HR", "Super Admin"] },
-      { href: "#", icon: UserPlus, label: "Add HR User", roles: ["Admin", "Super Admin"] },
+      { href: "#", icon: UserPlus, label: "Add HR User", roles: ["Super Admin"] },
       { href: "#", icon: SlidersHorizontal, label: "Signup Roles", roles: ["Super Admin", "HR"] },
     ]
   },
