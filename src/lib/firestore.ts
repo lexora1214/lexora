@@ -984,11 +984,11 @@ export async function getSalarySettings(): Promise<SalarySettings> {
 export async function updateSalarySettings(newSettings: SalarySettings, updatingUser: User): Promise<void> {
     const settingsDocRef = doc(db, "settings", "salaries");
 
-    if (['Super Admin', 'HR'].includes(updatingUser.role)) {
-        // Super Admins and HR can update directly
+    if (updatingUser.role === 'HR') {
+        // HR can update directly
         await setDoc(settingsDocRef, newSettings, { merge: true });
-    } else if (updatingUser.role === 'Admin') {
-        // Admins create a change request
+    } else if (['Super Admin', 'Admin'].includes(updatingUser.role)) {
+        // Super Admins and Admins create a change request
         const currentSettings = await getSalarySettings();
         const requestRef = doc(collection(db, 'salaryChangeRequests'));
         const newRequest: SalaryChangeRequest = {

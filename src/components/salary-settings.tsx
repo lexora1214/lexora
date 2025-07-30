@@ -26,6 +26,7 @@ import {
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { Alert, AlertTitle, AlertDescription as AlertDescriptionUI } from "./ui/alert"; // Renamed to avoid conflict
+import ViewSalaryChangesDialog from "./view-salary-changes-dialog";
 
 const SALARY_ROLES: (keyof SalarySettings)[] = [
   "BUSINESS PROMOTER (stage 01)",
@@ -47,6 +48,7 @@ const SalarySettingsForm: React.FC<SalarySettingsProps> = ({ user, allCustomers 
     const [isFetching, setIsFetching] = useState(true);
     const [isRequesting, setIsRequesting] = useState(false);
     const [pendingRequest, setPendingRequest] = useState<SalaryChangeRequest | null>(null);
+    const [isViewChangesOpen, setIsViewChangesOpen] = useState(false);
     const currentMonthYear = format(new Date(), "MMMM yyyy");
 
     const {
@@ -84,7 +86,7 @@ const SalarySettingsForm: React.FC<SalarySettingsProps> = ({ user, allCustomers 
         setIsLoading(true);
         try {
             await updateSalarySettings(data, user);
-            if (user.role === 'Super Admin' || user.role === 'HR') {
+            if (user.role === 'HR') {
                 toast({
                     title: "Settings Updated",
                     description: "Salary values have been saved successfully.",
@@ -99,8 +101,8 @@ const SalarySettingsForm: React.FC<SalarySettingsProps> = ({ user, allCustomers 
                 });
                 await fetchInitialData(); // Refresh to show pending request
             }
-        } catch (error: any) {
-            toast({ variant: "destructive", title: "Update Failed", description: error.message });
+        } catch (error) {
+            toast({ variant: "destructive", title: "Update Failed", description: (error as Error).message });
         } finally {
             setIsLoading(false);
         }
@@ -151,11 +153,18 @@ const SalarySettingsForm: React.FC<SalarySettingsProps> = ({ user, allCustomers 
                     {pendingRequest && !isHrUser && (
                     <CardContent className="pt-0">
                         <Alert>
-                            <ShieldQuestion className="h-4 w-4" />
-                            <AlertTitle>Pending Approval</AlertTitle>
-                            <AlertDescriptionUI>
-                                A salary change request is currently pending approval by HR. You cannot make new changes until it is processed. Requested by {pendingRequest.requestedByName} on {format(new Date(pendingRequest.requestDate), 'PPP')}.
-                            </AlertDescriptionUI>
+                            <div className="flex justify-between items-center">
+                                <div className="flex items-center">
+                                    <ShieldQuestion className="h-4 w-4 mr-2" />
+                                    <div>
+                                        <AlertTitle>Pending Approval</AlertTitle>
+                                        <AlertDescriptionUI>
+                                            A change request by {pendingRequest.requestedByName} is pending.
+                                        </AlertDescriptionUI>
+                                    </div>
+                                </div>
+                                <Button variant="secondary" size="sm" onClick={() => setIsViewChangesOpen(true)}>View Details</Button>
+                            </div>
                         </Alert>
                     </CardContent>
                 )}
@@ -172,7 +181,7 @@ const SalarySettingsForm: React.FC<SalarySettingsProps> = ({ user, allCustomers 
                         <CardFooter className="border-t px-6 py-4">
                             <Button type="submit" disabled={isLoading || !!pendingRequest}>
                                 {isLoading && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
-                                {['Super Admin'].includes(user.role) ? 'Save Salary Settings' : 'Request Changes'}
+                                {user.role === 'HR' ? 'Save Salary Settings' : 'Request Changes'}
                             </Button>
                         </CardFooter>
                     )}
@@ -231,6 +240,11 @@ const SalarySettingsForm: React.FC<SalarySettingsProps> = ({ user, allCustomers 
                     </CardFooter>
                 </Card>
             )}
+             <ViewSalaryChangesDialog
+                isOpen={isViewChangesOpen}
+                onOpenChange={setIsViewChangesOpen}
+                request={pendingRequest}
+            />
         </div>
     );
 };
