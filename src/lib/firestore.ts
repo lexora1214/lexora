@@ -1426,7 +1426,13 @@ export async function createStockTransfer(transferData: Omit<StockTransfer, 'id'
 
 
 export async function confirmStockTransfer(transferId: string, confirmer: User): Promise<void> {
+    // Non-transactional reads
+    const existingStockQuery = query(collection(db, 'stock'), where('branch', '==', confirmer.branch));
+    const existingStockDocsSnap = await getDocs(existingStockQuery);
+    const branchStockItems = existingStockDocsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as StockItem));
+
     await runTransaction(db, async (transaction) => {
+        // Transactional reads
         const transferRef = doc(db, 'stockTransfers', transferId);
         const transferSnap = await transaction.get(transferRef);
 
@@ -1435,58 +1441,44 @@ export async function confirmStockTransfer(transferId: string, confirmer: User):
         }
 
         const transfer = transferSnap.data() as StockTransfer;
+        
+        const originalItemRefs = transfer.items.map(item => doc(db, 'stock', item.productId));
+        const originalItemSnaps = await Promise.all(originalItemRefs.map(ref => transaction.get(ref)));
 
-        for (const item of transfer.items) {
-            const q = query(
-                collection(db, 'stock'),
-                where('productCode', '==', item.productCode),
-                where('branch', '==', transfer.toBranch)
-            );
+        // Transactional writes
+        for (let i = 0; i < transfer.items.length; i++) {
+            const itemToTransfer = transfer.items[i];
+            const existingStockItem = branchStockItems.find(stock => stock.productCode === itemToTransfer.productCode);
             
-            // Note: getDocs() is not allowed in transactions.
-            // We need to fetch existing stock data outside the transaction or handle it differently.
-            // For this implementation, we will assume we can get it. In a real-world high-contention scenario,
-            // this might need a different data model or approach.
-            // A simplified, safe approach is to just create/update, but that requires reads before writes.
-            // Let's read outside first. THIS IS NOT TRANSACTIONALLY SAFE but fits the current pattern.
-            // A truly safe way would involve a cloud function or different data structure.
-
-            const existingStockDocs = await getDocs(q); // This is outside the transaction boundary.
-
-            if (!existingStockDocs.empty) {
-                const existingStockDoc = existingStockDocs.docs[0];
-                const existingStockData = existingStockDoc.data() as StockItem;
-                const updatedImeis = [...(existingStockData.imeis || []), ...item.imeis];
-
-                transaction.update(existingStockDoc.ref, {
-                    quantity: increment(item.imeis.length),
+            if (existingStockItem) {
+                // Update existing stock in branch
+                const existingStockRef = doc(db, 'stock', existingStockItem.id);
+                const updatedImeis = [...(existingStockItem.imeis || []), ...itemToTransfer.imeis];
+                transaction.update(existingStockRef, {
+                    quantity: increment(itemToTransfer.imeis.length),
                     imeis: updatedImeis,
                     lastUpdatedAt: new Date().toISOString(),
                 });
             } else {
-                 // To create a new stock item with prices, we must fetch the original item
-                const originalItemRef = doc(db, 'stock', item.productId);
-                const originalItemSnap = await transaction.get(originalItemRef); // This read is inside the transaction
-
-                if (!originalItemSnap.exists()) {
-                    // This should not happen if createStockTransfer is correct, but good to have a check
-                    throw new Error(`Original product (ID: ${item.productId}) not found.`);
+                // Create new stock item in branch
+                const originalItemSnap = originalItemSnaps[i];
+                 if (!originalItemSnap.exists()) {
+                    throw new Error(`Original product (ID: ${itemToTransfer.productId}) not found.`);
                 }
-                
                 const originalItemData = originalItemSnap.data() as StockItem;
                 const newStockItemRef = doc(collection(db, "stock"));
                 const newStockItem: Omit<StockItem, 'id'> = {
-                    productName: item.productName,
-                    productCode: item.productCode,
+                    productName: itemToTransfer.productName,
+                    productCode: itemToTransfer.productCode,
                     priceCash: originalItemData.priceCash,
                     priceInstallment: originalItemData.priceInstallment,
-                    quantity: item.imeis.length,
+                    quantity: itemToTransfer.imeis.length,
                     branch: transfer.toBranch,
                     managedBy: confirmer.id,
                     lastUpdatedAt: new Date().toISOString(),
-                    imeis: item.imeis,
+                    imeis: itemToTransfer.imeis,
                 };
-                 transaction.set(newStockItemRef, newStockItem);
+                transaction.set(newStockItemRef, newStockItem);
             }
         }
 
