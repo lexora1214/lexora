@@ -139,7 +139,7 @@ const StockManagementView: React.FC<StockManagementViewProps> = ({ manager }) =>
       setLoading(false);
       return;
     }
-    const q = query(collection(db, 'stock'), where('branch', 'in', [manager.branch, 'Main Stock']));
+    const q = query(collection(db, 'stock'), where('branch', '==', manager.branch));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StockItem));
       setStockItems(items.sort((a,b) => a.productName.localeCompare(b.productName)));

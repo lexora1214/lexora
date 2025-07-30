@@ -72,6 +72,11 @@ const MyCustomersView: React.FC<MyCustomersViewProps> = ({ user, allCustomers, a
       .filter(p => p.customerId === selectedCustomer.id)
       .sort((a, b) => new Date(b.saleDate).getTime() - new Date(a.saleDate).getTime());
   }, [selectedCustomer, allProductSales]);
+
+  const branchStockItems = React.useMemo(() => {
+    if (!user.branch) return [];
+    return allStockItems.filter(item => item.branch === user.branch);
+  }, [allStockItems, user.branch]);
   
   return (
     <>
@@ -200,7 +205,7 @@ const MyCustomersView: React.FC<MyCustomersViewProps> = ({ user, allCustomers, a
         isOpen={isRegisterDialogOpen} 
         onOpenChange={setIsRegisterDialogOpen} 
         salesman={user}
-        stockItems={allStockItems}
+        stockItems={branchStockItems}
         onRegistrationSuccess={() => {}} 
       />
       <CustomerDetailsDialog 

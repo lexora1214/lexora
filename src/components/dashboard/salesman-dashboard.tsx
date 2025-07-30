@@ -42,6 +42,11 @@ const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ user, allCustomer
     req => req.salesmanId === user.id && req.status === 'pending'
   );
 
+  const branchStockItems = React.useMemo(() => {
+    if (!user.branch) return [];
+    return allStockItems.filter(item => item.branch === user.branch);
+  }, [allStockItems, user.branch]);
+
   React.useEffect(() => {
     const calculatePendingIncome = async () => {
       setLoadingPending(true);
@@ -259,7 +264,7 @@ const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ user, allCustomer
         isOpen={isDialogOpen} 
         onOpenChange={setIsDialogOpen} 
         salesman={user}
-        stockItems={allStockItems}
+        stockItems={branchStockItems}
         onRegistrationSuccess={() => {}} 
       />
       <PendingApprovalsDialog
