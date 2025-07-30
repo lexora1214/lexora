@@ -245,8 +245,9 @@ export interface StockItem {
   priceInstallment: number;
   quantity: number;
   branch: string;
-  managedBy: string; // Team Operation Manager's ID
+  managedBy: string; // Team Operation Manager's ID or Admin ID
   lastUpdatedAt: string;
+  imeis?: string[];
 }
 
 export type IncentiveSetting = {

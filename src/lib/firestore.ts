@@ -1334,27 +1334,13 @@ export async function getIncomeRecordsForPayout(payoutId: string): Promise<Incom
 
 export async function addStockItem(item: Omit<StockItem, 'id' | 'lastUpdatedAt'>): Promise<void> {
   const stockCollection = collection(db, 'stock');
-  const auth = getAuth();
-  const currentUser = auth.currentUser;
-
-  // The 'managedBy' ID should be the logged-in admin, not the branch manager
-  const managedById =
-    currentUser?.uid &&
-    ['Admin', 'Super Admin'].includes(
-      (await getDoc(doc(db, 'users', currentUser.uid))).data()?.role
-    )
-      ? currentUser.uid
-      : item.managedBy;
-      
   await addDoc(stockCollection, {
     ...item,
-    managedBy: managedById,
-    branch: 'Main Stock',
     lastUpdatedAt: new Date().toISOString(),
   });
 }
 
-export async function updateStockItem(itemId: string, updates: Partial<Omit<StockItem, 'id' | 'lastUpdatedAt'>>): Promise<void> {
+export async function updateStockItem(itemId: string, updates: Partial<Omit<StockItem, 'id' | 'branch' | 'managedBy' | 'lastUpdatedAt'>>): Promise<void> {
     const itemDocRef = doc(db, "stock", itemId);
     await updateDoc(itemDocRef, {
         ...updates,
