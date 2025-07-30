@@ -84,7 +84,9 @@ const roleOrderMap: Record<Role, number> = {
 export default function UserManagementTable({ user: loggedInUser, data, allIncomeRecords }: UserManagementTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([{ id: 'role', desc: false }]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
-  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
+  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({
+    periodIncome: loggedInUser.role === 'Super Admin' || loggedInUser.role === 'HR',
+  });
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [isIncomeDialogOpen, setIsIncomeDialogOpen] = React.useState(false);
   const [selectedUser, setSelectedUser] = React.useState<User | null>(null);
@@ -272,8 +274,7 @@ export default function UserManagementTable({ user: loggedInUser, data, allIncom
       cell: ({ row }) => {
           const user = row.original;
           const isSelf = loggedInUser?.id === user.id;
-          const canToggle = loggedInUser.role === 'Super Admin' && user.role === 'Admin' && !isSelf;
-          const isAlwaysEnabled = user.role === 'Super Admin' || (loggedInUser.role === 'Admin' && user.role === 'Admin');
+          const canToggle = ['Super Admin', 'HR'].includes(loggedInUser.role) && !isSelf;
 
           return (
              <div className="flex items-center space-x-2">
@@ -281,8 +282,8 @@ export default function UserManagementTable({ user: loggedInUser, data, allIncom
                     id={`status-switch-${user.id}`}
                     checked={!user.isDisabled}
                     onCheckedChange={(isChecked) => handleStatusChange(user.id, !isChecked)}
-                    disabled={isSelf || !canToggle && isAlwaysEnabled}
-                    aria-readonly={isSelf || !canToggle && isAlwaysEnabled}
+                    disabled={!canToggle}
+                    aria-readonly={!canToggle}
                 />
                 <Label htmlFor={`status-switch-${user.id}`} className={cn(user.isDisabled ? "text-destructive" : "text-success")}>
                     {user.isDisabled ? 'Disabled' : 'Enabled'}
