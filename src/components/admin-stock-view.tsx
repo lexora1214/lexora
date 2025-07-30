@@ -117,11 +117,6 @@ const AdminStockView: React.FC<AdminStockViewProps> = ({ user, allStockItems, al
                           ))}
                       </SelectContent>
                   </Select>
-                  {['Admin', 'Super Admin', 'Store Keeper'].includes(user.role) && (
-                      <Button onClick={() => { setSelectedItem(undefined); setIsAddDialogOpen(true); }}>
-                          <PlusCircle className="mr-2 h-4 w-4" /> Add to Main Stock
-                      </Button>
-                  )}
               </div>
           </div>
         </CardHeader>
