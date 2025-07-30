@@ -1342,12 +1342,46 @@ export async function addStockItem(item: Omit<StockItem, 'id' | 'lastUpdatedAt'>
 }
 
 export async function updateStockItem(itemId: string, updates: Partial<Omit<StockItem, 'id' | 'branch' | 'managedBy' | 'lastUpdatedAt'>>): Promise<void> {
-    const itemDocRef = doc(db, "stock", itemId);
-    await updateDoc(itemDocRef, {
+    const batch = writeBatch(db);
+    const mainItemRef = doc(db, "stock", itemId);
+    
+    // First, update the main item
+    batch.update(mainItemRef, {
         ...updates,
         lastUpdatedAt: new Date().toISOString(),
     });
+
+    const mainItemSnap = await getDoc(mainItemRef);
+    const mainItemData = mainItemSnap.data() as StockItem;
+
+    // If prices were part of the update and the item has a product code, sync prices to other branches
+    const pricesUpdated = 'priceCash' in updates || 'priceInstallment' in updates;
+    if (mainItemData.branch === 'Main Stock' && mainItemData.productCode && pricesUpdated) {
+        const q = query(
+            collection(db, "stock"),
+            where('productCode', '==', mainItemData.productCode),
+            where('branch', '!=', 'Main Stock')
+        );
+
+        const querySnapshot = await getDocs(q);
+        querySnapshot.forEach(doc => {
+            const branchItemRef = doc.ref;
+            const priceUpdates: {priceCash?: number, priceInstallment?: number, lastUpdatedAt: string} = {
+              lastUpdatedAt: new Date().toISOString()
+            };
+            if ('priceCash' in updates && updates.priceCash !== undefined) {
+                priceUpdates.priceCash = updates.priceCash;
+            }
+             if ('priceInstallment' in updates && updates.priceInstallment !== undefined) {
+                priceUpdates.priceInstallment = updates.priceInstallment;
+            }
+            batch.update(branchItemRef, priceUpdates);
+        });
+    }
+
+    await batch.commit();
 }
+
 
 export async function deleteStockItem(itemId: string): Promise<void> {
     const itemDocRef = doc(db, "stock", itemId);
