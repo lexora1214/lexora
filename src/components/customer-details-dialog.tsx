@@ -9,25 +9,93 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
+  DialogClose
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Customer, IncomeRecord, ProductSale, User, CustomerNote } from "@/types";
-import { CalendarIcon, Hash, Home, Phone, User as UserIcon, CheckCircle2, XCircle, Mail, MessageSquare, MapPin, ShoppingCart, Percent, DollarSign, Repeat, Clock, ShieldCheck, ShieldX, ShieldAlert, Users, Fingerprint, NotebookText } from "lucide-react";
+import { Calendar as CalendarIconUI, Hash, Home, Phone, User as UserIcon, CheckCircle2, XCircle, Mail, MessageSquare, MapPin, ShoppingCart, Percent, DollarSign, Repeat, Clock, ShieldCheck, ShieldX, ShieldAlert, Users, Fingerprint, NotebookText, Edit, LoaderCircle } from "lucide-react";
 import { ScrollArea } from "./ui/scroll-area";
 import MapPicker from "./map-picker";
 import { Progress } from "./ui/progress";
 import { Button } from "./ui/button";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { getCustomerNotes } from "@/lib/firestore";
+import { getCustomerNotes, updateProductSale } from "@/lib/firestore";
 import CommissionBreakdownDialog from "./commission-breakdown-dialog";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./ui/accordion";
-import { format } from "date-fns";
+import { format, addMonths } from "date-fns";
+import { Popover, PopoverTrigger, PopoverContent } from "./ui/popover";
+import { Calendar } from "./ui/calendar";
+import { useToast } from "@/hooks/use-toast";
+
+
+interface EditDueDateDialogProps {
+  sale: ProductSale;
+  isOpen: boolean;
+  onOpenChange: (isOpen: boolean) => void;
+  onUpdate: () => void;
+}
+
+const EditDueDateDialog: React.FC<EditDueDateDialogProps> = ({ sale, isOpen, onOpenChange, onUpdate }) => {
+  const [newDate, setNewDate] = React.useState<Date | undefined>(
+    sale.nextDueDateOverride ? new Date(sale.nextDueDateOverride) : undefined
+  );
+  const [isLoading, setIsLoading] = React.useState(false);
+  const { toast } = useToast();
+
+  const handleUpdate = async () => {
+    if (!newDate) {
+      toast({ variant: "destructive", title: "No date selected" });
+      return;
+    }
+    setIsLoading(true);
+    try {
+      await updateProductSale(sale.id, { nextDueDateOverride: newDate.toISOString() });
+      toast({ title: "Due Date Updated", description: "The next installment due date has been changed.", className: "bg-success text-success-foreground" });
+      onUpdate();
+      onOpenChange(false);
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Update Failed", description: error.message });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit Next Due Date</DialogTitle>
+          <DialogDescription>
+            Change the collection date for the next installment of {sale.productName}.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="py-4">
+          <Calendar
+            mode="single"
+            selected={newDate}
+            onSelect={setNewDate}
+            className="rounded-md border"
+          />
+        </div>
+        <DialogFooter>
+          <DialogClose asChild><Button variant="ghost">Cancel</Button></DialogClose>
+          <Button onClick={handleUpdate} disabled={isLoading || !newDate}>
+            {isLoading && <LoaderCircle className="mr-2 h-4 w-4 animate-spin"/>}
+            Update Date
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 interface CustomerDetailsDialogProps {
   customer: Customer | null;
   productSales: ProductSale[];
   allUsers: User[];
+  currentUser: User;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
 }
@@ -50,6 +118,7 @@ const CustomerDetailsDialog: React.FC<CustomerDetailsDialogProps> = ({
   customer,
   productSales,
   allUsers,
+  currentUser,
   isOpen,
   onOpenChange,
 }) => {
@@ -57,6 +126,7 @@ const CustomerDetailsDialog: React.FC<CustomerDetailsDialogProps> = ({
   const [breakdownProps, setBreakdownProps] = React.useState<{ title: string; records: IncomeRecord[]; total: number } | null>(null);
   const [notes, setNotes] = React.useState<CustomerNote[]>([]);
   const [loadingNotes, setLoadingNotes] = React.useState(false);
+  const [editingSale, setEditingSale] = React.useState<ProductSale | null>(null);
 
   React.useEffect(() => {
     if (isOpen && customer) {
@@ -107,8 +177,12 @@ const CustomerDetailsDialog: React.FC<CustomerDetailsDialogProps> = ({
     setIsBreakdownOpen(true);
   };
 
+  const handleEditDueDate = (sale: ProductSale) => {
+    setEditingSale(sale);
+  }
   
   const salesmanName = allUsers?.find(u => u.id === customer.salesmanId)?.name || 'Unknown User';
+  const isRecoveryAdmin = currentUser.role === 'Recovery Admin';
 
   return (
     <>
@@ -134,7 +208,7 @@ const CustomerDetailsDialog: React.FC<CustomerDetailsDialogProps> = ({
                       <DetailRow icon={Home} label="Address" value={customer.address} />
                       <DetailRow icon={UserIcon} label="Registered by" value={salesmanName} />
                       <DetailRow icon={Home} label="Registered by Branch" value={customer.branch} />
-                      <DetailRow icon={CalendarIcon} label="Registration Date" value={new Date(customer.saleDate).toLocaleString()} />
+                      <DetailRow icon={CalendarIconUI} label="Registration Date" value={new Date(customer.saleDate).toLocaleString()} />
                   </div>
 
                   {customer.location && (
@@ -201,6 +275,9 @@ const CustomerDetailsDialog: React.FC<CustomerDetailsDialogProps> = ({
                                 const remainingBalance = hasInstallments && sale.paidInstallments !== undefined && sale.monthlyInstallment
                                     ? (sale.installments! - sale.paidInstallments) * sale.monthlyInstallment
                                     : 0;
+                                const nextDueDate = hasInstallments && sale.paidInstallments !== undefined && sale.paidInstallments < sale.installments!
+                                    ? sale.nextDueDateOverride ? new Date(sale.nextDueDateOverride) : addMonths(new Date(sale.saleDate), sale.paidInstallments + 1)
+                                    : null;
                                 return (
                                     <AccordionItem value={sale.id} key={sale.id}>
                                         <AccordionTrigger>
@@ -227,7 +304,7 @@ const CustomerDetailsDialog: React.FC<CustomerDetailsDialogProps> = ({
                                                         <h4 className="font-semibold text-md mb-4 text-primary/90">Installment Status</h4>
                                                         <div className="space-y-4">
                                                             <div>
-                                                                <div className="flex justify-between text-sm mb-1">
+                                                                <div className="flex justify-between items-center text-sm mb-1">
                                                                     <span className="font-medium">Paid Installments</span>
                                                                     <span>{sale.paidInstallments} / {sale.installments}</span>
                                                                 </div>
@@ -237,6 +314,18 @@ const CustomerDetailsDialog: React.FC<CustomerDetailsDialogProps> = ({
                                                                 <DetailRow icon={Repeat} label="Remaining Installments" value={`${sale.installments! - sale.paidInstallments}`} />
                                                                 <DetailRow icon={DollarSign} label="Remaining Balance" value={`LKR ${remainingBalance.toLocaleString()}`} />
                                                             </div>
+                                                            {nextDueDate && (
+                                                              <DetailRow 
+                                                                icon={CalendarIconUI} 
+                                                                label="Next Due Date" 
+                                                                value={format(nextDueDate, 'PPP')}
+                                                                action={isRecoveryAdmin && (
+                                                                  <Button variant="outline" size="sm" onClick={() => handleEditDueDate(sale)}>
+                                                                    <Edit className="mr-2 h-3 w-3" /> Edit Date
+                                                                  </Button>
+                                                                )}
+                                                              />
+                                                            )}
                                                         </div>
                                                     </div>
                                                 )}
@@ -278,6 +367,16 @@ const CustomerDetailsDialog: React.FC<CustomerDetailsDialogProps> = ({
             records={breakdownProps.records}
             totalCommission={breakdownProps.total}
             allUsers={allUsers}
+        />
+      )}
+      {editingSale && (
+        <EditDueDateDialog
+          sale={editingSale}
+          isOpen={!!editingSale}
+          onOpenChange={() => setEditingSale(null)}
+          onUpdate={() => {
+            // No need to do anything here, onSnapshot will refresh the data
+          }}
         />
       )}
     </>

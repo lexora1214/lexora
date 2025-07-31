@@ -32,6 +32,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/
 import { Progress } from "./ui/progress";
 
 interface AdminRecoveryViewProps {
+  user: User;
   allProductSales: ProductSale[];
   allCustomers: Customer[];
   allUsers: User[];
@@ -41,7 +42,7 @@ type SaleWithDetails = ProductSale & {
   customer?: Customer;
 };
 
-export default function AdminRecoveryView({ allProductSales, allCustomers, allUsers }: AdminRecoveryViewProps) {
+export default function AdminRecoveryView({ user, allProductSales, allCustomers, allUsers }: AdminRecoveryViewProps) {
   const [sorting, setSorting] = React.useState<SortingState>([{ id: "saleDate", desc: true }]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = React.useState(false);
@@ -234,6 +235,7 @@ export default function AdminRecoveryView({ allProductSales, allCustomers, allUs
         customer={selectedCustomer}
         productSales={productSalesForSelectedCustomer}
         allUsers={allUsers}
+        currentUser={user}
       />
     </>
   );

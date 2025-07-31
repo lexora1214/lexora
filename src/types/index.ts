@@ -121,6 +121,7 @@ export interface ProductSale {
   recoveryStatus?: 'pending' | 'assigned';
   recoveryOfficerId?: string;
   recoveryOfficerName?: string;
+  nextDueDateOverride?: string;
 }
 
 export interface CommissionSettings {

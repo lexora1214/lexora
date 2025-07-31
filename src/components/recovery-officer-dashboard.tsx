@@ -76,8 +76,10 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
     assignedSales.forEach(sale => {
         if (sale.installments && sale.paidInstallments !== undefined && sale.paidInstallments < sale.installments) {
             const nextInstallmentNumber = sale.paidInstallments + 1;
-            const saleDate = new Date(sale.saleDate);
-            const dueDate = addMonths(saleDate, nextInstallmentNumber);
+            
+            // Use override date if it exists, otherwise calculate from sale date
+            const baseDate = sale.nextDueDateOverride ? new Date(sale.nextDueDateOverride) : new Date(sale.saleDate);
+            const dueDate = sale.nextDueDateOverride ? baseDate : addMonths(baseDate, nextInstallmentNumber);
             
             const customer = customers.find(c => c.id === sale.customerId);
 

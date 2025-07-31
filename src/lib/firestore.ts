@@ -1729,6 +1729,11 @@ export async function getCustomerNotes(customerId: string): Promise<CustomerNote
     return notes.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
+export async function updateProductSale(saleId: string, updates: Partial<ProductSale>): Promise<void> {
+  const saleDocRef = doc(db, "productSales", saleId);
+  await updateDoc(saleDocRef, updates);
+}
+
 
 // This function is defined here but imported and used in server actions.
 export async function sendOtpSms(mobileNumber: string, otp: string): Promise<{success: boolean, error?: string}> {

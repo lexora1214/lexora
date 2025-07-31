@@ -460,7 +460,7 @@ const AppLayout = ({ user }: { user: User }) => {
             return <ManagerDashboard user={user} allUsers={allUsers} allIncomeRecords={allIncomeRecords} allCustomers={allCustomers} />;
         }
       case "Recovery Management":
-        return <AdminRecoveryView allProductSales={allProductSales} allCustomers={allCustomers} allUsers={allUsers} />;
+        return <AdminRecoveryView user={user} allProductSales={allProductSales} allCustomers={allCustomers} allUsers={allUsers} />;
       case "Stock Management":
         return <StockManagementView manager={user} />;
       case "Global Stock View":
