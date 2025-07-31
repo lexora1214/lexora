@@ -9,9 +9,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Button } from './ui/button';
-import { FileDown, LoaderCircle, TrendingUp } from 'lucide-react';
+import { FileDown, LoaderCircle, TrendingUp, ChevronDown, FileSpreadsheet, FileText } from 'lucide-react';
 import { format } from 'date-fns';
 import { Badge } from './ui/badge';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 
 interface ArrearsReportViewProps {
   allProductSales: ProductSale[];
@@ -94,6 +95,42 @@ const ArrearsReportView: React.FC<ArrearsReportViewProps> = ({ allProductSales, 
     setIsGenerating(false);
   }
 
+  const handleGenerateCsv = () => {
+    if (arrearsData.length === 0) return;
+    setIsGenerating(true);
+
+    const headers = ["Customer Name", "Contact", "NIC", "Address", "Product", "Token Serial", "Arrears Count", "Arrears Amount Due (LKR)", "Remaining Balance (LKR)"];
+    const csvRows = [headers.join(',')];
+
+    arrearsData.forEach(item => {
+        const row = [
+            `"${item.customerName?.replace(/"/g, '""') || ''}"`,
+            item.customer?.contactInfo || '',
+            item.customer?.nic || '',
+            `"${item.customer?.address?.replace(/"/g, '""') || ''}"`,
+            `"${item.productName.replace(/"/g, '""')}"`,
+            item.tokenSerial,
+            item.arrears,
+            item.amountDue,
+            item.remainingBalance
+        ];
+        csvRows.push(row.join(','));
+    });
+
+    const csvContent = csvRows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `arrears_report_${format(new Date(), 'yyyy-MM-dd')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    setIsGenerating(false);
+  };
+
+
   return (
     <Card>
       <CardHeader>
@@ -119,10 +156,25 @@ const ArrearsReportView: React.FC<ArrearsReportViewProps> = ({ allProductSales, 
               onChange={(e) => setFilter(e.target.value)}
               className="w-64"
             />
-            <Button onClick={handleGeneratePdf} disabled={isGenerating || arrearsData.length === 0}>
-                {isGenerating ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin"/> : <FileDown className="mr-2 h-4 w-4"/>}
-                Generate Report
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button disabled={isGenerating || arrearsData.length === 0}>
+                  {isGenerating ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin"/> : <FileDown className="mr-2 h-4 w-4"/>}
+                  Generate Report
+                  <ChevronDown className="ml-2 h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleGenerateCsv}>
+                  <FileSpreadsheet className="mr-2 h-4 w-4" />
+                  <span>Export as CSV</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleGeneratePdf}>
+                  <FileText className="mr-2 h-4 w-4" />
+                  <span>Export as PDF</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </CardHeader>
