@@ -11,16 +11,18 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Customer, IncomeRecord, ProductSale, User } from "@/types";
-import { CalendarIcon, Hash, Home, Phone, User as UserIcon, CheckCircle2, XCircle, Mail, MessageSquare, MapPin, ShoppingCart, Percent, DollarSign, Repeat, Clock, ShieldCheck, ShieldX, ShieldAlert, Users, Fingerprint } from "lucide-react";
+import { Customer, IncomeRecord, ProductSale, User, CustomerNote } from "@/types";
+import { CalendarIcon, Hash, Home, Phone, User as UserIcon, CheckCircle2, XCircle, Mail, MessageSquare, MapPin, ShoppingCart, Percent, DollarSign, Repeat, Clock, ShieldCheck, ShieldX, ShieldAlert, Users, Fingerprint, NotebookText } from "lucide-react";
 import { ScrollArea } from "./ui/scroll-area";
 import MapPicker from "./map-picker";
 import { Progress } from "./ui/progress";
 import { Button } from "./ui/button";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { getCustomerNotes } from "@/lib/firestore";
 import CommissionBreakdownDialog from "./commission-breakdown-dialog";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./ui/accordion";
+import { format } from "date-fns";
 
 interface CustomerDetailsDialogProps {
   customer: Customer | null;
@@ -53,6 +55,20 @@ const CustomerDetailsDialog: React.FC<CustomerDetailsDialogProps> = ({
 }) => {
   const [isBreakdownOpen, setIsBreakdownOpen] = React.useState(false);
   const [breakdownProps, setBreakdownProps] = React.useState<{ title: string; records: IncomeRecord[]; total: number } | null>(null);
+  const [notes, setNotes] = React.useState<CustomerNote[]>([]);
+  const [loadingNotes, setLoadingNotes] = React.useState(false);
+
+  React.useEffect(() => {
+    if (isOpen && customer) {
+        setLoadingNotes(true);
+        getCustomerNotes(customer.id)
+            .then(setNotes)
+            .catch(console.error)
+            .finally(() => setLoadingNotes(false));
+    } else {
+        setNotes([]);
+    }
+  }, [isOpen, customer]);
 
   if (!customer) return null;
 
@@ -232,6 +248,24 @@ const CustomerDetailsDialog: React.FC<CustomerDetailsDialogProps> = ({
                         </Accordion>
                     </div>
                  )}
+
+                 <div className="pt-4 mt-4">
+                    <h4 className="font-semibold text-lg text-primary mb-2 flex items-center gap-2">
+                        <NotebookText /> Notes & History
+                    </h4>
+                    {loadingNotes ? <p>Loading notes...</p> : notes.length > 0 ? (
+                        <div className="space-y-3">
+                            {notes.map(note => (
+                                <div key={note.id} className="border-l-4 border-primary/50 pl-4 py-2 bg-muted/50 rounded-r-lg">
+                                    <p className="text-sm text-card-foreground">{note.note}</p>
+                                    <p className="text-xs text-muted-foreground mt-2">- {note.officerName} on {format(new Date(note.createdAt), 'PPP')}</p>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="text-sm text-muted-foreground">No special notes have been added for this customer.</p>
+                    )}
+                 </div>
               </div>
             </ScrollArea>
         </DialogContent>

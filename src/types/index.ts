@@ -317,3 +317,12 @@ export interface SalesmanDocuments {
     gsCertificate: File;
     policeReport: File;
 }
+
+export interface CustomerNote {
+  id: string;
+  customerId: string;
+  officerId: string;
+  officerName: string;
+  note: string;
+  createdAt: string;
+}

@@ -4,7 +4,7 @@ import { doc, getDoc, setDoc, collection, getDocs, query, where, writeBatch, inc
 import { getAuth, updatePassword } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { db, storage } from "./firebase";
-import { User, Role, Customer, CommissionSettings, IncomeRecord, ProductSale, ProductCommissionSettings, SignupRoleSettings, CommissionRequest, SalesmanStage, SalarySettings, MonthlySalaryPayout, StockItem, IncentiveSettings, Reminder, SalesmanDocuments, SalaryChangeRequest, SalaryPayoutRequest, IncentiveChangeRequest, StockTransfer, StockTransferItem } from "@/types";
+import { User, Role, Customer, CommissionSettings, IncomeRecord, ProductSale, ProductCommissionSettings, SignupRoleSettings, CommissionRequest, SalesmanStage, SalarySettings, MonthlySalaryPayout, StockItem, IncentiveSettings, Reminder, SalesmanDocuments, SalaryChangeRequest, SalaryPayoutRequest, IncentiveChangeRequest, StockTransfer, StockTransferItem, CustomerNote } from "@/types";
 import type { User as FirebaseUser } from 'firebase/auth';
 import { sendTokenSms, sendOtpSms as sendSmsForOtp } from "./sms";
 import { getDownlineIdsAndUsers } from "./hierarchy";
@@ -1706,6 +1706,27 @@ export async function addExpenseForSalesman(
     batch.set(expenseRecordRef, newExpenseRecord);
 
     await batch.commit();
+}
+
+// --- Customer Notes ---
+export async function addCustomerNote(customerId: string, officer: User, note: string): Promise<void> {
+    const noteRef = doc(collection(db, "customerNotes"));
+    const newNote: CustomerNote = {
+        id: noteRef.id,
+        customerId,
+        officerId: officer.id,
+        officerName: officer.name,
+        note,
+        createdAt: new Date().toISOString(),
+    };
+    await setDoc(noteRef, newNote);
+}
+
+export async function getCustomerNotes(customerId: string): Promise<CustomerNote[]> {
+    const notesQuery = query(collection(db, "customerNotes"), where("customerId", "==", customerId));
+    const notesSnap = await getDocs(notesQuery);
+    const notes = notesSnap.docs.map(d => d.data() as CustomerNote);
+    return notes.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
 
