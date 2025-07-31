@@ -20,6 +20,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { MoreHorizontal, PlusCircle, Trash2, Edit, LoaderCircle, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
+import ViewImeisDialog from './view-imeis-dialog';
 
 interface StockManagementViewProps {
   manager: User;
@@ -130,6 +131,7 @@ const StockManagementView: React.FC<StockManagementViewProps> = ({ manager }) =>
   const [stockItems, setStockItems] = useState<StockItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isImeiDialogOpen, setIsImeiDialogOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<StockItem | undefined>(undefined);
   const [filter, setFilter] = useState('');
   const { toast } = useToast();
@@ -151,6 +153,11 @@ const StockManagementView: React.FC<StockManagementViewProps> = ({ manager }) =>
   const handleEdit = (item: StockItem) => {
     setSelectedItem(item);
     setIsDialogOpen(true);
+  };
+  
+  const handleViewImeis = (item: StockItem) => {
+    setSelectedItem(item);
+    setIsImeiDialogOpen(true);
   };
 
   const handleAdd = () => {
@@ -230,19 +237,20 @@ const StockManagementView: React.FC<StockManagementViewProps> = ({ manager }) =>
                   <TableRow><TableCell colSpan={6} className="h-24 text-center"><LoaderCircle className="mx-auto h-6 w-6 animate-spin"/></TableCell></TableRow>
                 ) : filteredItems.length > 0 ? (
                   filteredItems.map((item) => (
-                    <TableRow key={item.id}>
+                    <TableRow key={item.id} onClick={() => handleViewImeis(item)} className="cursor-pointer">
                       <TableCell className="font-medium">{item.productName}</TableCell>
                       <TableCell>{item.productCode || 'N/A'}</TableCell>
                       <TableCell>LKR {item.priceCash.toLocaleString()}</TableCell>
                       <TableCell>LKR {item.priceInstallment.toLocaleString()}</TableCell>
-                      <TableCell className="text-center">{item.quantity}</TableCell>
+                      <TableCell className="text-center">{item.imeis?.length ?? item.quantity}</TableCell>
                       <TableCell className="text-right">
                         {manager.role === 'Branch Admin' ? (
                             <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" className="h-8 w-8 p-0"><MoreHorizontal /></Button>
+                                <Button variant="ghost" className="h-8 w-8 p-0" onClick={(e) => e.stopPropagation()}><MoreHorizontal /></Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
+                            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                                <DropdownMenuItem onClick={() => handleViewImeis(item)}>View IMEIs</DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => handleEdit(item)}><Edit className="mr-2" /> Edit</DropdownMenuItem>
                                 <AlertDialog>
                                     <AlertDialogTrigger asChild>
@@ -283,6 +291,13 @@ const StockManagementView: React.FC<StockManagementViewProps> = ({ manager }) =>
         manager={manager}
         item={selectedItem}
       />
+      {selectedItem && (
+        <ViewImeisDialog 
+            isOpen={isImeiDialogOpen}
+            onOpenChange={setIsImeiDialogOpen}
+            item={selectedItem}
+        />
+      )}
     </>
   );
 };

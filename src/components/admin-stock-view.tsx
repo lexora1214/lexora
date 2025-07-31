@@ -12,8 +12,6 @@ import { format } from 'date-fns';
 import { Button } from './ui/button';
 import { PlusCircle, MoreHorizontal, Edit, Trash2 } from 'lucide-react';
 import AddGlobalStockDialog from './add-global-stock-dialog';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
-import { ScrollArea } from './ui/scroll-area';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { deleteStockItem } from '@/lib/firestore';
@@ -27,39 +25,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog";
+import ViewImeisDialog from './view-imeis-dialog';
 
-const ViewImeisDialog: React.FC<{
-  isOpen: boolean;
-  onOpenChange: (isOpen: boolean) => void;
-  item: StockItem;
-}> = ({ isOpen, onOpenChange, item }) => {
-  return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-        <DialogContent>
-            <DialogHeader>
-                <DialogTitle>IMEIs for {item.productName}</DialogTitle>
-                <DialogDescription>
-                    A total of {item.imeis?.length || 0} unique serial numbers.
-                </DialogDescription>
-            </DialogHeader>
-            <ScrollArea className="h-72 w-full rounded-md border">
-                <div className="p-4 text-sm">
-                    {item.imeis && item.imeis.length > 0 ? (
-                        <ul className="space-y-2">
-                            {item.imeis.map((imei, index) => (
-                                <li key={index} className="font-mono bg-muted/50 p-2 rounded-md">{imei}</li>
-                            ))}
-                        </ul>
-                    ) : (
-                        <p className="text-muted-foreground text-center">No IMEI/Serial numbers recorded for this item.</p>
-                    )}
-                </div>
-            </ScrollArea>
-        </DialogContent>
-    </Dialog>
-  )
-};
 
 interface AdminStockViewProps {
   user: User;
