@@ -753,22 +753,6 @@ export async function assignRecovery(productSaleId: string, recoveryOfficerId: s
   });
 }
 
-async function updateArrearsForSale(batch: any, saleRef: any, saleData: ProductSale) {
-    if (saleData.paymentMethod !== 'installments' || !saleData.installments || saleData.paidInstallments === undefined) {
-        return; // Not an installment sale, do nothing
-    }
-
-    const nextInstallmentNumber = saleData.paidInstallments + 1;
-    const expectedDueDate = saleData.nextDueDateOverride
-        ? new Date(saleData.nextDueDateOverride)
-        : addMonths(new Date(saleData.saleDate), nextInstallmentNumber);
-    
-    // If payment was made after the due date, increment arrears
-    if (isBefore(expectedDueDate, new Date())) {
-        batch.update(saleRef, { arrears: increment(1) });
-    }
-}
-
 export async function markInstallmentPaid(productSaleId: string): Promise<void> {
   const batch = writeBatch(db);
   const saleDocRef = doc(db, "productSales", productSaleId);
@@ -787,8 +771,6 @@ export async function markInstallmentPaid(productSaleId: string): Promise<void> 
   if (saleData.paidInstallments >= saleData.installments) {
     throw new Error("All installments have already been paid.");
   }
-  
-  await updateArrearsForSale(batch, saleDocRef, saleData);
   
   const nextInstallmentNumber = saleData.paidInstallments + 1;
 
@@ -992,6 +974,32 @@ export async function payRemainingInstallments(productSaleId: string): Promise<v
     batch.update(saleDocRef, { paidInstallments: installments });
 
     await batch.commit();
+}
+
+export async function manuallyAddArrear(productSaleId: string): Promise<void> {
+    const saleDocRef = doc(db, "productSales", productSaleId);
+    const saleDocSnap = await getDoc(saleDocRef);
+    if (!saleDocSnap.exists()) {
+        throw new Error("Product sale not found.");
+    }
+    const saleData = saleDocSnap.data() as ProductSale;
+
+    if (saleData.paymentMethod !== 'installments' || !saleData.installments || saleData.paidInstallments === undefined) {
+        throw new Error("This sale is not an installment plan.");
+    }
+    
+    // Calculate the current due date (either original or override)
+    const currentDueDate = saleData.nextDueDateOverride
+        ? new Date(saleData.nextDueDateOverride)
+        : addMonths(new Date(saleData.saleDate), saleData.paidInstallments + 1);
+
+    // Set the new due date to one month from the current due date
+    const newDueDate = addMonths(currentDueDate, 1);
+
+    await updateDoc(saleDocRef, {
+        arrears: increment(1),
+        nextDueDateOverride: newDueDate.toISOString(),
+    });
 }
 
 
@@ -1460,7 +1468,6 @@ export async function createStockTransfer(transferData: Omit<StockTransfer, 'id'
 
 
 export async function confirmStockTransfer(transferId: string, confirmer: User): Promise<void> {
-    const existingStockQuery = query(collection(db, 'stock'), where('branch', '==', confirmer.branch));
     
     await runTransaction(db, async (transaction) => {
         const transferRef = doc(db, 'stockTransfers', transferId);
@@ -1472,7 +1479,8 @@ export async function confirmStockTransfer(transferId: string, confirmer: User):
 
         const transfer = transferSnap.data() as StockTransfer;
 
-        const branchStockDocsSnap = await getDocs(existingStockQuery);
+        const existingStockQuery = query(collection(db, 'stock'), where('branch', '==', transfer.toBranch));
+        const branchStockDocsSnap = await getDocs(existingStockQuery); // This needs to be outside the transaction
         const branchStockItems = branchStockDocsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as StockItem));
         
         const originalItemRefs = transfer.items.map(item => doc(db, 'stock', item.productId));
@@ -1758,3 +1766,4 @@ export async function updateProductSale(saleId: string, updates: Partial<Product
 export async function sendOtpSms(mobileNumber: string, otp: string): Promise<{success: boolean, error?: string}> {
     return sendSmsForOtp(mobileNumber, otp);
 }
+

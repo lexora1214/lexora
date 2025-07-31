@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { ArrowUpDown, ChevronDown, MoreHorizontal, TrendingUp } from "lucide-react";
+import { ArrowUpDown, ChevronDown, MoreHorizontal, TrendingUp, AlertTriangle } from "lucide-react";
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -25,12 +25,24 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+  } from "@/components/ui/dropdown-menu";
 import { Customer, User, ProductSale } from "@/types";
 import { Badge } from "./ui/badge";
 import CustomerDetailsDialog from "./customer-details-dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Progress } from "./ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { addMonths, isPast } from "date-fns";
+import { manuallyAddArrear } from "@/lib/firestore";
+import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 interface AdminRecoveryViewProps {
   user: User;
@@ -42,6 +54,7 @@ interface AdminRecoveryViewProps {
 type SaleWithDetails = ProductSale & {
   customer?: Customer;
   branch?: string;
+  isOverdue?: boolean;
 };
 
 export default function AdminRecoveryView({ user, allProductSales, allCustomers, allUsers }: AdminRecoveryViewProps) {
@@ -49,16 +62,27 @@ export default function AdminRecoveryView({ user, allProductSales, allCustomers,
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = React.useState(false);
   const [selectedCustomer, setSelectedCustomer] = React.useState<Customer | null>(null);
+  const { toast } = useToast();
+  const [processingId, setProcessingId] = React.useState<string | null>(null);
 
   const installmentSales = React.useMemo(() => {
     return allProductSales
       .filter(p => p.paymentMethod === 'installments')
       .map(p => {
         const customer = allCustomers.find(c => c.id === p.customerId);
+        let isOverdue = false;
+        if (p.installments && p.paidInstallments !== undefined && p.paidInstallments < p.installments) {
+            const nextDueDate = p.nextDueDateOverride ? new Date(p.nextDueDateOverride) : addMonths(new Date(p.saleDate), p.paidInstallments + 1);
+            if (isPast(nextDueDate)) {
+                isOverdue = true;
+            }
+        }
+
         return {
           ...p,
           customer: customer,
           branch: customer?.branch,
+          isOverdue,
         };
       })
       .sort((a, b) => new Date(b.saleDate).getTime() - new Date(a.saleDate).getTime());
@@ -77,6 +101,18 @@ export default function AdminRecoveryView({ user, allProductSales, allCustomers,
     setIsDetailsDialogOpen(true);
   }, []);
 
+  const handleMarkArrears = async (sale: ProductSale) => {
+    setProcessingId(sale.id);
+    try {
+        await manuallyAddArrear(sale.id);
+        toast({ title: "Arrear Marked", description: "The arrear has been recorded and the next due date updated."});
+    } catch(error: any) {
+        toast({ variant: "destructive", title: "Action Failed", description: error.message });
+    } finally {
+        setProcessingId(null);
+    }
+  }
+
   const columns = React.useMemo<ColumnDef<SaleWithDetails>[]>(() => [
     {
       accessorKey: "customerName",
@@ -84,9 +120,12 @@ export default function AdminRecoveryView({ user, allProductSales, allCustomers,
       cell: ({ row }) => {
         const sale = row.original;
         return (
-          <div>
-            <div className="font-medium">{sale.customerName}</div>
-            <div className="text-xs text-muted-foreground">{sale.customer?.nic}</div>
+          <div className="flex items-center gap-2">
+            {sale.isOverdue && <AlertTriangle className="h-4 w-4 text-destructive" />}
+            <div>
+              <div className="font-medium">{sale.customerName}</div>
+              <div className="text-xs text-muted-foreground">{sale.customer?.nic}</div>
+            </div>
           </div>
         );
       },
@@ -171,13 +210,39 @@ export default function AdminRecoveryView({ user, allProductSales, allCustomers,
         const sale = row.original;
         if (!sale.customer) return null;
         return (
-            <Button variant="outline" size="sm" onClick={() => handleViewDetails(sale.customer!)}>
-              View Details
-            </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <span className="sr-only">Open menu</span>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => handleViewDetails(sale.customer!)}>
+                  View Details
+              </DropdownMenuItem>
+              {sale.isOverdue && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem 
+                        onClick={() => handleMarkArrears(sale)} 
+                        disabled={processingId === sale.id}
+                        className="text-destructive focus:bg-destructive/10"
+                    >
+                        Mark as Arrears
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleViewDetails(sale.customer!)}>
+                        Change Due Date
+                    </DropdownMenuItem>
+                  </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         );
       },
     },
-  ], [handleViewDetails]);
+  ], [handleViewDetails, processingId]);
 
   const table = useReactTable({
     data: installmentSales,
@@ -258,7 +323,7 @@ export default function AdminRecoveryView({ user, allProductSales, allCustomers,
                 <TableBody>
                     {table.getRowModel().rows?.length ? (
                     table.getRowModel().rows.map((row) => (
-                        <TableRow key={row.id}>
+                        <TableRow key={row.id} className={cn(row.original.isOverdue && "bg-destructive/10")}>
                         {row.getVisibleCells().map((cell) => (
                             <TableCell key={cell.id}>
                             {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -307,4 +372,3 @@ export default function AdminRecoveryView({ user, allProductSales, allCustomers,
     </>
   );
 }
-
