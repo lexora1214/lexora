@@ -30,6 +30,7 @@ import { Badge } from "./ui/badge";
 import CustomerDetailsDialog from "./customer-details-dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Progress } from "./ui/progress";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 
 interface AdminRecoveryViewProps {
   user: User;
@@ -40,6 +41,7 @@ interface AdminRecoveryViewProps {
 
 type SaleWithDetails = ProductSale & {
   customer?: Customer;
+  branch?: string;
 };
 
 export default function AdminRecoveryView({ user, allProductSales, allCustomers, allUsers }: AdminRecoveryViewProps) {
@@ -51,12 +53,24 @@ export default function AdminRecoveryView({ user, allProductSales, allCustomers,
   const installmentSales = React.useMemo(() => {
     return allProductSales
       .filter(p => p.paymentMethod === 'installments')
-      .map(p => ({
-        ...p,
-        customer: allCustomers.find(c => c.id === p.customerId),
-      }))
+      .map(p => {
+        const customer = allCustomers.find(c => c.id === p.customerId);
+        return {
+          ...p,
+          customer: customer,
+          branch: customer?.branch,
+        };
+      })
       .sort((a, b) => new Date(b.saleDate).getTime() - new Date(a.saleDate).getTime());
   }, [allProductSales, allCustomers]);
+  
+  const recoveryOfficers = React.useMemo(() => {
+    return allUsers.filter(u => u.role === 'Recovery Officer');
+  }, [allUsers]);
+
+  const branches = React.useMemo(() => {
+    return Array.from(new Set(allUsers.map(u => u.branch).filter(Boolean))).sort();
+  }, [allUsers]);
 
   const handleViewDetails = React.useCallback((customer: Customer) => {
     setSelectedCustomer(customer);
@@ -82,6 +96,10 @@ export default function AdminRecoveryView({ user, allProductSales, allCustomers,
         const searchValue = String(value).toLowerCase();
         return name.includes(searchValue) || nic.includes(searchValue);
       },
+    },
+    {
+      accessorKey: "branch",
+      header: "Branch",
     },
     {
       accessorKey: "productName",
@@ -167,13 +185,41 @@ export default function AdminRecoveryView({ user, allProductSales, allCustomers,
           <CardDescription>A complete overview of all installment sales and their recovery status.</CardDescription>
         </CardHeader>
         <CardContent>
-            <div className="flex items-center py-4">
+            <div className="flex flex-col md:flex-row items-center gap-4 py-4">
                 <Input
                     placeholder="Filter by customer name or NIC..."
                     value={(table.getColumn("customerName")?.getFilterValue() as string) ?? ""}
                     onChange={(event) => table.getColumn("customerName")?.setFilterValue(event.target.value)}
                     className="max-w-sm"
                 />
+                 <Select
+                  value={(table.getColumn("branch")?.getFilterValue() as string) || "all"}
+                  onValueChange={(value) => table.getColumn("branch")?.setFilterValue(value === "all" ? "" : value)}
+                 >
+                    <SelectTrigger className="w-full md:w-[200px]">
+                      <SelectValue placeholder="Filter by branch..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Branches</SelectItem>
+                      {branches.map(branch => (
+                        <SelectItem key={branch} value={branch}>{branch}</SelectItem>
+                      ))}
+                    </SelectContent>
+                </Select>
+                 <Select
+                    value={(table.getColumn("recoveryOfficerName")?.getFilterValue() as string) || "all"}
+                    onValueChange={(value) => table.getColumn("recoveryOfficerName")?.setFilterValue(value === "all" ? "" : value)}
+                 >
+                    <SelectTrigger className="w-full md:w-[200px]">
+                      <SelectValue placeholder="Filter by officer..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Officers</SelectItem>
+                      {recoveryOfficers.map(officer => (
+                        <SelectItem key={officer.id} value={officer.name}>{officer.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                </Select>
             </div>
             <div className="rounded-md border">
                 <Table>
