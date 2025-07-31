@@ -43,7 +43,8 @@ import {
   History,
   Warehouse,
   PackagePlus,
-  CheckSquare
+  CheckSquare,
+  Repeat1
 } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
@@ -72,6 +73,7 @@ import ShopManagerDashboard from "@/components/dashboard/shop-manager-dashboard"
 import HrDashboard from "@/components/dashboard/hr-dashboard";
 import StoreKeeperDashboard from "@/components/dashboard/store-keeper-dashboard";
 import RecoveryAdminDashboard from "./dashboard/recovery-admin-dashboard";
+import AdminRecoveryView from "./admin-recovery-view";
 import UserManagementTable from "@/components/user-management-table";
 import CustomerManagementTable from "@/components/customer-management-table";
 import NetworkView from "@/components/network-view";
@@ -108,13 +110,12 @@ import LocationTracker from "./location-tracker";
 import AddExpenseView from "./add-expense-view";
 import SalaryApprovalView from "./salary-approval-view";
 import AddHrView from "./add-hr-view";
-import SalaryPayoutApprovalView from "./payout-history-view";
+import PayoutHistoryView from "./payout-history-view";
 import IncentiveApprovalView from "./incentive-approval-view";
 import AddStoreKeeperView from "./add-store-keeper-view";
 import StockAssignmentView from "./stock-assignment-view";
 import StockConfirmationView from "./stock-confirmation-view";
 import AddRecoveryAdminView from "./add-recovery-admin-view";
-import PayoutHistoryView from "./payout-history-view";
 
 type NavItem = {
   href: string;
@@ -126,6 +127,7 @@ type NavItem = {
 
 const navItems: NavItem[] = [
   { href: "#", icon: LayoutDashboard, label: "Dashboard", roles: ["Admin", "Super Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Salesman", "Delivery Boy", "Recovery Officer", "HR", "Store Keeper", "Recovery Admin"] },
+  { href: "#", icon: Repeat1, label: "Recovery Management", roles: ["Recovery Admin"] },
   { 
     href: "#", 
     icon: Package, 
@@ -360,6 +362,9 @@ const AppLayout = ({ user }: { user: User }) => {
     if (user.role === 'Store Keeper') {
       setActiveView('Dashboard');
     }
+     if (user.role === 'Recovery Admin') {
+      setActiveView('Dashboard');
+    }
   }, [user.role]);
 
   React.useEffect(() => {
@@ -454,6 +459,8 @@ const AppLayout = ({ user }: { user: User }) => {
           default:
             return <ManagerDashboard user={user} allUsers={allUsers} allIncomeRecords={allIncomeRecords} allCustomers={allCustomers} />;
         }
+      case "Recovery Management":
+        return <AdminRecoveryView allProductSales={allProductSales} allCustomers={allCustomers} allUsers={allUsers} />;
       case "Stock Management":
         return <StockManagementView manager={user} />;
       case "Global Stock View":
@@ -573,7 +580,7 @@ const AppLayout = ({ user }: { user: User }) => {
       case "Incentive Approvals":
         return <IncentiveApprovalView user={user} />;
       case "Payout Approvals":
-        return <SalaryPayoutApprovalView user={user} allCustomers={allCustomers}/>;
+        return <PayoutHistoryView />;
       case "Payout History":
         return <PayoutHistoryView />;
       case "Incentives":
