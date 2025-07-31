@@ -121,7 +121,7 @@ export interface ProductSale {
   recoveryStatus?: 'pending' | 'assigned';
   recoveryOfficerId?: string;
   recoveryOfficerName?: string;
-  nextDueDateOverride?: string;
+  nextDueDateOverride?: string | null;
   arrears?: number; // Number of missed installments
 }
 

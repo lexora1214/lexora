@@ -2,12 +2,11 @@
 "use client";
 
 import * as React from "react";
-import { ArrowUpDown, ChevronDown, MoreHorizontal, TrendingUp, AlertTriangle } from "lucide-react";
+import { ArrowUpDown, Calendar as CalendarIcon, MoreHorizontal, TrendingUp, AlertTriangle } from "lucide-react";
 import {
   ColumnDef,
   ColumnFiltersState,
   SortingState,
-  VisibilityState,
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
@@ -39,10 +38,91 @@ import CustomerDetailsDialog from "./customer-details-dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Progress } from "./ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-import { addMonths, isPast } from "date-fns";
-import { manuallyAddArrear } from "@/lib/firestore";
+import { addMonths, isPast, startOfMonth, endOfMonth, format } from "date-fns";
+import { manuallyAddArrear, reassignRecoveryOfficer } from "@/lib/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { Calendar } from "./ui/calendar";
+import { DateRange } from "react-day-picker";
+import {
+  Dialog,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "./ui/dialog";
+import { DialogContent } from "@radix-ui/react-dialog";
+import { Label } from "./ui/label";
+import { LoaderCircle } from "lucide-react";
+
+
+interface ReassignOfficerDialogProps {
+  isOpen: boolean;
+  onOpenChange: (isOpen: boolean) => void;
+  sale: SaleWithDetails;
+  officers: User[];
+}
+
+const ReassignOfficerDialog: React.FC<ReassignOfficerDialogProps> = ({ isOpen, onOpenChange, sale, officers }) => {
+    const [selectedOfficerId, setSelectedOfficerId] = React.useState<string>('');
+    const [isLoading, setIsLoading] = React.useState(false);
+    const { toast } = useToast();
+
+    const branchOfficers = officers.filter(o => o.branch === sale.customer?.branch);
+
+    const handleReassign = async () => {
+        if (!selectedOfficerId) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Please select an officer.' });
+            return;
+        }
+        setIsLoading(true);
+        try {
+            const officer = officers.find(o => o.id === selectedOfficerId);
+            if (!officer) throw new Error("Selected officer not found.");
+            await reassignRecoveryOfficer(sale.id, officer.id, officer.name);
+            toast({ title: 'Officer Re-assigned', description: `${sale.productName} has been assigned to ${officer.name}.`, className: 'bg-success text-success-foreground' });
+            onOpenChange(false);
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: 'Error', description: error.message });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Re-assign Recovery Officer</DialogTitle>
+                </DialogHeader>
+                <div className="py-4 space-y-4">
+                    <p>Customer: <span className="font-semibold">{sale.customerName}</span></p>
+                    <p>Branch: <span className="font-semibold">{sale.customer?.branch}</span></p>
+                    <div>
+                        <Label htmlFor="officer-select">Select New Officer</Label>
+                        <Select onValueChange={setSelectedOfficerId}>
+                            <SelectTrigger id="officer-select">
+                                <SelectValue placeholder="Select an officer..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {branchOfficers.length > 0 ? branchOfficers.map(officer => (
+                                    <SelectItem key={officer.id} value={officer.id}>{officer.name}</SelectItem>
+                                )) : <p className="p-2 text-sm text-muted-foreground">No officers for this branch.</p>}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+                    <Button onClick={handleReassign} disabled={isLoading || !selectedOfficerId}>
+                        {isLoading && <LoaderCircle className="mr-2 h-4 w-4 animate-spin"/>}
+                        Confirm Assignment
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    )
+}
 
 interface AdminRecoveryViewProps {
   user: User;
@@ -55,27 +135,33 @@ type SaleWithDetails = ProductSale & {
   customer?: Customer;
   branch?: string;
   isOverdue?: boolean;
+  nextDueDate?: Date | null;
 };
 
 export default function AdminRecoveryView({ user, allProductSales, allCustomers, allUsers }: AdminRecoveryViewProps) {
   const [sorting, setSorting] = React.useState<SortingState>([{ id: "saleDate", desc: true }]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = React.useState(false);
+  const [isReassignDialogOpen, setIsReassignDialogOpen] = React.useState(false);
+  const [selectedSale, setSelectedSale] = React.useState<SaleWithDetails | null>(null);
   const [selectedCustomer, setSelectedCustomer] = React.useState<Customer | null>(null);
   const { toast } = useToast();
   const [processingId, setProcessingId] = React.useState<string | null>(null);
+  const [dateRange, setDateRange] = React.useState<DateRange | undefined>({
+    from: startOfMonth(new Date()),
+    to: endOfMonth(new Date()),
+  });
 
   const installmentSales = React.useMemo(() => {
-    return allProductSales
-      .filter(p => p.paymentMethod === 'installments')
+    let sales = allProductSales
+      .filter(p => p.paymentMethod === 'installments' && p.paidInstallments !== undefined && p.paidInstallments < p.installments!)
       .map(p => {
         const customer = allCustomers.find(c => c.id === p.customerId);
+        let nextDueDate: Date | null = p.nextDueDateOverride ? new Date(p.nextDueDateOverride) : null;
         let isOverdue = false;
-        if (p.installments && p.paidInstallments !== undefined && p.paidInstallments < p.installments) {
-            const nextDueDate = p.nextDueDateOverride ? new Date(p.nextDueDateOverride) : addMonths(new Date(p.saleDate), p.paidInstallments + 1);
-            if (isPast(nextDueDate)) {
-                isOverdue = true;
-            }
+
+        if (nextDueDate && isPast(nextDueDate)) {
+            isOverdue = true;
         }
 
         return {
@@ -83,10 +169,21 @@ export default function AdminRecoveryView({ user, allProductSales, allCustomers,
           customer: customer,
           branch: customer?.branch,
           isOverdue,
+          nextDueDate,
         };
-      })
-      .sort((a, b) => new Date(b.saleDate).getTime() - new Date(a.saleDate).getTime());
-  }, [allProductSales, allCustomers]);
+      });
+      
+    if (dateRange && dateRange.from) {
+        const from = dateRange.from;
+        const to = dateRange.to ? new Date(dateRange.to) : new Date(from);
+        to.setHours(23, 59, 59, 999);
+        
+        sales = sales.filter(s => s.nextDueDate && s.nextDueDate >= from && s.nextDueDate <= to);
+    }
+      
+    return sales.sort((a, b) => new Date(b.saleDate).getTime() - new Date(a.saleDate).getTime());
+
+  }, [allProductSales, allCustomers, dateRange]);
   
   const recoveryOfficers = React.useMemo(() => {
     return allUsers.filter(u => u.role === 'Recovery Officer');
@@ -99,6 +196,11 @@ export default function AdminRecoveryView({ user, allProductSales, allCustomers,
   const handleViewDetails = React.useCallback((customer: Customer) => {
     setSelectedCustomer(customer);
     setIsDetailsDialogOpen(true);
+  }, []);
+
+  const handleReassignClick = React.useCallback((sale: SaleWithDetails) => {
+    setSelectedSale(sale);
+    setIsReassignDialogOpen(true);
   }, []);
 
   const handleMarkArrears = async (sale: ProductSale) => {
@@ -230,6 +332,9 @@ export default function AdminRecoveryView({ user, allProductSales, allCustomers,
               <DropdownMenuItem onClick={() => handleViewDetails(sale.customer!)}>
                   View Details
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleReassignClick(sale)}>
+                  Re-assign Officer
+              </DropdownMenuItem>
               {sale.isOverdue && (
                   <>
                     <DropdownMenuSeparator />
@@ -240,9 +345,6 @@ export default function AdminRecoveryView({ user, allProductSales, allCustomers,
                     >
                         Mark as Arrears
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleViewDetails(sale.customer!)}>
-                        Change Due Date
-                    </DropdownMenuItem>
                   </>
               )}
             </DropdownMenuContent>
@@ -250,7 +352,7 @@ export default function AdminRecoveryView({ user, allProductSales, allCustomers,
         );
       },
     },
-  ], [handleViewDetails, processingId]);
+  ], [handleViewDetails, handleReassignClick, processingId]);
 
   const table = useReactTable({
     data: installmentSales,
@@ -314,6 +416,45 @@ export default function AdminRecoveryView({ user, allProductSales, allCustomers,
                       ))}
                     </SelectContent>
                 </Select>
+                <Popover>
+                    <PopoverTrigger asChild>
+                    <Button
+                        id="date"
+                        variant={"outline"}
+                        className={cn(
+                        "w-full justify-start text-left font-normal md:w-[300px]",
+                        !dateRange && "text-muted-foreground"
+                        )}
+                    >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {dateRange?.from ? (
+                        dateRange.to ? (
+                            <>
+                            {format(dateRange.from, "LLL dd, y")} -{" "}
+                            {format(dateRange.to, "LLL dd, y")}
+                            </>
+                        ) : (
+                            format(dateRange.from, "LLL dd, y")
+                        )
+                        ) : (
+                        <span>Filter by due date</span>
+                        )}
+                    </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="end">
+                    <Calendar
+                        initialFocus
+                        mode="range"
+                        defaultMonth={dateRange?.from}
+                        selected={dateRange}
+                        onSelect={setDateRange}
+                        numberOfMonths={2}
+                    />
+                     <div className="p-2 border-t">
+                        <Button variant="ghost" className="w-full justify-center" onClick={() => setDateRange(undefined)}>Clear</Button>
+                    </div>
+                    </PopoverContent>
+                </Popover>
             </div>
             <div className="rounded-md border">
                 <Table>
@@ -377,6 +518,14 @@ export default function AdminRecoveryView({ user, allProductSales, allCustomers,
         allUsers={allUsers}
         currentUser={user}
       />
+      {selectedSale && (
+        <ReassignOfficerDialog 
+            isOpen={isReassignDialogOpen}
+            onOpenChange={setIsReassignDialogOpen}
+            sale={selectedSale}
+            officers={recoveryOfficers}
+        />
+      )}
     </>
   );
 }

@@ -518,6 +518,7 @@ export async function createProductSaleAndDistributeCommissions(
                 paidInstallments: 0,
                 recoveryStatus: 'pending',
                 arrears: 0,
+                nextDueDateOverride: null, // Start with no due date
             };
         } else { // Cash payment
             newSaleData = {
@@ -978,27 +979,36 @@ export async function payRemainingInstallments(productSaleId: string): Promise<v
 
 export async function manuallyAddArrear(productSaleId: string): Promise<void> {
     const saleDocRef = doc(db, "productSales", productSaleId);
-    const saleDocSnap = await getDoc(saleDocRef);
-    if (!saleDocSnap.exists()) {
-        throw new Error("Product sale not found.");
-    }
-    const saleData = saleDocSnap.data() as ProductSale;
-
-    if (saleData.paymentMethod !== 'installments' || !saleData.installments || saleData.paidInstallments === undefined) {
-        throw new Error("This sale is not an installment plan.");
-    }
     
-    // Calculate the current due date (either original or override)
-    const currentDueDate = saleData.nextDueDateOverride
-        ? new Date(saleData.nextDueDateOverride)
-        : addMonths(new Date(saleData.saleDate), saleData.paidInstallments + 1);
+    await runTransaction(db, async (transaction) => {
+        const saleDocSnap = await transaction.get(saleDocRef);
+        if (!saleDocSnap.exists()) {
+            throw new Error("Product sale not found.");
+        }
+        const saleData = saleDocSnap.data() as ProductSale;
 
-    // Set the new due date to one month from the current due date
-    const newDueDate = addMonths(currentDueDate, 1);
+        if (saleData.paymentMethod !== 'installments' || !saleData.installments || saleData.paidInstallments === undefined) {
+            throw new Error("This sale is not an installment plan.");
+        }
+        
+        const currentDueDate = saleData.nextDueDateOverride
+            ? new Date(saleData.nextDueDateOverride)
+            : new Date(); // Should not happen with new logic, but a safe fallback
 
-    await updateDoc(saleDocRef, {
-        arrears: increment(1),
-        nextDueDateOverride: newDueDate.toISOString(),
+        const newDueDate = addMonths(currentDueDate, 1);
+
+        transaction.update(saleDocRef, {
+            arrears: increment(1),
+            nextDueDateOverride: newDueDate.toISOString(),
+        });
+    });
+}
+
+export async function reassignRecoveryOfficer(saleId: string, officerId: string, officerName: string): Promise<void> {
+    const saleRef = doc(db, "productSales", saleId);
+    await updateDoc(saleRef, {
+        recoveryOfficerId: officerId,
+        recoveryOfficerName: officerName,
     });
 }
 
