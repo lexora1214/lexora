@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React from "react";
@@ -540,7 +541,7 @@ const AppLayout = ({ user }: { user: User }) => {
               <CardDescription>View all registered customers in the system.</CardDescription>
             </CardHeader>
             <CardContent>
-              <CustomerManagementTable data={allCustomers} allUsers={allUsers} allProductSales={allProductSales} />
+              <CustomerManagementTable data={allCustomers} allUsers={allUsers} allProductSales={allProductSales} currentUser={user} />
             </CardContent>
           </Card>
         );

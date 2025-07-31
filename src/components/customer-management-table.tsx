@@ -56,6 +56,7 @@ interface CustomerManagementTableProps {
     data: Customer[];
     allUsers: User[];
     allProductSales: ProductSale[];
+    currentUser: User;
 }
 
 const getSalesmanNameById = (salesmanId: string, users: User[]): string => {
@@ -76,8 +77,9 @@ export const getColumns = (
       const name = row.original.name.toLowerCase();
       const contact = row.original.contactInfo.toLowerCase();
       const nic = row.original.nic?.toLowerCase() || '';
+      const token = row.original.tokenSerial.toLowerCase();
       const searchValue = String(value).toLowerCase();
-      return name.includes(searchValue) || contact.includes(searchValue) || nic.includes(searchValue);
+      return name.includes(searchValue) || contact.includes(searchValue) || nic.includes(searchValue) || token.includes(searchValue);
     },
   },
   {
@@ -140,7 +142,7 @@ export const getColumns = (
   },
 ];
 
-export default function CustomerManagementTable({ data, allUsers, allProductSales }: CustomerManagementTableProps) {
+export default function CustomerManagementTable({ data, allUsers, allProductSales, currentUser }: CustomerManagementTableProps) {
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>({
@@ -245,7 +247,7 @@ export default function CustomerManagementTable({ data, allUsers, allProductSale
 
       <div className="flex flex-col md:flex-row items-center gap-4 py-4">
         <Input
-          placeholder="Filter by name, contact, or NIC..."
+          placeholder="Filter by name, contact, NIC, or token..."
           value={(availableTable.getColumn("name")?.getFilterValue() as string) ?? ""}
           onChange={handleFilterChange}
           className="max-w-sm"
@@ -476,6 +478,7 @@ export default function CustomerManagementTable({ data, allUsers, allProductSale
         customer={selectedCustomer}
         productSales={productSalesForSelectedCustomer}
         allUsers={allUsers}
+        currentUser={currentUser}
       />
     </div>
   );
