@@ -140,6 +140,14 @@ export default function AdminRecoveryView({ user, allProductSales, allCustomers,
       accessorKey: "productName",
       header: "Product",
     },
+    {
+        accessorKey: "tokenSerial",
+        header: "Token Serial",
+        cell: ({ row }) => {
+            const tokenSerial = row.original.tokenSerial;
+            return tokenSerial ? <Badge variant="outline" className="font-mono">{tokenSerial}</Badge> : 'N/A';
+        }
+    },
      {
       accessorKey: "price",
       header: ({ column }) => (
