@@ -1,13 +1,9 @@
-
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import { User, ProductSale } from "@/types";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend } from "recharts";
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { startOfMonth, subMonths } from 'date-fns';
-import { Badge } from "../ui/badge";
+import { TrendingUp, Repeat, Send, PackageSearch, Wallet } from "lucide-react";
 
 interface RecoveryAdminDashboardProps {
   allUsers: User[];
@@ -15,84 +11,82 @@ interface RecoveryAdminDashboardProps {
 }
 
 const RecoveryAdminDashboard: React.FC<RecoveryAdminDashboardProps> = ({ allUsers, allProductSales }) => {
-  const recoveryStatusByBranch = useMemo(() => {
-    const today = new Date();
-    const lastMonthStart = startOfMonth(subMonths(today, 1));
 
-    const salesInPeriod = allProductSales.filter(sale => 
-      sale.paymentMethod === 'installments' && 
-      new Date(sale.saleDate) >= lastMonthStart
-    );
-    
-    const branchData: Record<string, { pending: number; assigned: number }> = {};
-    const branches = new Set(allUsers.map(u => u.branch).filter(Boolean));
-    
-    branches.forEach(branch => {
-        branchData[branch] = { pending: 0, assigned: 0 };
-    });
+  const recoveryStats = useMemo(() => {
+    const installmentSales = allProductSales.filter(sale => sale.paymentMethod === 'installments');
 
-    salesInPeriod.forEach(sale => {
-      const salesman = allUsers.find(u => u.id === sale.shopManagerId);
-      if (salesman && salesman.branch && branchData[salesman.branch]) {
-        if (sale.recoveryStatus === 'pending') {
-          branchData[salesman.branch].pending++;
-        } else if (sale.recoveryStatus === 'assigned') {
-          branchData[salesman.branch].assigned++;
-        }
-      }
-    });
+    const totalArrears = installmentSales.reduce((sum, sale) => sum + (sale.arrears || 0), 0);
+    const totalInstallments = installmentSales.reduce((sum, sale) => sum + (sale.installments || 0), 0);
+    const assignedInstallments = installmentSales.filter(sale => sale.recoveryStatus === 'assigned').length;
+    const pendingAssignment = installmentSales.filter(sale => sale.recoveryStatus === 'pending').length;
+    const collectedAmount = installmentSales.reduce((sum, sale) => {
+        const collected = (sale.paidInstallments || 0) * (sale.monthlyInstallment || 0);
+        return sum + collected;
+    }, 0);
 
-    return Object.entries(branchData).map(([branch, counts]) => ({
-      branch,
-      ...counts
-    })).sort((a,b) => (b.pending + b.assigned) - (a.pending + a.assigned));
-  }, [allUsers, allProductSales]);
-  
-  const chartConfig = {
-    pending: {
-      label: "Pending",
-      color: "hsl(var(--warning))",
-    },
-    assigned: {
-      label: "Assigned",
-      color: "hsl(var(--primary))",
-    },
-  };
+    return {
+        totalArrears,
+        totalInstallments,
+        assignedInstallments,
+        pendingAssignment,
+        collectedAmount,
+    };
+  }, [allProductSales]);
 
   return (
     <div className="flex flex-col gap-6">
-       <Card>
-          <CardHeader>
-            <CardTitle>Branch Recovery Status</CardTitle>
-            <CardDescription>Installment recovery assignments for all branches in the last two months.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer config={chartConfig} className="h-[400px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={recoveryStatusByBranch} layout="vertical" margin={{ left: 20, right: 20 }}>
-                  <XAxis type="number" hide />
-                  <YAxis
-                    dataKey="branch"
-                    type="category"
-                    tickLine={false}
-                    axisLine={false}
-                    stroke="#888888"
-                    fontSize={12}
-                    interval={0}
-                    width={150}
-                  />
-                  <Tooltip
-                    cursor={{ fill: 'hsl(var(--muted))' }}
-                    content={<ChartTooltipContent indicator="dot" />}
-                  />
-                  <Legend />
-                  <Bar dataKey="pending" stackId="a" fill="var(--color-pending)" radius={[0, 4, 4, 0]} />
-                  <Bar dataKey="assigned" stackId="a" fill="var(--color-assigned)" radius={[4, 0, 0, 4]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </ChartContainer>
-          </CardContent>
-        </Card>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Arrears Count</CardTitle>
+                    <TrendingUp className="h-4 w-4 text-destructive" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold">{recoveryStats.totalArrears}</div>
+                    <p className="text-xs text-muted-foreground">Total missed installments across all customers.</p>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Installments Value</CardTitle>
+                    <Wallet className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold">LKR {recoveryStats.collectedAmount.toLocaleString()}</div>
+                    <p className="text-xs text-muted-foreground">Total amount collected from all installments paid so far.</p>
+                </CardContent>
+            </Card>
+             <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Installment Plans</CardTitle>
+                    <Repeat className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold">{recoveryStats.totalInstallments}</div>
+                    <p className="text-xs text-muted-foreground">Total number of monthly installments to be collected.</p>
+                </CardContent>
+            </Card>
+             <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Assigned for Recovery</CardTitle>
+                    <Send className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold">{recoveryStats.assignedInstallments}</div>
+                    <p className="text-xs text-muted-foreground">Customers currently assigned to a recovery officer.</p>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Pending Assignment</CardTitle>
+                    <PackageSearch className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold">{recoveryStats.pendingAssignment}</div>
+                    <p className="text-xs text-muted-foreground">Customers waiting for a recovery officer assignment.</p>
+                </CardContent>
+            </Card>
+        </div>
     </div>
   );
 };
