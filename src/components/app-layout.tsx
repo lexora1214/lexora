@@ -164,7 +164,7 @@ const navItems: NavItem[] = [
     ]
   },
   { href: "#", icon: Truck, label: "Manage Deliveries", roles: ["Team Operation Manager", "Branch Admin"] },
-  { href: "#", icon: Repeat, label: "Manage Recovery", roles: ["Team Operation Manager", "Branch Admin"] },
+  { href: "#", icon: Repeat, label: "Manage Recovery", roles: ["Branch Admin"] },
   { 
     href: "#", 
     icon: HeartHandshake, 
