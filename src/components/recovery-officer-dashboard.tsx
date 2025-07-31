@@ -81,7 +81,7 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
             
             // Use override date if it exists, otherwise calculate from sale date
             const baseDate = new Date(sale.saleDate);
-            const dueDate = sale.nextDueDateOverride ? new Date(sale.nextDueDateOverride) : addMonths(baseDate, nextInstallmentNumber);
+            const dueDate = sale.nextDueDateOverride ? new Date(sale.nextDueDateOverride) : addMonths(baseDate, sale.paidInstallments + 1);
             
             const customer = customers.find(c => c.id === sale.customerId);
 
@@ -211,6 +211,7 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
                           {collections.map(({ sale, customer, amount, installmentNumber }) => {
                               const remainingInstallments = sale.installments! - sale.paidInstallments!;
                               const remainingBalance = remainingInstallments * sale.monthlyInstallment!;
+                              const arrearsAmount = (sale.arrears || 0) * (sale.monthlyInstallment || 0);
                               return (
                                   <Card key={sale.id}>
                                       <CardHeader>
@@ -294,7 +295,7 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
                                                     {sale.arrears && sale.arrears > 0 && (
                                                         <Badge variant="destructive" className="flex items-center gap-1">
                                                             <TrendingUp className="h-4 w-4" />
-                                                            {sale.arrears} Arrears
+                                                            {sale.arrears} Arrears (LKR {arrearsAmount.toLocaleString()})
                                                         </Badge>
                                                     )}
                                                   </div>
