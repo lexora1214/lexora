@@ -3,7 +3,9 @@
 "use client";
 
 import * as React from "react";
-import { ArrowUpDown, ChevronDown, MoreHorizontal, Calendar as CalendarIcon, Percent } from "lucide-react";
+import jsPDF from "jspdf";
+import "jspdf-autotable";
+import { ArrowUpDown, ChevronDown, MoreHorizontal, Calendar as CalendarIcon, Percent, FileDown, FileSpreadsheet, FileText } from "lucide-react";
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -228,6 +230,118 @@ export default function CustomerManagementTable({ data, allUsers, allProductSale
       .sort((a, b) => new Date(b.saleDate).getTime() - new Date(a.saleDate).getTime());
   }, [selectedCustomer, allProductSales]);
 
+  const handleGenerateCsv = () => {
+    const reportData = dateFilteredData;
+    const headers = [
+      "Customer Name", "NIC", "Contact", "Address", "Registered By", "Registration Date", "Token Serial",
+      "Sale Date", "Product Name", "Product Code", "IMEI", "Price", "Payment Method", "Installments", "Monthly Installment"
+    ];
+
+    const rows = reportData.flatMap(customer => {
+      const customerSales = allProductSales.filter(p => p.customerId === customer.id);
+      if (customerSales.length === 0) {
+        return [[
+          `"${customer.name}"`, customer.nic, customer.contactInfo, `"${customer.address}"`, getSalesmanNameById(customer.salesmanId, allUsers), format(new Date(customer.saleDate), "yyyy-MM-dd"), customer.tokenSerial,
+          "N/A", "No product sales", "", "", "", "", "", ""
+        ]];
+      }
+      return customerSales.map(sale => [
+        `"${customer.name}"`, customer.nic, customer.contactInfo, `"${customer.address}"`, getSalesmanNameById(customer.salesmanId, allUsers), format(new Date(customer.saleDate), "yyyy-MM-dd"), customer.tokenSerial,
+        format(new Date(sale.saleDate), "yyyy-MM-dd"), `"${sale.productName}"`, sale.productCode || '', sale.imei, sale.price, sale.paymentMethod, sale.installments || '', sale.monthlyInstallment || ''
+      ]);
+    });
+
+    const csvContent = [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `customer_sales_report_${format(new Date(), 'yyyy-MM-dd')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleGeneratePdf = () => {
+    const doc = new jsPDF();
+    const reportData = dateFilteredData;
+    
+    doc.setFontSize(18);
+    doc.text("Customer Sales Report", 14, 22);
+    doc.setFontSize(11);
+    doc.setTextColor(100);
+    const dateRangeString = dateRange?.from
+      ? `${format(dateRange.from, "LLL dd, y")} - ${format(dateRange.to || dateRange.from, "LLL dd, y")}`
+      : "All Time";
+    doc.text(`Period: ${dateRangeString}`, 14, 30);
+    
+    let y = 40;
+
+    reportData.forEach(customer => {
+      if (y > 270) { // Check for page break
+        doc.addPage();
+        y = 20;
+      }
+      
+      doc.setFontSize(12);
+      doc.setFont(undefined, 'bold');
+      doc.text(customer.name, 14, y);
+      y += 6;
+
+      doc.setFontSize(10);
+      doc.setFont(undefined, 'normal');
+      (doc as any).autoTable({
+        startY: y,
+        theme: 'plain',
+        body: [
+          ["NIC", customer.nic],
+          ["Contact", customer.contactInfo],
+          ["Address", customer.address],
+          ["Registered By", getSalesmanNameById(customer.salesmanId, allUsers)],
+          ["Registered On", format(new Date(customer.saleDate), 'PPP')],
+          ["Token", customer.tokenSerial],
+        ],
+        styles: { fontSize: 9, cellPadding: 1.5 },
+        columnStyles: { 0: { fontStyle: 'bold' } }
+      });
+      y = (doc as any).lastAutoTable.finalY + 4;
+      
+      const customerSales = allProductSales.filter(p => p.customerId === customer.id);
+      if (customerSales.length > 0) {
+        doc.setFontSize(10);
+        doc.setFont(undefined, 'bold');
+        doc.text("Product Sales", 14, y);
+        y += 2;
+
+        (doc as any).autoTable({
+          startY: y,
+          head: [['Date', 'Product', 'IMEI', 'Price', 'Payment']],
+          body: customerSales.map(s => [
+            format(new Date(s.saleDate), 'yyyy-MM-dd'),
+            s.productName,
+            s.imei,
+            `LKR ${s.price.toLocaleString()}`,
+            s.paymentMethod
+          ]),
+          theme: 'grid',
+          headStyles: { fillColor: [22, 163, 74] },
+          styles: { fontSize: 8, cellPadding: 2 },
+        });
+        y = (doc as any).lastAutoTable.finalY + 10;
+      } else {
+        doc.setFontSize(9);
+        doc.setTextColor(150);
+        doc.text("No product sales recorded for this customer.", 14, y);
+        y += 8;
+      }
+
+      doc.setDrawColor(230, 230, 230);
+      doc.line(14, y - 4, 196, y - 4); // separator line
+    });
+
+    doc.save(`customer_sales_report_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+  };
+
   return (
     <div className="w-full">
       <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-4 mb-4">
@@ -291,37 +405,58 @@ export default function CustomerManagementTable({ data, allUsers, allProductSale
             </div>
             </PopoverContent>
         </Popover>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="ml-auto">
-              Columns <ChevronDown className="ml-2 h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {availableTable
-              .getAllColumns()
-              .filter((column) => column.getCanHide())
-              .map((column) => {
-                const columnNames: { [key: string]: string } = {
-                    name: 'Customer Name',
-                    contactInfo: 'Contact Info',
-                    tokenSerial: 'Token Serial',
-                    saleDate: 'Sale Date',
-                    salesmanId: 'Registered By',
-                    commissionDistributed: 'Commission Status',
-                };
-                return (
-                  <DropdownMenuCheckboxItem
-                    key={column.id}
-                    checked={column.getIsVisible()}
-                    onCheckedChange={(value) => column.toggleVisibility(!!value)}
-                  >
-                    {columnNames[column.id] || column.id}
-                  </DropdownMenuCheckboxItem>
-                );
-              })}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex items-center gap-2 ml-auto">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                <FileDown className="mr-2 h-4 w-4" />
+                Generate Report
+                <ChevronDown className="ml-2 h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleGenerateCsv}>
+                <FileSpreadsheet className="mr-2 h-4 w-4" />
+                <span>Export as CSV</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleGeneratePdf}>
+                <FileText className="mr-2 h-4 w-4" />
+                <span>Export as PDF</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                Columns <ChevronDown className="ml-2 h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {availableTable
+                .getAllColumns()
+                .filter((column) => column.getCanHide())
+                .map((column) => {
+                  const columnNames: { [key: string]: string } = {
+                      name: 'Customer Name',
+                      contactInfo: 'Contact Info',
+                      tokenSerial: 'Token Serial',
+                      saleDate: 'Sale Date',
+                      salesmanId: 'Registered By',
+                      commissionDistributed: 'Commission Status',
+                  };
+                  return (
+                    <DropdownMenuCheckboxItem
+                      key={column.id}
+                      checked={column.getIsVisible()}
+                      onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                    >
+                      {columnNames[column.id] || column.id}
+                    </DropdownMenuCheckboxItem>
+                  );
+                })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       <div className="rounded-md border">
@@ -483,3 +618,4 @@ export default function CustomerManagementTable({ data, allUsers, allProductSale
     </div>
   );
 }
+
