@@ -94,6 +94,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
   const adminTeamProductCommission = adminTeamTotalIncome - adminTeamTokenCommission;
 
   const isAllTime = !dateRange || !dateRange.from;
+  const isSuperAdmin = user.role === 'Super Admin';
 
   // Data for the pie chart
   const usedTokens = filteredCustomers.filter(c => !c.tokenIsAvailable).length;
@@ -151,26 +152,30 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Revenue from Tokens</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">LKR {totalRevenue.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">Based on {approvedTokenSales.length} approved token sales in period</p>
-          </CardContent>
-        </Card>
-        <Card onClick={() => setIsBreakdownOpen(true)} className="cursor-pointer hover:bg-muted/50 transition-colors">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Admin Team Total Income</CardTitle>
-            <Landmark className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">LKR {adminTeamTotalIncome.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">Includes all commissions in period. Click for breakdown.</p>
-          </CardContent>
-        </Card>
+        {isSuperAdmin && (
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Revenue from Tokens</CardTitle>
+                    <DollarSign className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold">LKR {totalRevenue.toLocaleString()}</div>
+                    <p className="text-xs text-muted-foreground">Based on {approvedTokenSales.length} approved token sales in period</p>
+                </CardContent>
+            </Card>
+        )}
+        {isSuperAdmin && (
+            <Card onClick={() => setIsBreakdownOpen(true)} className="cursor-pointer hover:bg-muted/50 transition-colors">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Admin Team Total Income</CardTitle>
+                <Landmark className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+                <div className="text-2xl font-bold">LKR {adminTeamTotalIncome.toLocaleString()}</div>
+                <p className="text-xs text-muted-foreground">Includes all commissions in period. Click for breakdown.</p>
+            </CardContent>
+            </Card>
+        )}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Users</CardTitle>
@@ -245,7 +250,3 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, allUsers, allCust
 };
 
 export default AdminDashboard;
-
-    
-
-    
