@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 import { Button } from './ui/button';
 import { FileDown, LoaderCircle, TrendingUp } from 'lucide-react';
-import { format, addMonths } from 'date-fns';
+import { format } from 'date-fns';
 import { Badge } from './ui/badge';
 
 interface ArrearsReportViewProps {
@@ -21,6 +21,7 @@ interface ArrearsReportViewProps {
 type ArrearsInfo = ProductSale & {
   customer?: Customer;
   amountDue: number;
+  remainingBalance: number;
 };
 
 const ArrearsReportView: React.FC<ArrearsReportViewProps> = ({ allProductSales, allCustomers }) => {
@@ -30,11 +31,13 @@ const ArrearsReportView: React.FC<ArrearsReportViewProps> = ({ allProductSales, 
 
   const arrearsData = useMemo(() => {
     return allProductSales
-      .filter(sale => sale.arrears && sale.arrears >= minArrears)
+      .filter(sale => sale.paymentMethod === 'installments' && sale.arrears && sale.arrears >= minArrears)
       .map(sale => {
         const customer = allCustomers.find(c => c.id === sale.customerId);
         const amountDue = (sale.arrears || 0) * (sale.monthlyInstallment || 0);
-        return { ...sale, customer, amountDue };
+        const remainingInstallments = (sale.installments || 0) - (sale.paidInstallments || 0);
+        const remainingBalance = remainingInstallments > 0 ? remainingInstallments * (sale.monthlyInstallment || 0) : 0;
+        return { ...sale, customer, amountDue, remainingBalance };
       })
       .filter(item => {
         if (!filter) return true;
@@ -52,7 +55,7 @@ const ArrearsReportView: React.FC<ArrearsReportViewProps> = ({ allProductSales, 
     
     const doc = new jsPDF();
     const tableRows: any[] = [];
-    const tableColumns = ["Customer Name", "Contact", "Address", "Product", "Arrears", "Amount Due (LKR)"];
+    const tableColumns = ["Customer Name", "Contact", "Product", "Token", "Arrears", "Amount Due (LKR)", "Remaining Bal (LKR)"];
     
     doc.setFontSize(18);
     doc.setFont("helvetica", "bold");
@@ -67,10 +70,11 @@ const ArrearsReportView: React.FC<ArrearsReportViewProps> = ({ allProductSales, 
       const row = [
         item.customerName,
         item.customer?.contactInfo || 'N/A',
-        item.customer?.address || 'N/A',
         item.productName,
+        item.tokenSerial,
         item.arrears,
-        { content: item.amountDue.toLocaleString(), styles: { halign: 'right' } }
+        { content: item.amountDue.toLocaleString(), styles: { halign: 'right' } },
+        { content: item.remainingBalance.toLocaleString(), styles: { halign: 'right' } }
       ];
       tableRows.push(row);
     });
@@ -82,6 +86,7 @@ const ArrearsReportView: React.FC<ArrearsReportViewProps> = ({ allProductSales, 
         columnStyles: {
             4: { halign: 'center' },
             5: { halign: 'right' },
+            6: { halign: 'right' },
         },
     });
 
@@ -128,8 +133,10 @@ const ArrearsReportView: React.FC<ArrearsReportViewProps> = ({ allProductSales, 
               <TableRow>
                 <TableHead>Customer</TableHead>
                 <TableHead>Product</TableHead>
-                <TableHead className="text-center">Arrears Count</TableHead>
-                <TableHead className="text-right">Amount Due</TableHead>
+                <TableHead>Progress</TableHead>
+                <TableHead className="text-center">Arrears</TableHead>
+                <TableHead className="text-right">Arrears Due</TableHead>
+                <TableHead className="text-right">Remaining Balance</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -138,9 +145,12 @@ const ArrearsReportView: React.FC<ArrearsReportViewProps> = ({ allProductSales, 
                   <TableRow key={item.id}>
                     <TableCell>
                       <div className="font-medium">{item.customerName}</div>
-                      <div className="text-sm text-muted-foreground">{item.customer?.nic}</div>
+                      <div className="text-sm text-muted-foreground">{item.tokenSerial}</div>
                     </TableCell>
                     <TableCell>{item.productName}</TableCell>
+                    <TableCell>
+                        {item.paidInstallments || 0} / {item.installments || 0}
+                    </TableCell>
                     <TableCell className="text-center">
                         <Badge variant="destructive" className="text-base">
                             {item.arrears}
@@ -149,11 +159,14 @@ const ArrearsReportView: React.FC<ArrearsReportViewProps> = ({ allProductSales, 
                     <TableCell className="text-right font-semibold">
                       LKR {item.amountDue.toLocaleString()}
                     </TableCell>
+                    <TableCell className="text-right font-bold">
+                      LKR {item.remainingBalance.toLocaleString()}
+                    </TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={4} className="h-24 text-center">
+                  <TableCell colSpan={6} className="h-24 text-center">
                     No customers found with the selected arrears count.
                   </TableCell>
                 </TableRow>
