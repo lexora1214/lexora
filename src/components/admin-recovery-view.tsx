@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { ArrowUpDown, ChevronDown, MoreHorizontal } from "lucide-react";
+import { ArrowUpDown, ChevronDown, MoreHorizontal, TrendingUp } from "lucide-react";
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -98,46 +98,67 @@ export default function AdminRecoveryView({ user, allProductSales, allCustomers,
       },
     },
     {
-      accessorKey: "branch",
-      header: "Branch",
-    },
-    {
       accessorKey: "productName",
       header: "Product",
     },
-    {
-      accessorKey: "saleDate",
+     {
+      accessorKey: "price",
       header: ({ column }) => (
         <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-          Sale Date <ArrowUpDown className="ml-2 h-4 w-4" />
+          Value <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       ),
-      cell: ({ row }) => new Date(row.getValue("saleDate")).toLocaleDateString(),
+      cell: ({ row }) => {
+        const price = parseFloat(row.getValue("price"))
+        const formatted = new Intl.NumberFormat("en-LK", {
+          style: "currency",
+          currency: "LKR",
+        }).format(price)
+ 
+        return <div className="font-medium">{formatted}</div>
+      },
     },
     {
-        id: "progress",
-        header: "Installment Progress",
+      id: "progress",
+      header: "Installment Progress",
+      cell: ({ row }) => {
+          const sale = row.original;
+          if (!sale.installments || sale.paidInstallments === undefined) return null;
+          const progress = (sale.paidInstallments / sale.installments) * 100;
+          return (
+              <div className="w-[150px]">
+                  <Progress value={progress} className="h-2" />
+                  <div className="text-xs text-muted-foreground mt-1">
+                      {sale.paidInstallments} / {sale.installments} paid
+                  </div>
+              </div>
+          )
+      }
+    },
+    {
+        id: "remainingBalance",
+        header: "Remaining Balance",
         cell: ({ row }) => {
             const sale = row.original;
-            if (!sale.installments || sale.paidInstallments === undefined) return null;
-            const progress = (sale.paidInstallments / sale.installments) * 100;
-            return (
-                <div className="w-[150px]">
-                    <Progress value={progress} className="h-2" />
-                    <div className="text-xs text-muted-foreground mt-1">
-                        {sale.paidInstallments} / {sale.installments} paid
-                    </div>
-                </div>
-            )
+            if (!sale.installments || sale.paidInstallments === undefined || !sale.monthlyInstallment) return "N/A";
+            const remainingBalance = (sale.installments - sale.paidInstallments) * sale.monthlyInstallment;
+             const formatted = new Intl.NumberFormat("en-LK", {
+                style: "currency",
+                currency: "LKR",
+            }).format(remainingBalance);
+            return <div className="font-semibold">{formatted}</div>
         }
     },
     {
-      accessorKey: "recoveryStatus",
-      header: "Recovery Status",
-      cell: ({ row }) => {
-        const status = row.getValue("recoveryStatus") as string;
-        return <Badge variant={status === 'assigned' ? "default" : "secondary"} className="capitalize">{status || 'pending'}</Badge>;
-      },
+        accessorKey: 'arrears',
+        header: 'Arrears',
+        cell: ({ row }) => {
+            const arrears = row.original.arrears || 0;
+            if (arrears === 0) {
+                return <span className="text-muted-foreground">-</span>;
+            }
+            return <Badge variant="destructive" className="flex items-center gap-1.5"><TrendingUp className="h-3 w-3"/>{arrears}</Badge>;
+        }
     },
     {
         accessorKey: "recoveryOfficerName",
@@ -286,3 +307,4 @@ export default function AdminRecoveryView({ user, allProductSales, allCustomers,
     </>
   );
 }
+
