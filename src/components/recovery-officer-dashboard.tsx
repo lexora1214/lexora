@@ -1,11 +1,12 @@
 
+
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
 import { User, ProductSale, Customer } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { LoaderCircle, Phone, HandCoins, Package, CheckCircle2, DollarSign, Navigation, AlertTriangle, MessageSquarePlus } from "lucide-react";
+import { LoaderCircle, Phone, HandCoins, Package, CheckCircle2, DollarSign, Navigation, AlertTriangle, MessageSquarePlus, TrendingUp } from "lucide-react";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { markInstallmentPaid, payRemainingInstallments } from "@/lib/firestore";
@@ -27,6 +28,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import AddNoteDialog from "./add-note-dialog";
+import { Badge } from "./ui/badge";
 
 interface RecoveryOfficerDashboardProps {
   user: User;
@@ -78,8 +80,8 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
             const nextInstallmentNumber = sale.paidInstallments + 1;
             
             // Use override date if it exists, otherwise calculate from sale date
-            const baseDate = sale.nextDueDateOverride ? new Date(sale.nextDueDateOverride) : new Date(sale.saleDate);
-            const dueDate = sale.nextDueDateOverride ? baseDate : addMonths(baseDate, nextInstallmentNumber);
+            const baseDate = new Date(sale.saleDate);
+            const dueDate = sale.nextDueDateOverride ? new Date(sale.nextDueDateOverride) : addMonths(baseDate, nextInstallmentNumber);
             
             const customer = customers.find(c => c.id === sale.customerId);
 
@@ -287,7 +289,15 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
                                           </div>
                                            {sale.installments && sale.paidInstallments !== undefined && (
                                               <div className="border-t pt-4 mt-4">
-                                                  <h4 className="font-semibold text-md mb-2">Installment Progress</h4>
+                                                  <div className="flex justify-between items-center">
+                                                    <h4 className="font-semibold text-md mb-2">Installment Progress</h4>
+                                                    {sale.arrears && sale.arrears > 0 && (
+                                                        <Badge variant="destructive" className="flex items-center gap-1">
+                                                            <TrendingUp className="h-4 w-4" />
+                                                            {sale.arrears} Arrears
+                                                        </Badge>
+                                                    )}
+                                                  </div>
                                                   <div>
                                                     <div className="flex justify-between text-sm mb-1">
                                                         <span className="font-medium">Paid Installments</span>

@@ -122,6 +122,7 @@ export interface ProductSale {
   recoveryOfficerId?: string;
   recoveryOfficerName?: string;
   nextDueDateOverride?: string;
+  arrears?: number; // Number of missed installments
 }
 
 export interface CommissionSettings {

@@ -8,6 +8,7 @@ import { User, Role, Customer, CommissionSettings, IncomeRecord, ProductSale, Pr
 import type { User as FirebaseUser } from 'firebase/auth';
 import { sendTokenSms, sendOtpSms as sendSmsForOtp } from "./sms";
 import { getDownlineIdsAndUsers } from "./hierarchy";
+import { addMonths, isBefore } from "date-fns";
 
 function generateReferralCode(): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -516,6 +517,7 @@ export async function createProductSaleAndDistributeCommissions(
                 monthlyInstallment: formData.monthlyInstallment ?? 0,
                 paidInstallments: 0,
                 recoveryStatus: 'pending',
+                arrears: 0,
             };
         } else { // Cash payment
             newSaleData = {
@@ -751,6 +753,22 @@ export async function assignRecovery(productSaleId: string, recoveryOfficerId: s
   });
 }
 
+async function updateArrearsForSale(batch: any, saleRef: any, saleData: ProductSale) {
+    if (saleData.paymentMethod !== 'installments' || !saleData.installments || saleData.paidInstallments === undefined) {
+        return; // Not an installment sale, do nothing
+    }
+
+    const nextInstallmentNumber = saleData.paidInstallments + 1;
+    const expectedDueDate = saleData.nextDueDateOverride
+        ? new Date(saleData.nextDueDateOverride)
+        : addMonths(new Date(saleData.saleDate), nextInstallmentNumber);
+    
+    // If payment was made after the due date, increment arrears
+    if (isBefore(expectedDueDate, new Date())) {
+        batch.update(saleRef, { arrears: increment(1) });
+    }
+}
+
 export async function markInstallmentPaid(productSaleId: string): Promise<void> {
   const batch = writeBatch(db);
   const saleDocRef = doc(db, "productSales", productSaleId);
@@ -770,10 +788,15 @@ export async function markInstallmentPaid(productSaleId: string): Promise<void> 
     throw new Error("All installments have already been paid.");
   }
   
+  await updateArrearsForSale(batch, saleDocRef, saleData);
+  
   const nextInstallmentNumber = saleData.paidInstallments + 1;
 
   // 1. Update the sale document
-  batch.update(saleDocRef, { paidInstallments: increment(1) });
+  batch.update(saleDocRef, { 
+    paidInstallments: increment(1),
+    nextDueDateOverride: deleteField() // Clear override after payment
+  });
   
   // 2. Distribute commissions for this installment
   const customerDocRef = doc(db, "customers", saleData.customerId);
@@ -1437,13 +1460,9 @@ export async function createStockTransfer(transferData: Omit<StockTransfer, 'id'
 
 
 export async function confirmStockTransfer(transferId: string, confirmer: User): Promise<void> {
-    // Non-transactional reads
     const existingStockQuery = query(collection(db, 'stock'), where('branch', '==', confirmer.branch));
-    const existingStockDocsSnap = await getDocs(existingStockQuery);
-    const branchStockItems = existingStockDocsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as StockItem));
-
+    
     await runTransaction(db, async (transaction) => {
-        // Transactional reads
         const transferRef = doc(db, 'stockTransfers', transferId);
         const transferSnap = await transaction.get(transferRef);
 
@@ -1452,17 +1471,18 @@ export async function confirmStockTransfer(transferId: string, confirmer: User):
         }
 
         const transfer = transferSnap.data() as StockTransfer;
+
+        const branchStockDocsSnap = await getDocs(existingStockQuery);
+        const branchStockItems = branchStockDocsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as StockItem));
         
         const originalItemRefs = transfer.items.map(item => doc(db, 'stock', item.productId));
         const originalItemSnaps = await Promise.all(originalItemRefs.map(ref => transaction.get(ref)));
 
-        // Transactional writes
         for (let i = 0; i < transfer.items.length; i++) {
             const itemToTransfer = transfer.items[i];
             const existingStockItem = branchStockItems.find(stock => stock.productCode === itemToTransfer.productCode);
             
             if (existingStockItem) {
-                // Update existing stock in branch
                 const existingStockRef = doc(db, 'stock', existingStockItem.id);
                 const updatedImeis = [...(existingStockItem.imeis || []), ...itemToTransfer.imeis];
                 transaction.update(existingStockRef, {
@@ -1471,7 +1491,6 @@ export async function confirmStockTransfer(transferId: string, confirmer: User):
                     lastUpdatedAt: new Date().toISOString(),
                 });
             } else {
-                // Create new stock item in branch
                 const originalItemSnap = originalItemSnaps[i];
                  if (!originalItemSnap.exists()) {
                     throw new Error(`Original product (ID: ${itemToTransfer.productId}) not found.`);

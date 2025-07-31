@@ -44,7 +44,8 @@ import {
   Warehouse,
   PackagePlus,
   CheckSquare,
-  Repeat1
+  Repeat1,
+  FileBarChart
 } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
@@ -116,6 +117,7 @@ import AddStoreKeeperView from "./add-store-keeper-view";
 import StockAssignmentView from "./stock-assignment-view";
 import StockConfirmationView from "./stock-confirmation-view";
 import AddRecoveryAdminView from "./add-recovery-admin-view";
+import ArrearsReportView from "./arrears-report-view";
 
 type NavItem = {
   href: string;
@@ -128,6 +130,7 @@ type NavItem = {
 const navItems: NavItem[] = [
   { href: "#", icon: LayoutDashboard, label: "Dashboard", roles: ["Admin", "Super Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Salesman", "Delivery Boy", "Recovery Officer", "HR", "Store Keeper", "Recovery Admin"] },
   { href: "#", icon: Repeat1, label: "Recovery Management", roles: ["Recovery Admin"] },
+  { href: "#", icon: FileBarChart, label: "Arrears Report", roles: ["Recovery Admin"] },
   { 
     href: "#", 
     icon: Package, 
@@ -461,6 +464,8 @@ const AppLayout = ({ user }: { user: User }) => {
         }
       case "Recovery Management":
         return <AdminRecoveryView user={user} allProductSales={allProductSales} allCustomers={allCustomers} allUsers={allUsers} />;
+      case "Arrears Report":
+        return <ArrearsReportView allProductSales={allProductSales} allCustomers={allCustomers} />;
       case "Stock Management":
         return <StockManagementView manager={user} />;
       case "Global Stock View":
