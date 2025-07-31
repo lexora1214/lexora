@@ -129,6 +129,7 @@ type NavItem = {
 
 const navItems: NavItem[] = [
   { href: "#", icon: LayoutDashboard, label: "Dashboard", roles: ["Admin", "Super Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Salesman", "Delivery Boy", "Recovery Officer", "HR", "Store Keeper", "Recovery Admin"] },
+  { href: "#", icon: Briefcase, label: "Customer Management", roles: ["Admin", "Super Admin", "Recovery Admin"]},
   { href: "#", icon: Repeat1, label: "Recovery Management", roles: ["Recovery Admin"] },
   { href: "#", icon: FileBarChart, label: "Arrears Report", roles: ["Recovery Admin"] },
   { 
@@ -184,7 +185,6 @@ const navItems: NavItem[] = [
       { href: "#", icon: SlidersHorizontal, label: "Signup Roles", roles: ["Super Admin", "HR"] },
     ]
   },
-  { href: "#", icon: Briefcase, label: "Customer Management", roles: ["Admin", "Super Admin"]},
   { 
     href: "#", 
     icon: ShieldCheck, 
