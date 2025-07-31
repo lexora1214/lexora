@@ -312,12 +312,12 @@ export interface Reminder {
   status: 'pending' | 'completed';
 }
 
-// Type for the file uploads during salesman registration
-export interface SalesmanDocuments {
+// Type for the file uploads during registration
+export interface UserDocuments {
     nicFront: File;
     nicBack: File;
-    gsCertificate: File;
-    policeReport: File;
+    gsCertificate?: File;
+    policeReport?: File;
 }
 
 export interface CustomerNote {

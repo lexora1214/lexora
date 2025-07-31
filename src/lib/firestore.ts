@@ -4,7 +4,7 @@ import { doc, getDoc, setDoc, collection, getDocs, query, where, writeBatch, inc
 import { getAuth, updatePassword } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { db, storage } from "./firebase";
-import { User, Role, Customer, CommissionSettings, IncomeRecord, ProductSale, ProductCommissionSettings, SignupRoleSettings, CommissionRequest, SalesmanStage, SalarySettings, MonthlySalaryPayout, StockItem, IncentiveSettings, Reminder, SalesmanDocuments, SalaryChangeRequest, SalaryPayoutRequest, IncentiveChangeRequest, StockTransfer, StockTransferItem, CustomerNote } from "@/types";
+import { User, Role, Customer, CommissionSettings, IncomeRecord, ProductSale, ProductCommissionSettings, SignupRoleSettings, CommissionRequest, SalesmanStage, SalarySettings, MonthlySalaryPayout, StockItem, IncentiveSettings, Reminder, UserDocuments, SalaryChangeRequest, SalaryPayoutRequest, IncentiveChangeRequest, StockTransfer, StockTransferItem, CustomerNote } from "@/types";
 import type { User as FirebaseUser } from 'firebase/auth';
 import { sendTokenSms, sendOtpSms as sendSmsForOtp } from "./sms";
 import { getDownlineIdsAndUsers } from "./hierarchy";
@@ -34,7 +34,7 @@ export async function createUserProfile(
     referralCodeInput: string, 
     branch?: string, 
     salesmanStage?: SalesmanStage, 
-    documents?: SalesmanDocuments,
+    documents?: Partial<UserDocuments>,
     extraData?: Partial<User>
 ): Promise<User> {
   const batch = writeBatch(db);
@@ -76,11 +76,11 @@ export async function createUserProfile(
   }
 
   const documentUrls: Partial<User> = {};
-  if (role === 'Salesman' && documents) {
-      documentUrls.nicFrontUrl = await uploadVerificationDocument(firebaseUser.uid, documents.nicFront, 'nic_front');
-      documentUrls.nicBackUrl = await uploadVerificationDocument(firebaseUser.uid, documents.nicBack, 'nic_back');
-      documentUrls.gsCertificateUrl = await uploadVerificationDocument(firebaseUser.uid, documents.gsCertificate, 'gs_certificate');
-      documentUrls.policeReportUrl = await uploadVerificationDocument(firebaseUser.uid, documents.policeReport, 'police_report');
+  if (documents) {
+      if(documents.nicFront) documentUrls.nicFrontUrl = await uploadVerificationDocument(firebaseUser.uid, documents.nicFront, 'nic_front');
+      if(documents.nicBack) documentUrls.nicBackUrl = await uploadVerificationDocument(firebaseUser.uid, documents.nicBack, 'nic_back');
+      if(documents.gsCertificate) documentUrls.gsCertificateUrl = await uploadVerificationDocument(firebaseUser.uid, documents.gsCertificate, 'gs_certificate');
+      if(documents.policeReport) documentUrls.policeReportUrl = await uploadVerificationDocument(firebaseUser.uid, documents.policeReport, 'police_report');
   }
 
   const newUser: User = {
@@ -1776,4 +1776,3 @@ export async function updateProductSale(saleId: string, updates: Partial<Product
 export async function sendOtpSms(mobileNumber: string, otp: string): Promise<{success: boolean, error?: string}> {
     return sendSmsForOtp(mobileNumber, otp);
 }
-

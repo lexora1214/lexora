@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -15,7 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { LoaderCircle, CheckCircle } from "lucide-react";
+import { LoaderCircle, CheckCircle, FileUp, CheckCircle2 } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -23,10 +23,32 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Role, SalesmanStage } from "@/types";
+import { Role, SalesmanStage, UserDocuments } from "@/types";
 import { InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot } from "@/components/ui/input-otp";
 
 const ALL_ROLES: Role[] = ["Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Branch Admin", "Salesman", "Delivery Boy", "Recovery Officer", "Store Keeper"];
+
+const FileInput: React.FC<{ label: string, onFileSelect: (file: File) => void, acceptedFileTypes: string, selectedFile: File | null }> = ({ label, onFileSelect, acceptedFileTypes, selectedFile }) => {
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            onFileSelect(file);
+        }
+    };
+
+    return (
+        <div className="grid gap-2">
+            <Label>{label}</Label>
+            <Input ref={inputRef} type="file" onChange={handleFileChange} accept={acceptedFileTypes} className="hidden" />
+            <Button type="button" variant="outline" onClick={() => inputRef.current?.click()} className="justify-start">
+                {selectedFile ? <CheckCircle2 className="mr-2 h-4 w-4 text-success" /> : <FileUp className="mr-2 h-4 w-4" />}
+                <span className="truncate">{selectedFile?.name || 'Select File'}</span>
+            </Button>
+        </div>
+    )
+}
 
 type SignupData = {
   name: string;
@@ -38,6 +60,7 @@ type SignupData = {
   branch?: string;
   referralCode: string;
   salesmanStage?: SalesmanStage;
+  documents: Pick<UserDocuments, 'nicFront' | 'nicBack'>;
 };
 
 export default function SignupPage() {
@@ -54,6 +77,7 @@ export default function SignupPage() {
   const [branch, setBranch] = useState("");
   const [referralCode, setReferralCode] = useState("");
   const [salesmanStage, setSalesmanStage] = useState<SalesmanStage>("BUSINESS PROMOTER (stage 01)");
+  const [documents, setDocuments] = useState<Partial<Pick<UserDocuments, 'nicFront' | 'nicBack'>>>({});
 
   // State for UI and flow control
   const [visibleRoles, setVisibleRoles] = useState<Record<string, boolean> | null>(null);
@@ -87,6 +111,10 @@ export default function SignupPage() {
     };
     fetchRoles();
   }, []);
+
+  const handleFileSelect = (docType: keyof Pick<UserDocuments, 'nicFront' | 'nicBack'>, file: File) => {
+    setDocuments(prev => ({ ...prev, [docType]: file }));
+  };
 
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,6 +153,12 @@ export default function SignupPage() {
         return;
       }
     }
+    if (!documents.nicFront || !documents.nicBack) {
+        toast({ variant: "destructive", title: "Sign Up Failed", description: "Both NIC Front and NIC Back documents are required." });
+        setIsLoading(false);
+        return;
+    }
+
 
     try {
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -136,6 +170,7 @@ export default function SignupPage() {
         branch: isBranchRequired ? branch : undefined,
         referralCode,
         salesmanStage: isSalesman ? salesmanStage : undefined,
+        documents: documents as Pick<UserDocuments, 'nicFront' | 'nicBack'>,
       });
 
       await sendOtpSms(mobileNumber, otp);
@@ -187,7 +222,7 @@ export default function SignupPage() {
         signupData.referralCode.toUpperCase(),
         signupData.branch,
         signupData.salesmanStage,
-        undefined, // Documents are not uploaded here
+        signupData.documents, // Pass documents here
         { nic: signupData.nic }
       );
       
@@ -357,6 +392,13 @@ export default function SignupPage() {
                       disabled={!isReferralRequired}
                       required={isReferralRequired}
                     />
+                </div>
+                <div className="border-t pt-4 mt-2">
+                    <h3 className="font-medium text-center mb-4">Verification Documents</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                        <FileInput label="NIC Front" onFileSelect={(file) => handleFileSelect('nicFront', file)} acceptedFileTypes=".png,.jpg,.jpeg,.pdf" selectedFile={documents.nicFront || null}/>
+                        <FileInput label="NIC Back" onFileSelect={(file) => handleFileSelect('nicBack', file)} acceptedFileTypes=".png,.jpg,.jpeg,.pdf" selectedFile={documents.nicBack || null} />
+                    </div>
                 </div>
                 <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
