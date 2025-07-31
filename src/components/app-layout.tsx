@@ -114,6 +114,7 @@ import AddStoreKeeperView from "./add-store-keeper-view";
 import StockAssignmentView from "./stock-assignment-view";
 import StockConfirmationView from "./stock-confirmation-view";
 import AddRecoveryAdminView from "./add-recovery-admin-view";
+import PayoutHistoryView from "./payout-history-view";
 
 type NavItem = {
   href: string;
