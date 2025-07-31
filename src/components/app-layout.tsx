@@ -71,6 +71,7 @@ import SalesmanDashboard from "@/components/dashboard/salesman-dashboard";
 import ShopManagerDashboard from "@/components/dashboard/shop-manager-dashboard";
 import HrDashboard from "@/components/dashboard/hr-dashboard";
 import StoreKeeperDashboard from "@/components/dashboard/store-keeper-dashboard";
+import RecoveryAdminDashboard from "./dashboard/recovery-admin-dashboard";
 import UserManagementTable from "@/components/user-management-table";
 import CustomerManagementTable from "@/components/customer-management-table";
 import NetworkView from "@/components/network-view";
@@ -112,6 +113,7 @@ import IncentiveApprovalView from "./incentive-approval-view";
 import AddStoreKeeperView from "./add-store-keeper-view";
 import StockAssignmentView from "./stock-assignment-view";
 import StockConfirmationView from "./stock-confirmation-view";
+import AddRecoveryAdminView from "./add-recovery-admin-view";
 
 type NavItem = {
   href: string;
@@ -122,7 +124,7 @@ type NavItem = {
 };
 
 const navItems: NavItem[] = [
-  { href: "#", icon: LayoutDashboard, label: "Dashboard", roles: ["Admin", "Super Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Salesman", "Delivery Boy", "Recovery Officer", "HR", "Store Keeper"] },
+  { href: "#", icon: LayoutDashboard, label: "Dashboard", roles: ["Admin", "Super Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Salesman", "Delivery Boy", "Recovery Officer", "HR", "Store Keeper", "Recovery Admin"] },
   { 
     href: "#", 
     icon: Package, 
@@ -172,6 +174,7 @@ const navItems: NavItem[] = [
       { href: "#", icon: History, label: "Payout History", roles: ["HR", "Super Admin"] },
       { href: "#", icon: UserPlus, label: "Add HR User", roles: ["Super Admin"] },
       { href: "#", icon: Warehouse, label: "Add Store Keeper", roles: ["Super Admin"] },
+      { href: "#", icon: ShieldCheck, label: "Add Recovery Admin", roles: ["Super Admin", "HR"] },
       { href: "#", icon: SlidersHorizontal, label: "Signup Roles", roles: ["Super Admin", "HR"] },
     ]
   },
@@ -437,6 +440,8 @@ const AppLayout = ({ user }: { user: User }) => {
             return <HrDashboard allUsers={allUsers} />;
           case "Store Keeper":
             return <StoreKeeperDashboard allStockItems={allStockItems} setActiveView={setActiveView} />;
+          case "Recovery Admin":
+            return <RecoveryAdminDashboard allUsers={allUsers} allProductSales={allProductSales} />;
           case "Salesman":
             return <SalesmanDashboard user={user} allCustomers={allCustomers} allIncomeRecords={allIncomeRecords} allCommissionRequests={allCommissionRequests} allStockItems={allStockItems} />;
           case "Team Operation Manager":
@@ -496,6 +501,8 @@ const AppLayout = ({ user }: { user: User }) => {
         return <AddHrView adminUser={user} />;
       case "Add Store Keeper":
         return <AddStoreKeeperView adminUser={user} />;
+      case "Add Recovery Admin":
+        return <AddRecoveryAdminView hrUser={user} />;
       case "Manage Deliveries":
         return <ManageDeliveriesView manager={user} allUsers={allUsers} />;
       case "Manage Recovery":
@@ -670,5 +677,3 @@ const AppLayout = ({ user }: { user: User }) => {
 };
 
 export default AppLayout;
-
-    
