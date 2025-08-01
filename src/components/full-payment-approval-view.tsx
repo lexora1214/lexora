@@ -1,41 +1,75 @@
 
 "use client";
 
-import React, { useEffect, useState } from 'react';
-import { User, FullPaymentRequest } from '@/types';
+import React, { useEffect, useState, useMemo } from 'react';
+import { User, FullPaymentRequest, Customer, ProductSale } from '@/types';
 import { getPendingFullPaymentRequests, approveFullPaymentRequest, rejectFullPaymentRequest } from '@/lib/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { LoaderCircle, Check, X, ShieldQuestion, Calendar, User as UserIcon, FileSignature } from 'lucide-react';
+import { LoaderCircle, Check, X, ShieldQuestion, Calendar, User as UserIcon, FileSignature, MoreHorizontal } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { Badge } from './ui/badge';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from './ui/dropdown-menu';
+import CustomerDetailsDialog from './customer-details-dialog';
+import { getAllCustomers, getAllUsers } from '@/lib/firestore';
+import { collection, onSnapshot } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 interface FullPaymentApprovalViewProps {
   adminUser: User;
+  allCustomers: Customer[];
+  allProductSales: ProductSale[];
+  allUsers: User[];
 }
 
 const FullPaymentApprovalView: React.FC<FullPaymentApprovalViewProps> = ({ adminUser }) => {
   const [requests, setRequests] = useState<FullPaymentRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [allCustomers, setAllCustomers] = useState<Customer[]>([]);
+  const [allProductSales, setAllProductSales] = useState<ProductSale[]>([]);
+  const [allUsers, setAllUsers] = useState<User[]>([]);
   const { toast } = useToast();
   const [processingId, setProcessingId] = useState<string | null>(null);
-
-  const fetchRequests = async () => {
-    try {
-      setLoading(true);
-      const pendingRequests = await getPendingFullPaymentRequests();
-      setRequests(pendingRequests);
-    } catch (error) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch pending requests.' });
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
 
   useEffect(() => {
+    const fetchRequests = async () => {
+      try {
+        setLoading(true);
+        const pendingRequests = await getPendingFullPaymentRequests();
+        setRequests(pendingRequests);
+      } catch (error) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch pending requests.' });
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    const fetchRelatedData = async () => {
+        const [customers, users] = await Promise.all([
+            getAllCustomers(),
+            getAllUsers(),
+        ]);
+        setAllCustomers(customers);
+        setAllUsers(users);
+    }
+
+    const salesUnsub = onSnapshot(collection(db, "productSales"), (snapshot) => {
+        setAllProductSales(snapshot.docs.map(doc => ({id: doc.id, ...doc.data()}) as ProductSale));
+    });
+
     fetchRequests();
+    fetchRelatedData();
+
+    return () => salesUnsub();
   }, []);
 
   const handleApprove = async (requestId: string) => {
@@ -43,7 +77,7 @@ const FullPaymentApprovalView: React.FC<FullPaymentApprovalViewProps> = ({ admin
     try {
       await approveFullPaymentRequest(requestId, adminUser);
       toast({ title: 'Request Approved', description: 'The full payment has been processed and commissions distributed.', className: 'bg-success text-success-foreground' });
-      fetchRequests(); // Refresh the list
+       setRequests(prev => prev.filter(r => r.id !== requestId));
     } catch (error: any) {
       toast({ variant: 'destructive', title: 'Approval Failed', description: error.message });
     } finally {
@@ -56,13 +90,30 @@ const FullPaymentApprovalView: React.FC<FullPaymentApprovalViewProps> = ({ admin
     try {
       await rejectFullPaymentRequest(requestId, adminUser);
       toast({ title: 'Request Rejected', description: 'The full payment request has been rejected.', variant: 'destructive' });
-      fetchRequests(); // Refresh the list
+      setRequests(prev => prev.filter(r => r.id !== requestId));
     } catch (error: any) {
       toast({ variant: 'destructive', title: 'Rejection Failed', description: error.message });
     } finally {
       setProcessingId(null);
     }
   };
+
+  const handleViewDetails = (customerId: string) => {
+    const customer = allCustomers.find(c => c.id === customerId);
+    if(customer) {
+        setSelectedCustomer(customer);
+        setIsDetailsDialogOpen(true);
+    } else {
+        toast({ variant: 'destructive', title: 'Error', description: 'Customer details not found.' });
+    }
+  };
+  
+  const productSalesForSelectedCustomer = useMemo(() => {
+    if (!selectedCustomer) return [];
+    return allProductSales
+      .filter(p => p.customerId === selectedCustomer.id)
+      .sort((a, b) => new Date(b.saleDate).getTime() - new Date(a.saleDate).getTime());
+  }, [selectedCustomer, allProductSales]);
 
   if (loading) {
     return (
@@ -75,6 +126,7 @@ const FullPaymentApprovalView: React.FC<FullPaymentApprovalViewProps> = ({ admin
   }
 
   return (
+    <>
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2"><FileSignature /> Full Payment Approvals</CardTitle>
@@ -87,6 +139,7 @@ const FullPaymentApprovalView: React.FC<FullPaymentApprovalViewProps> = ({ admin
               <TableRow>
                 <TableHead>Customer</TableHead>
                 <TableHead>Requested By</TableHead>
+                <TableHead>Token</TableHead>
                 <TableHead>Original Balance</TableHead>
                 <TableHead>Discounted Amount</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -106,6 +159,9 @@ const FullPaymentApprovalView: React.FC<FullPaymentApprovalViewProps> = ({ admin
                          </div>
                       </div>
                     </TableCell>
+                    <TableCell>
+                        <Badge variant="outline" className="font-mono">{request.tokenSerial}</Badge>
+                    </TableCell>
                     <TableCell className="font-semibold text-muted-foreground">
                       LKR {request.originalRemainingBalance.toLocaleString()}
                     </TableCell>
@@ -117,12 +173,17 @@ const FullPaymentApprovalView: React.FC<FullPaymentApprovalViewProps> = ({ admin
                         <LoaderCircle className="h-5 w-5 animate-spin ml-auto" />
                       ) : (
                         <div className="flex gap-2 justify-end">
-                          <Button size="sm" variant="outline" className="text-destructive hover:bg-destructive hover:text-destructive-foreground" onClick={() => handleReject(request.id)}>
-                            <X className="mr-2 h-4 w-4" /> Reject
-                          </Button>
-                          <Button size="sm" className="bg-success hover:bg-success/90 text-success-foreground" onClick={() => handleApprove(request.id)}>
-                            <Check className="mr-2 h-4 w-4" /> Approve
-                          </Button>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><MoreHorizontal /></Button></DropdownMenuTrigger>
+                                <DropdownMenuContent>
+                                    <DropdownMenuItem onClick={() => handleViewDetails(request.customerId)}>
+                                        View Customer Details
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem onClick={() => handleApprove(request.id)} className="text-success focus:bg-success/10">Approve</DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleReject(request.id)} className="text-destructive focus:bg-destructive/10">Reject</DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                         </div>
                       )}
                     </TableCell>
@@ -130,7 +191,7 @@ const FullPaymentApprovalView: React.FC<FullPaymentApprovalViewProps> = ({ admin
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center">
+                  <TableCell colSpan={6} className="h-24 text-center">
                     There are no pending full payment requests.
                   </TableCell>
                 </TableRow>
@@ -140,7 +201,17 @@ const FullPaymentApprovalView: React.FC<FullPaymentApprovalViewProps> = ({ admin
         </div>
       </CardContent>
     </Card>
+    <CustomerDetailsDialog
+        isOpen={isDetailsDialogOpen}
+        onOpenChange={setIsDetailsDialogOpen}
+        customer={selectedCustomer}
+        productSales={productSalesForSelectedCustomer}
+        allUsers={allUsers}
+        currentUser={adminUser}
+      />
+    </>
   );
 };
 
 export default FullPaymentApprovalView;
+

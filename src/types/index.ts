@@ -396,6 +396,7 @@ export interface FullPaymentRequest {
   recoveryOfficerName: string;
   originalRemainingBalance: number;
   discountedAmount: number;
+  tokenSerial: string;
   status: 'pending' | 'approved' | 'rejected';
   requestDate: string;
   processedBy?: string;

@@ -2001,12 +2001,20 @@ export async function rejectCommissionChange(requestId: string, approver: User):
 // --- Full Payment Requests ---
 
 export async function createFullPaymentRequest(data: Omit<FullPaymentRequest, 'id' | 'requestDate' | 'status'>): Promise<void> {
+    const saleDocRef = doc(db, "productSales", data.productSaleId);
+    const saleDocSnap = await getDoc(saleDocRef);
+    if (!saleDocSnap.exists()) {
+      throw new Error("Associated product sale not found.");
+    }
+    const saleData = saleDocSnap.data() as ProductSale;
+
     const requestRef = doc(collection(db, 'fullPaymentRequests'));
     const newRequest: FullPaymentRequest = {
         ...data,
         id: requestRef.id,
         requestDate: new Date().toISOString(),
         status: 'pending',
+        tokenSerial: saleData.tokenSerial,
     };
     await setDoc(requestRef, newRequest);
 }
