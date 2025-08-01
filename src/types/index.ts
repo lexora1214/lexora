@@ -125,6 +125,18 @@ export interface ProductSale {
   arrears?: number; // Number of missed installments
 }
 
+export interface Collection {
+    id: string;
+    productSaleId: string;
+    customerId: string;
+    customerName: string;
+    collectorId: string;
+    collectorName: string;
+    amount: number;
+    collectedAt: string;
+    type: 'installment' | 'arrear';
+}
+
 export interface CommissionSettings {
   tokenPrice: number;
   salesman: number;

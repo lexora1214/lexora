@@ -4,7 +4,7 @@ import { doc, getDoc, setDoc, collection, getDocs, query, where, writeBatch, inc
 import { getAuth, updatePassword } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { db, storage } from "./firebase";
-import { User, Role, Customer, CommissionSettings, IncomeRecord, ProductSale, ProductCommissionSettings, SignupRoleSettings, CommissionRequest, SalesmanStage, SalarySettings, MonthlySalaryPayout, StockItem, IncentiveSettings, Reminder, UserDocuments, SalaryChangeRequest, SalaryPayoutRequest, IncentiveChangeRequest, StockTransfer, StockTransferItem, CustomerNote, AdHocSalaryRequest } from "@/types";
+import { User, Role, Customer, CommissionSettings, IncomeRecord, ProductSale, ProductCommissionSettings, SignupRoleSettings, CommissionRequest, SalesmanStage, SalarySettings, MonthlySalaryPayout, StockItem, IncentiveSettings, Reminder, UserDocuments, SalaryChangeRequest, SalaryPayoutRequest, IncentiveChangeRequest, StockTransfer, StockTransferItem, CustomerNote, AdHocSalaryRequest, Collection } from "@/types";
 import type { User as FirebaseUser } from 'firebase/auth';
 import { sendTokenSms, sendOtpSms as sendSmsForOtp } from "./sms";
 import { getDownlineIdsAndUsers } from "./hierarchy";
@@ -754,7 +754,7 @@ export async function assignRecovery(productSaleId: string, recoveryOfficerId: s
   });
 }
 
-export async function markInstallmentPaid(productSaleId: string): Promise<void> {
+export async function markInstallmentPaid(productSaleId: string, officer: User): Promise<void> {
   const batch = writeBatch(db);
   const saleDocRef = doc(db, "productSales", productSaleId);
   const saleDocSnap = await getDoc(saleDocRef);
@@ -774,6 +774,7 @@ export async function markInstallmentPaid(productSaleId: string): Promise<void> 
   }
   
   const nextInstallmentNumber = saleData.paidInstallments + 1;
+  const paymentDate = new Date().toISOString();
 
   // 1. Update the sale document
   batch.update(saleDocRef, { 
@@ -781,7 +782,22 @@ export async function markInstallmentPaid(productSaleId: string): Promise<void> 
     nextDueDateOverride: deleteField() // Clear override after payment
   });
   
-  // 2. Distribute commissions for this installment
+  // 2. Create a collection record
+  const collectionRef = doc(collection(db, "collections"));
+  const newCollection: Collection = {
+      id: collectionRef.id,
+      productSaleId: saleData.id,
+      customerId: saleData.customerId,
+      customerName: saleData.customerName,
+      collectorId: officer.id,
+      collectorName: officer.name,
+      amount: saleData.monthlyInstallment || 0,
+      collectedAt: paymentDate,
+      type: 'installment',
+  };
+  batch.set(collectionRef, newCollection);
+
+  // 3. Distribute commissions for this installment
   const customerDocRef = doc(db, "customers", saleData.customerId);
   const customerDocSnap = await getDoc(customerDocRef);
   if (!customerDocSnap.exists()) {
@@ -800,8 +816,6 @@ export async function markInstallmentPaid(productSaleId: string): Promise<void> 
       saleData.price >= tier.minPrice && (tier.maxPrice === null || saleData.price <= tier.maxPrice)
   );
   
-  const paymentDate = new Date().toISOString();
-
   if (applicableTier) {
     let currentUser: User | undefined = salesman;
     while(currentUser) {
@@ -883,7 +897,7 @@ export async function markInstallmentPaid(productSaleId: string): Promise<void> 
   await batch.commit();
 }
 
-export async function payArrears(productSaleId: string): Promise<void> {
+export async function payArrears(productSaleId: string, officer: User): Promise<void> {
     const saleDocRef = doc(db, "productSales", productSaleId);
     
     await runTransaction(db, async (transaction) => {
@@ -897,10 +911,25 @@ export async function payArrears(productSaleId: string): Promise<void> {
             throw new Error("No arrears to pay.");
         }
         
-        // Only decrement the arrear count. Do not distribute commission.
+        // 1. Decrement the arrear count
         transaction.update(saleDocRef, {
             arrears: increment(-1),
         });
+
+        // 2. Create a collection record for the arrear payment
+        const collectionRef = doc(collection(db, "collections"));
+        const newCollection: Collection = {
+            id: collectionRef.id,
+            productSaleId: saleData.id,
+            customerId: saleData.customerId,
+            customerName: saleData.customerName,
+            collectorId: officer.id,
+            collectorName: officer.name,
+            amount: saleData.monthlyInstallment || 0,
+            collectedAt: new Date().toISOString(),
+            type: 'arrear',
+        };
+        transaction.set(collectionRef, newCollection);
     });
 }
 

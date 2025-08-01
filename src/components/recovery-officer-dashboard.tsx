@@ -132,7 +132,7 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
     return collections.filter(c => {
         const collectedDate = new Date(c.collectedAt);
         return collectedDate >= start && collectedDate <= end;
-    });
+    }).sort((a,b) => new Date(b.collectedAt).getTime() - new Date(a.collectedAt).getTime());
   }, [collections]);
 
   const monthlyTotal = monthlyCollections.reduce((sum, c) => sum + c.amount, 0);
@@ -154,10 +154,10 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
       }
   };
   
-  const handlePayArrears = async (saleId: string) => {
-    setProcessingId(saleId);
+  const handlePayArrears = async (sale: ProductSale) => {
+    setProcessingId(sale.id);
     try {
-        await payArrears(saleId);
+        await payArrears(sale.id, user);
         toast({
             title: "Arrear Paid",
             description: "An arrear has been marked as paid.",
@@ -253,6 +253,7 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
                         <TableRow>
                             <TableHead>Date</TableHead>
                             <TableHead>Customer</TableHead>
+                            <TableHead>Type</TableHead>
                             <TableHead className="text-right">Amount</TableHead>
                         </TableRow>
                     </TableHeader>
@@ -261,11 +262,12 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
                             <TableRow key={c.id}>
                                 <TableCell>{format(new Date(c.collectedAt), 'PPP')}</TableCell>
                                 <TableCell>{c.customerName}</TableCell>
+                                <TableCell><Badge variant={c.type === 'arrear' ? 'destructive' : 'secondary'} className="capitalize">{c.type}</Badge></TableCell>
                                 <TableCell className="text-right font-medium">LKR {c.amount.toLocaleString()}</TableCell>
                             </TableRow>
                         )) : (
                             <TableRow>
-                                <TableCell colSpan={3} className="text-center h-24">No collections this month yet.</TableCell>
+                                <TableCell colSpan={4} className="text-center h-24">No collections this month yet.</TableCell>
                             </TableRow>
                         )}
                     </TableBody>
@@ -384,7 +386,7 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
                                                                 </AlertDialogHeader>
                                                                 <AlertDialogFooter>
                                                                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                                    <AlertDialogAction onClick={() => handlePayArrears(sale.id)}>Confirm</AlertDialogAction>
+                                                                    <AlertDialogAction onClick={() => handlePayArrears(sale)}>Confirm</AlertDialogAction>
                                                                 </AlertDialogFooter>
                                                               </AlertDialogContent>
                                                             </AlertDialog>
@@ -467,3 +469,4 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
 };
 
 export default RecoveryOfficerDashboard;
+
