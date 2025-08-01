@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { LoaderCircle, Phone, HandCoins, Package, CheckCircle2, DollarSign, Navigation, AlertTriangle, MessageSquarePlus, TrendingUp } from "lucide-react";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { markInstallmentPaid, payRemainingInstallments } from "@/lib/firestore";
+import { markInstallmentPaid, payRemainingInstallments, payArrears } from "@/lib/firestore";
 import { useToast } from "@/hooks/use-toast";
 import MapPicker from "./map-picker";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -79,7 +79,6 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
         if (sale.installments && sale.paidInstallments !== undefined && sale.paidInstallments < sale.installments) {
             const nextInstallmentNumber = sale.paidInstallments + 1;
             
-            // Use override date if it exists, otherwise calculate from sale date
             const baseDate = new Date(sale.saleDate);
             const dueDate = sale.nextDueDateOverride ? new Date(sale.nextDueDateOverride) : addMonths(baseDate, sale.paidInstallments + 1);
             
@@ -133,6 +132,24 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
           setProcessingId(null);
       }
   };
+  
+  const handlePayArrears = async (saleId: string) => {
+    setProcessingId(saleId);
+    try {
+        await payArrears(saleId);
+        toast({
+            title: "Arrear Paid",
+            description: "An arrear has been marked as paid.",
+            variant: "default",
+            className: "bg-success text-success-foreground",
+        });
+    } catch (error: any) {
+        toast({ variant: "destructive", title: "Update Failed", description: error.message });
+    } finally {
+        setProcessingId(null);
+    }
+  };
+
 
   const handlePayRemaining = async (saleId: string) => {
     setProcessingId(saleId);
@@ -293,10 +310,29 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
                                                   <div className="flex justify-between items-center">
                                                     <h4 className="font-semibold text-md mb-2">Installment Progress</h4>
                                                     {sale.arrears && sale.arrears > 0 && (
-                                                        <Badge variant="destructive" className="flex items-center gap-1">
-                                                            <TrendingUp className="h-4 w-4" />
-                                                            {sale.arrears} Arrears (LKR {arrearsAmount.toLocaleString()})
-                                                        </Badge>
+                                                        <div className="flex items-center gap-2">
+                                                            <Badge variant="destructive" className="flex items-center gap-1 text-base">
+                                                                <TrendingUp className="h-4 w-4" />
+                                                                {sale.arrears} Arrears (LKR {arrearsAmount.toLocaleString()})
+                                                            </Badge>
+                                                             <AlertDialog>
+                                                              <AlertDialogTrigger asChild>
+                                                                <Button size="sm" variant="destructive" disabled={!!processingId}>Pay Arrear</Button>
+                                                              </AlertDialogTrigger>
+                                                              <AlertDialogContent>
+                                                                <AlertDialogHeader>
+                                                                    <AlertDialogTitle>Confirm Arrear Payment</AlertDialogTitle>
+                                                                    <AlertDialogDescription>
+                                                                        This will mark one arrear as paid. Commissions are not distributed for arrear payments.
+                                                                    </AlertDialogDescription>
+                                                                </AlertDialogHeader>
+                                                                <AlertDialogFooter>
+                                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                    <AlertDialogAction onClick={() => handlePayArrears(sale.id)}>Confirm</AlertDialogAction>
+                                                                </AlertDialogFooter>
+                                                              </AlertDialogContent>
+                                                            </AlertDialog>
+                                                        </div>
                                                     )}
                                                   </div>
                                                   <div>
@@ -375,3 +411,5 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
 };
 
 export default RecoveryOfficerDashboard;
+
+    

@@ -883,6 +883,28 @@ export async function markInstallmentPaid(productSaleId: string): Promise<void> 
   await batch.commit();
 }
 
+export async function payArrears(productSaleId: string): Promise<void> {
+    const saleDocRef = doc(db, "productSales", productSaleId);
+    
+    await runTransaction(db, async (transaction) => {
+        const saleDocSnap = await transaction.get(saleDocRef);
+        if (!saleDocSnap.exists()) {
+            throw new Error("Product sale not found.");
+        }
+        const saleData = saleDocSnap.data() as ProductSale;
+
+        if (!saleData.arrears || saleData.arrears <= 0) {
+            throw new Error("No arrears to pay.");
+        }
+        
+        // Only decrement the arrear count. Do not distribute commission.
+        transaction.update(saleDocRef, {
+            arrears: increment(-1),
+        });
+    });
+}
+
+
 export async function payRemainingInstallments(productSaleId: string): Promise<void> {
     const batch = writeBatch(db);
     const saleDocRef = doc(db, "productSales", productSaleId);
@@ -1845,3 +1867,5 @@ export async function rejectAdHocSalaryRequest(requestId: string, approver: User
 export async function sendOtpSms(mobileNumber: string, otp: string): Promise<{success: boolean, error?: string}> {
     return sendSmsForOtp(mobileNumber, otp);
 }
+
+    
