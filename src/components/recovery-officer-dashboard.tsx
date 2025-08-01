@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
@@ -56,6 +55,7 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
     const salesQuery = query(
         collection(db, "productSales"), 
         where("recoveryOfficerId", "==", user.id),
+        where("recoveryStatus", "==", "assigned")
     );
     const salesUnsub = onSnapshot(salesQuery, (querySnapshot) => {
         const salesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProductSale));
