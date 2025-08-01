@@ -46,7 +46,8 @@ import {
   PackagePlus,
   CheckSquare,
   Repeat1,
-  FileBarChart
+  FileBarChart,
+  Coins
 } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
@@ -119,6 +120,8 @@ import StockAssignmentView from "./stock-assignment-view";
 import StockConfirmationView from "./stock-confirmation-view";
 import AddRecoveryAdminView from "./add-recovery-admin-view";
 import ArrearsReportView from "./arrears-report-view";
+import AddAdhocSalaryView from "./add-adhoc-salary-view";
+import AdhocSalaryApprovalView from "./adhoc-salary-approval-view";
 
 type NavItem = {
   href: string;
@@ -175,6 +178,7 @@ const navItems: NavItem[] = [
     children: [
       { href: "#", icon: Building, label: "User Management", roles: ["Super Admin", "HR"] },
       { href: "#", icon: UserCheck, label: "New User Verification", roles: ["Super Admin", "HR"] },
+      { href: "#", icon: Coins, label: "Add Ad-hoc Salary", roles: ["HR"] },
       { href: "#", icon: ShieldQuestion, label: "Salary Approvals", roles: ["HR"] },
       { href: "#", icon: Award, label: "Incentive Approvals", roles: ["HR", "Super Admin"] },
       { href: "#", icon: Wallet, label: "Salary Management", roles: ["Admin", "Super Admin", "HR"] },
@@ -193,6 +197,7 @@ const navItems: NavItem[] = [
     roles: ["Admin", "Super Admin"],
     children: [
         { href: "#", icon: DollarSign, label: "Commission Approvals", roles: ["Admin", "Super Admin"] },
+        { href: "#", icon: Coins, label: "Ad-hoc Salary Approvals", roles: ["Super Admin"] },
     ]
   },
   { href: "#", icon: Receipt, label: "Slip Management", roles: ["Admin", "Super Admin"] },
@@ -513,6 +518,8 @@ const AppLayout = ({ user }: { user: User }) => {
         return <AddExpenseView manager={user} allUsers={allUsers} />;
       case "Add HR User":
         return <AddHrView adminUser={user} />;
+      case "Add Ad-hoc Salary":
+        return <AddAdhocSalaryView hrUser={user} allUsers={allUsers} />;
       case "Add Store Keeper":
         return <AddStoreKeeperView adminUser={user} />;
       case "Add Recovery Admin":
@@ -547,6 +554,8 @@ const AppLayout = ({ user }: { user: User }) => {
         );
       case "Commission Approvals":
         return <CommissionApprovalView user={user} />;
+      case "Ad-hoc Salary Approvals":
+        return <AdhocSalaryApprovalView superAdminUser={user} />;
       case "New User Verification":
         return <NewUserVerificationView allUsers={allUsers} />;
       case "Slip Management":

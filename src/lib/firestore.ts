@@ -4,7 +4,7 @@ import { doc, getDoc, setDoc, collection, getDocs, query, where, writeBatch, inc
 import { getAuth, updatePassword } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { db, storage } from "./firebase";
-import { User, Role, Customer, CommissionSettings, IncomeRecord, ProductSale, ProductCommissionSettings, SignupRoleSettings, CommissionRequest, SalesmanStage, SalarySettings, MonthlySalaryPayout, StockItem, IncentiveSettings, Reminder, UserDocuments, SalaryChangeRequest, SalaryPayoutRequest, IncentiveChangeRequest, StockTransfer, StockTransferItem, CustomerNote } from "@/types";
+import { User, Role, Customer, CommissionSettings, IncomeRecord, ProductSale, ProductCommissionSettings, SignupRoleSettings, CommissionRequest, SalesmanStage, SalarySettings, MonthlySalaryPayout, StockItem, IncentiveSettings, Reminder, UserDocuments, SalaryChangeRequest, SalaryPayoutRequest, IncentiveChangeRequest, StockTransfer, StockTransferItem, CustomerNote, AdHocSalaryRequest } from "@/types";
 import type { User as FirebaseUser } from 'firebase/auth';
 import { sendTokenSms, sendOtpSms as sendSmsForOtp } from "./sms";
 import { getDownlineIdsAndUsers } from "./hierarchy";
@@ -1769,6 +1769,75 @@ export async function getCustomerNotes(customerId: string): Promise<CustomerNote
 export async function updateProductSale(saleId: string, updates: Partial<ProductSale>): Promise<void> {
   const saleDocRef = doc(db, "productSales", saleId);
   await updateDoc(saleDocRef, updates);
+}
+
+// --- Ad-hoc Salary ---
+
+export async function createAdHocSalaryRequest(data: Omit<AdHocSalaryRequest, 'id' | 'requestDate' | 'status'>): Promise<void> {
+    const requestRef = doc(collection(db, 'adHocSalaryRequests'));
+    const newRequest: AdHocSalaryRequest = {
+        ...data,
+        id: requestRef.id,
+        requestDate: new Date().toISOString(),
+        status: 'pending',
+    };
+    await setDoc(requestRef, newRequest);
+}
+
+export async function getPendingAdHocSalaryRequests(): Promise<AdHocSalaryRequest[]> {
+    const q = query(collection(db, 'adHocSalaryRequests'), where('status', '==', 'pending'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(d => d.data() as AdHocSalaryRequest).sort((a,b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime());
+}
+
+export async function approveAdHocSalaryRequest(requestId: string, approver: User): Promise<void> {
+    const requestRef = doc(db, 'adHocSalaryRequests', requestId);
+    
+    await runTransaction(db, async (transaction) => {
+        const requestSnap = await transaction.get(requestRef);
+        if (!requestSnap.exists() || requestSnap.data().status !== 'pending') {
+            throw new Error("Request not found or already processed.");
+        }
+        const requestData = requestSnap.data() as AdHocSalaryRequest;
+
+        const userRef = doc(db, 'users', requestData.targetUserId);
+        const incomeRecordRef = doc(collection(db, 'incomeRecords'));
+        const now = new Date().toISOString();
+
+        // 1. Update user's total income
+        transaction.update(userRef, { totalIncome: increment(requestData.amount) });
+
+        // 2. Create an income record
+        const newIncomeRecord: IncomeRecord = {
+            id: incomeRecordRef.id,
+            userId: requestData.targetUserId,
+            amount: requestData.amount,
+            saleDate: now,
+            grantedForRole: requestData.targetUserRole,
+            salesmanId: requestData.targetUserId, // The user themselves for salary
+            salesmanName: requestData.targetUserName,
+            sourceType: 'salary', // We can classify it as salary
+        };
+        transaction.set(incomeRecordRef, newIncomeRecord);
+
+        // 3. Update the request status
+        transaction.update(requestRef, {
+            status: 'approved',
+            approverId: approver.id,
+            approverName: approver.name,
+            processedDate: now,
+        });
+    });
+}
+
+export async function rejectAdHocSalaryRequest(requestId: string, approver: User): Promise<void> {
+    const requestRef = doc(db, 'adHocSalaryRequests', requestId);
+    await updateDoc(requestRef, {
+        status: 'rejected',
+        approverId: approver.id,
+        approverName: approver.name,
+        processedDate: new Date().toISOString(),
+    });
 }
 
 

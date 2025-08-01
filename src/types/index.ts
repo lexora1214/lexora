@@ -328,3 +328,19 @@ export interface CustomerNote {
   note: string;
   createdAt: string;
 }
+
+export interface AdHocSalaryRequest {
+  id: string;
+  targetUserId: string;
+  targetUserName: string;
+  targetUserRole: Role;
+  amount: number;
+  reason: string;
+  requesterId: string;
+  requesterName: string;
+  requestDate: string;
+  status: 'pending' | 'approved' | 'rejected';
+  approverId?: string;
+  approverName?: string;
+  processedDate?: string;
+}
