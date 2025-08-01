@@ -68,8 +68,6 @@ const ReassignOfficerDialog: React.FC<ReassignOfficerDialogProps> = ({ isOpen, o
     const [isLoading, setIsLoading] = React.useState(false);
     const { toast } = useToast();
 
-    const branchOfficers = officers.filter(o => o.branch === sale.customer?.branch);
-
     const handleReassign = async () => {
         if (!selectedOfficerId) {
             toast({ variant: 'destructive', title: 'Error', description: 'Please select an officer.' });
@@ -105,9 +103,9 @@ const ReassignOfficerDialog: React.FC<ReassignOfficerDialogProps> = ({ isOpen, o
                                 <SelectValue placeholder="Select an officer..." />
                             </SelectTrigger>
                             <SelectContent>
-                                {branchOfficers.length > 0 ? branchOfficers.map(officer => (
-                                    <SelectItem key={officer.id} value={officer.id}>{officer.name}</SelectItem>
-                                )) : <p className="p-2 text-sm text-muted-foreground">No officers for this branch.</p>}
+                                {officers.length > 0 ? officers.map(officer => (
+                                    <SelectItem key={officer.id} value={officer.id}>{officer.name} ({officer.branch || 'No Branch'})</SelectItem>
+                                )) : <p className="p-2 text-sm text-muted-foreground">No recovery officers found.</p>}
                             </SelectContent>
                         </Select>
                     </div>
