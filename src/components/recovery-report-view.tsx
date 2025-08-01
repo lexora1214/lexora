@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Calendar as CalendarIcon, LoaderCircle, Wallet, Users } from "lucide-react";
+import { Badge } from "./ui/badge";
 
 interface RecoveryReportViewProps {
   allUsers: User[];
@@ -163,6 +164,8 @@ const RecoveryReportView: React.FC<RecoveryReportViewProps> = ({ allUsers, allPr
                             <TableHead>Date</TableHead>
                             <TableHead>Officer</TableHead>
                             <TableHead>Customer</TableHead>
+                            <TableHead>Token</TableHead>
+                            <TableHead>Type</TableHead>
                             <TableHead className="text-right">Amount</TableHead>
                         </TableRow>
                     </TableHeader>
@@ -172,11 +175,13 @@ const RecoveryReportView: React.FC<RecoveryReportViewProps> = ({ allUsers, allPr
                                 <TableCell>{format(new Date(c.collectedAt), 'PPp')}</TableCell>
                                 <TableCell>{c.collectorName}</TableCell>
                                 <TableCell>{c.customerName}</TableCell>
+                                <TableCell><Badge variant="outline">{c.tokenSerial}</Badge></TableCell>
+                                <TableCell><Badge variant={c.type === 'arrear' ? 'destructive' : 'secondary'} className="capitalize">{c.type}</Badge></TableCell>
                                 <TableCell className="text-right font-medium">LKR {c.amount.toLocaleString()}</TableCell>
                             </TableRow>
                         )) : (
                             <TableRow>
-                                <TableCell colSpan={4} className="h-24 text-center">No collections found for the selected filters.</TableCell>
+                                <TableCell colSpan={6} className="h-24 text-center">No collections found for the selected filters.</TableCell>
                             </TableRow>
                         )}
                     </TableBody>
