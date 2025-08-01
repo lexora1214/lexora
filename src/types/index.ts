@@ -13,7 +13,9 @@ export type Role =
   | "Branch Admin"
   | "HR"
   | "Store Keeper"
-  | "Recovery Admin";
+  | "Recovery Admin"
+  | "Call Centre Operator"
+  | "Technical Officer";
 
 export type SalesmanStage = "BUSINESS PROMOTER (stage 01)" | "MARKETING EXECUTIVE (stage 02)";
 
@@ -402,4 +404,20 @@ export interface FullPaymentRequest {
   processedBy?: string;
   processedByName?: string;
   processedDate?: string;
+}
+
+export interface TechnicalIssue {
+  id: string;
+  callCentreOperatorId: string;
+  callCentreOperatorName: string;
+  technicalOfficerId: string;
+  technicalOfficerName: string;
+  customerId: string;
+  customerName: string;
+  customerContact: string;
+  requestType: 'Normal' | 'Red Zone';
+  description: string;
+  status: 'pending' | 'completed';
+  createdAt: string;
+  completedAt?: string;
 }

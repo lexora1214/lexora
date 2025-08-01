@@ -7,14 +7,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { LoaderCircle, UserPlus, CheckCircle } from "lucide-react";
-import { User } from "@/types";
+import { LoaderCircle, UserPlus, CheckCircle, Warehouse } from "lucide-react";
+import { User, Role } from "@/types";
 import { createUserProfile } from "@/lib/firestore";
 import { firebaseConfig } from "@/lib/firebase";
 import { initializeApp, deleteApp } from "firebase/app";
 import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
 import { sendOtpSms } from "@/lib/sms";
 import { InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot } from "@/components/ui/input-otp";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 
 interface AddHrViewProps {
   adminUser: User;
@@ -25,6 +26,7 @@ type SignupData = {
   email: string;
   mobileNumber: string;
   password: string;
+  role: Extract<Role, 'HR' | 'Store Keeper' | 'Recovery Admin' | 'Call Centre Operator'>;
 };
 
 export default function AddHrView({ adminUser }: AddHrViewProps) {
@@ -35,6 +37,7 @@ export default function AddHrView({ adminUser }: AddHrViewProps) {
   const [email, setEmail] = useState("");
   const [mobileNumber, setMobileNumber] = useState("");
   const [password, setPassword] = useState("");
+  const [role, setRole] = useState<Extract<Role, 'HR' | 'Store Keeper' | 'Recovery Admin' | 'Call Centre Operator'>>('HR');
 
   // UI/Flow state
   const [isLoading, setIsLoading] = useState(false);
@@ -62,13 +65,13 @@ export default function AddHrView({ adminUser }: AddHrViewProps) {
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
       setGeneratedOtp(otp);
 
-      setSignupData({ name, email, mobileNumber, password });
+      setSignupData({ name, email, mobileNumber, password, role });
 
       await sendOtpSms(mobileNumber, otp);
       
       toast({
         title: "OTP Sent",
-        description: `An OTP has been sent to the new HR user's mobile number (${mobileNumber}).`,
+        description: `An OTP has been sent to the new user's mobile number (${mobileNumber}).`,
       });
       setStep('otp');
 
@@ -98,7 +101,7 @@ export default function AddHrView({ adminUser }: AddHrViewProps) {
 
     setIsLoading(true);
 
-    const tempAppName = `hr-signup-${Date.now()}`;
+    const tempAppName = `system-user-signup-${Date.now()}`;
     const tempApp = initializeApp(firebaseConfig, tempAppName);
     const tempAuth = getAuth(tempApp);
 
@@ -109,21 +112,19 @@ export default function AddHrView({ adminUser }: AddHrViewProps) {
         userCredential.user,
         signupData.name,
         signupData.mobileNumber,
-        "HR",
+        signupData.role,
         "", // No referral code needed
         undefined,
         undefined,
         undefined,
         {
-            // The HR user is created by an Admin, so their referrer is the Admin.
-            // This field can be used for tracking or other purposes if needed later.
             referrerId: adminUser.id 
         }
       );
 
       toast({
-        title: "HR User Registered",
-        description: `${signupData.name} has been successfully registered. They can now share their login details.`,
+        title: `${signupData.role} Registered`,
+        description: `${signupData.name} has been successfully registered.`,
         variant: "default",
         className: "bg-success text-success-foreground",
       });
@@ -175,7 +176,7 @@ export default function AddHrView({ adminUser }: AddHrViewProps) {
                   </div>
                   <Button type="submit" className="w-full" disabled={isLoading}>
                       {isLoading && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
-                      Verify & Create HR Account
+                      Verify & Create Account
                   </Button>
                   <Button variant="link" onClick={() => setStep('details')}>Back to details</Button>
               </div>
@@ -190,20 +191,34 @@ export default function AddHrView({ adminUser }: AddHrViewProps) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <UserPlus />
-          Register New HR User
+          Register New System User
         </CardTitle>
-        <CardDescription>Enter the new HR user's details. They will be able to log in immediately.</CardDescription>
+        <CardDescription>Enter the new user's details. They will be able to log in immediately.</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSendOtp}>
           <div className="grid gap-4">
+             <div className="grid gap-2">
+                <Label htmlFor="role">Role</Label>
+                <Select value={role} onValueChange={(value) => setRole(value as any)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a role to create" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="HR">HR User</SelectItem>
+                    <SelectItem value="Store Keeper">Store Keeper</SelectItem>
+                    <SelectItem value="Recovery Admin">Recovery Admin</SelectItem>
+                    <SelectItem value="Call Centre Operator">Call Centre Operator</SelectItem>
+                  </SelectContent>
+                </Select>
+            </div>
             <div className="grid gap-2">
               <Label htmlFor="name">Full Name</Label>
               <Input id="name" placeholder="John Doe" required value={name} onChange={(e) => setName(e.target.value)} />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="email">Email Address</Label>
-              <Input id="email" type="email" placeholder="hr@example.com" required value={email} onChange={(e) => setEmail(e.target.value)} />
+              <Input id="email" type="email" placeholder="user@example.com" required value={email} onChange={(e) => setEmail(e.target.value)} />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="mobileNumber">Mobile Number</Label>
