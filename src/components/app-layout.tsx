@@ -122,6 +122,7 @@ import AddRecoveryAdminView from "./add-recovery-admin-view";
 import ArrearsReportView from "./arrears-report-view";
 import AddAdhocSalaryView from "./add-adhoc-salary-view";
 import AdhocSalaryApprovalView from "./adhoc-salary-approval-view";
+import RecoveryReportView from "./recovery-report-view";
 
 type NavItem = {
   href: string;
@@ -136,6 +137,7 @@ const navItems: NavItem[] = [
   { href: "#", icon: Briefcase, label: "Customer Management", roles: ["Admin", "Super Admin", "Recovery Admin"]},
   { href: "#", icon: Repeat1, label: "Recovery Management", roles: ["Recovery Admin"] },
   { href: "#", icon: FileBarChart, label: "Arrears Report", roles: ["Recovery Admin"] },
+  { href: "#", icon: TrendingUp, label: "Recovery Report", roles: ["Recovery Admin"] },
   { 
     href: "#", 
     icon: Package, 
@@ -206,7 +208,7 @@ const navItems: NavItem[] = [
     href: "#", 
     icon: TrendingUp, 
     label: "Reports", 
-    roles: ["Admin", "Super Admin"],
+    roles: ["Admin", "Super Admin", "Recovery Admin"],
     children: [
       { href: "#", icon: Award, label: "Target Achievers", roles: ["Admin", "Super Admin"] },
       { href: "#", icon: MapPin, label: "Live Location", roles: ["Admin", "Super Admin"] },
@@ -472,6 +474,8 @@ const AppLayout = ({ user }: { user: User }) => {
         return <AdminRecoveryView user={user} allProductSales={allProductSales} allCustomers={allCustomers} allUsers={allUsers} />;
       case "Arrears Report":
         return <ArrearsReportView allProductSales={allProductSales} allCustomers={allCustomers} />;
+      case "Recovery Report":
+        return <RecoveryReportView allProductSales={allProductSales} allUsers={allUsers} />;
       case "Stock Management":
         return <StockManagementView manager={user} />;
       case "Global Stock View":

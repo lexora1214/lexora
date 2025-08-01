@@ -3,17 +3,17 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import { User, ProductSale, Customer } from "@/types";
+import { User, ProductSale, Customer, Collection } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { LoaderCircle, Phone, HandCoins, Package, CheckCircle2, DollarSign, Navigation, AlertTriangle, MessageSquarePlus, TrendingUp } from "lucide-react";
-import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { collection, query, where, onSnapshot, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { markInstallmentPaid, payRemainingInstallments, payArrears } from "@/lib/firestore";
 import { useToast } from "@/hooks/use-toast";
 import MapPicker from "./map-picker";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { format, addMonths } from 'date-fns';
+import { format, addMonths, startOfMonth, endOfMonth } from 'date-fns';
 import { Progress } from "./ui/progress";
 import {
   AlertDialog,
@@ -29,6 +29,7 @@ import {
 import { cn } from "@/lib/utils";
 import AddNoteDialog from "./add-note-dialog";
 import { Badge } from "./ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 
 interface RecoveryOfficerDashboardProps {
   user: User;
@@ -45,6 +46,7 @@ interface UpcomingInstallment {
 const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ user }) => {
   const [assignedSales, setAssignedSales] = useState<ProductSale[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [collections, setCollections] = useState<Collection[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const [processingId, setProcessingId] = useState<string | null>(null);
@@ -68,9 +70,16 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
         setCustomers(snapshot.docs.map(d => ({id: d.id, ...d.data()} as Customer)));
     });
 
+    const collectionsQuery = query(collection(db, "collections"), where("collectorId", "==", user.id));
+    const collectionsUnsub = onSnapshot(collectionsQuery, (snapshot) => {
+        const collectionsData = snapshot.docs.map(doc => doc.data() as Collection);
+        setCollections(collectionsData);
+    });
+
     return () => {
         salesUnsub();
         customersUnsub();
+        collectionsUnsub();
     };
   }, [user.id, loading]);
   
@@ -117,10 +126,21 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
 
   }, [assignedSales, customers]);
   
+  const monthlyCollections = useMemo(() => {
+    const start = startOfMonth(new Date());
+    const end = endOfMonth(new Date());
+    return collections.filter(c => {
+        const collectedDate = new Date(c.collectedAt);
+        return collectedDate >= start && collectedDate <= end;
+    });
+  }, [collections]);
+
+  const monthlyTotal = monthlyCollections.reduce((sum, c) => sum + c.amount, 0);
+
   const handleMarkPaid = async (saleId: string) => {
       setProcessingId(saleId);
       try {
-          await markInstallmentPaid(saleId);
+          await markInstallmentPaid(saleId, user);
           toast({
               title: "Installment Collected",
               description: "Status updated successfully.",
@@ -217,7 +237,42 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
             <CardTitle className="flex items-center gap-2"><HandCoins /> My Collection Tasks</CardTitle>
             <CardDescription>Installment collections for the next three months. Mark them as paid once collected.</CardDescription>
           </CardHeader>
+           <CardContent>
+                <div className="text-sm font-medium">This Month's Collections ({format(new Date(), 'MMMM')})</div>
+                <div className="text-3xl font-bold mt-1">LKR {monthlyTotal.toLocaleString()}</div>
+            </CardContent>
         </Card>
+
+        <Card>
+            <CardHeader>
+                <CardTitle>Collection History</CardTitle>
+            </CardHeader>
+            <CardContent>
+                 <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Date</TableHead>
+                            <TableHead>Customer</TableHead>
+                            <TableHead className="text-right">Amount</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {monthlyCollections.length > 0 ? monthlyCollections.map(c => (
+                            <TableRow key={c.id}>
+                                <TableCell>{format(new Date(c.collectedAt), 'PPP')}</TableCell>
+                                <TableCell>{c.customerName}</TableCell>
+                                <TableCell className="text-right font-medium">LKR {c.amount.toLocaleString()}</TableCell>
+                            </TableRow>
+                        )) : (
+                            <TableRow>
+                                <TableCell colSpan={3} className="text-center h-24">No collections this month yet.</TableCell>
+                            </TableRow>
+                        )}
+                    </TableBody>
+                </Table>
+            </CardContent>
+        </Card>
+
         {upcomingCollectionsByDay.length > 0 ? (
           <Accordion type="multiple" defaultValue={upcomingCollectionsByDay.length > 0 ? [upcomingCollectionsByDay[0][0]] : []} className="w-full space-y-4">
               {upcomingCollectionsByDay.map(([date, collections]) => (
@@ -412,5 +467,3 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
 };
 
 export default RecoveryOfficerDashboard;
-
-    
