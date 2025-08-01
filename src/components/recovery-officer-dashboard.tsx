@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { LoaderCircle, Phone, HandCoins, Package, CheckCircle2, DollarSign, Navigation, AlertTriangle, MessageSquarePlus, TrendingUp } from "lucide-react";
 import { collection, query, where, onSnapshot, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { markInstallmentPaid, payRemainingInstallments, payArrears } from "@/lib/firestore";
+import { markInstallmentPaid, payArrears, createFullPaymentRequest } from "@/lib/firestore";
 import { useToast } from "@/hooks/use-toast";
 import MapPicker from "./map-picker";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -30,6 +30,8 @@ import { cn } from "@/lib/utils";
 import AddNoteDialog from "./add-note-dialog";
 import { Badge } from "./ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
 
 interface RecoveryOfficerDashboardProps {
   user: User;
@@ -43,6 +45,83 @@ interface UpcomingInstallment {
     amount: number;
 }
 
+const RequestFullPaymentDialog: React.FC<{
+  isOpen: boolean;
+  onOpenChange: (isOpen: boolean) => void;
+  sale: ProductSale;
+  officer: User;
+  remainingBalance: number;
+}> = ({ isOpen, onOpenChange, sale, officer, remainingBalance }) => {
+  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
+  const [discountedAmount, setDiscountedAmount] = useState(remainingBalance);
+
+  const handleSubmit = async () => {
+    if (discountedAmount <= 0) {
+      toast({ variant: 'destructive', title: 'Invalid Amount', description: 'Discounted amount must be positive.' });
+      return;
+    }
+    setIsLoading(true);
+    try {
+      await createFullPaymentRequest({
+        productSaleId: sale.id,
+        customerId: sale.customerId,
+        customerName: sale.customerName,
+        recoveryOfficerId: officer.id,
+        recoveryOfficerName: officer.name,
+        originalRemainingBalance: remainingBalance,
+        discountedAmount: discountedAmount,
+      });
+      toast({
+        title: 'Request Submitted',
+        description: 'Your full payment request has been sent to the Recovery Admin for approval.',
+        className: 'bg-success text-success-foreground',
+      });
+      onOpenChange(false);
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Submission Failed', description: error.message });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Request Full Payment Settlement</AlertDialogTitle>
+          <AlertDialogDescription>
+            Enter the final discounted amount the customer will pay to settle the remaining balance. This will require admin approval.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <div className="space-y-4 py-4">
+          <div>
+            <Label>Original Remaining Balance</Label>
+            <Input value={`LKR ${remainingBalance.toLocaleString()}`} disabled />
+          </div>
+          <div>
+            <Label htmlFor="discounted-amount">Final Payment Amount (with discount)</Label>
+            <Input
+              id="discounted-amount"
+              type="number"
+              value={discountedAmount}
+              onChange={(e) => setDiscountedAmount(Number(e.target.value))}
+            />
+          </div>
+        </div>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={handleSubmit} disabled={isLoading}>
+            {isLoading && <LoaderCircle className="mr-2 h-4 w-4 animate-spin"/>}
+            Submit Request
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+};
+
+
 const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ user }) => {
   const [assignedSales, setAssignedSales] = useState<ProductSale[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -52,6 +131,7 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [isNoteDialogOpen, setIsNoteDialogOpen] = useState(false);
   const [noteCustomer, setNoteCustomer] = useState<Customer | null>(null);
+  const [requestingFullPaymentSale, setRequestingFullPaymentSale] = useState<ProductSale | null>(null);
 
 
   useEffect(() => {
@@ -171,23 +251,6 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
     }
   };
 
-
-  const handlePayRemaining = async (saleId: string) => {
-    setProcessingId(saleId);
-    try {
-        await payRemainingInstallments(saleId);
-        toast({
-            title: "Remaining Installments Paid",
-            description: "All future installments have been marked as paid and commissions distributed.",
-            variant: "default",
-            className: "bg-success text-success-foreground",
-        });
-    } catch (error: any) {
-        toast({ variant: "destructive", title: "Update Failed", description: error.message });
-    } finally {
-        setProcessingId(null);
-    }
-  };
 
   const handleStartRide = (customer: Customer) => {
     if (!customer.location) {
@@ -416,25 +479,9 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
                                                                   <h5 className="font-semibold text-amber-700">Early Payout Option</h5>
                                                                   <p className="text-xs text-amber-600">The customer can pay off the remaining balance of LKR {remainingBalance.toLocaleString()} now.</p>
                                                               </div>
-                                                              <AlertDialog>
-                                                                  <AlertDialogTrigger asChild>
-                                                                      <Button size="sm" variant="outline" className="bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200">Pay Remaining</Button>
-                                                                  </AlertDialogTrigger>
-                                                                  <AlertDialogContent>
-                                                                      <AlertDialogHeader>
-                                                                          <AlertDialogTitle>Confirm Full Payout?</AlertDialogTitle>
-                                                                          <AlertDialogDescription>
-                                                                              You are about to process a payment for all {remainingInstallments} remaining installments, totaling LKR {remainingBalance.toLocaleString()}. This action will distribute all future commissions and cannot be undone.
-                                                                          </AlertDialogDescription>
-                                                                      </AlertDialogHeader>
-                                                                      <AlertDialogFooter>
-                                                                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                                          <AlertDialogAction onClick={() => handlePayRemaining(sale.id)}>
-                                                                              Confirm Full Payment
-                                                                          </AlertDialogAction>
-                                                                      </AlertDialogFooter>
-                                                                  </AlertDialogContent>
-                                                              </AlertDialog>
+                                                                <Button size="sm" variant="outline" className="bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200" onClick={() => setRequestingFullPaymentSale(sale)}>
+                                                                    Request Full Payout
+                                                                </Button>
                                                           </div>
                                                       </div>
                                                   )}
@@ -462,6 +509,15 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
             onOpenChange={setIsNoteDialogOpen}
             customer={noteCustomer}
             officer={user}
+        />
+      )}
+       {requestingFullPaymentSale && (
+        <RequestFullPaymentDialog
+          isOpen={!!requestingFullPaymentSale}
+          onOpenChange={() => setRequestingFullPaymentSale(null)}
+          sale={requestingFullPaymentSale}
+          officer={user}
+          remainingBalance={(requestingFullPaymentSale.installments! - requestingFullPaymentSale.paidInstallments!) * requestingFullPaymentSale.monthlyInstallment!}
         />
       )}
     </>

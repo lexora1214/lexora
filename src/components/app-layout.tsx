@@ -47,7 +47,8 @@ import {
   CheckSquare,
   Repeat1,
   FileBarChart,
-  Coins
+  Coins,
+  FileSignature
 } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
@@ -124,6 +125,7 @@ import AddAdhocSalaryView from "./add-adhoc-salary-view";
 import AdhocSalaryApprovalView from "./adhoc-salary-approval-view";
 import RecoveryReportView from "./recovery-report-view";
 import SalaryPayoutApprovalView from "./salary-payout-approval-view";
+import FullPaymentApprovalView from "./full-payment-approval-view";
 
 type NavItem = {
   href: string;
@@ -136,7 +138,16 @@ type NavItem = {
 const navItems: NavItem[] = [
   { href: "#", icon: LayoutDashboard, label: "Dashboard", roles: ["Admin", "Super Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Salesman", "Delivery Boy", "Recovery Officer", "HR", "Store Keeper", "Recovery Admin"] },
   { href: "#", icon: Briefcase, label: "Customer Management", roles: ["Admin", "Super Admin", "Recovery Admin"]},
-  { href: "#", icon: Repeat1, label: "Recovery Management", roles: ["Recovery Admin"] },
+  { 
+    href: "#", 
+    icon: Repeat1, 
+    label: "Recovery", 
+    roles: ["Recovery Admin"],
+    children: [
+      { href: "#", icon: Repeat, label: "Recovery Management", roles: ["Recovery Admin"] },
+      { href: "#", icon: FileSignature, label: "Full Payment Approvals", roles: ["Recovery Admin"] },
+    ]
+  },
   { href: "#", icon: FileBarChart, label: "Arrears Report", roles: ["Recovery Admin"] },
   { href: "#", icon: TrendingUp, label: "Recovery Report", roles: ["Recovery Admin"] },
   { 
@@ -480,6 +491,8 @@ const AppLayout = ({ user }: { user: User }) => {
         }
       case "Recovery Management":
         return <AdminRecoveryView user={user} allProductSales={allProductSales} allCustomers={allCustomers} allUsers={allUsers} />;
+      case "Full Payment Approvals":
+        return <FullPaymentApprovalView adminUser={user} />;
       case "Arrears Report":
         return <ArrearsReportView allProductSales={allProductSales} allCustomers={allCustomers} />;
       case "Recovery Report":

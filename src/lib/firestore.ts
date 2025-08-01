@@ -4,7 +4,7 @@ import { doc, getDoc, setDoc, collection, getDocs, query, where, writeBatch, inc
 import { getAuth, updatePassword } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { db, storage } from "./firebase";
-import { User, Role, Customer, CommissionSettings, IncomeRecord, ProductSale, ProductCommissionSettings, SignupRoleSettings, CommissionRequest, SalesmanStage, SalarySettings, MonthlySalaryPayout, StockItem, IncentiveSettings, Reminder, UserDocuments, SalaryChangeRequest, SalaryPayoutRequest, IncentiveChangeRequest, StockTransfer, StockTransferItem, CustomerNote, AdHocSalaryRequest, Collection, CommissionChangeRequest } from "@/types";
+import { User, Role, Customer, CommissionSettings, IncomeRecord, ProductSale, ProductCommissionSettings, SignupRoleSettings, CommissionRequest, SalesmanStage, SalarySettings, MonthlySalaryPayout, StockItem, IncentiveSettings, Reminder, UserDocuments, SalaryChangeRequest, SalaryPayoutRequest, IncentiveChangeRequest, StockTransfer, StockTransferItem, CustomerNote, AdHocSalaryRequest, Collection, CommissionChangeRequest, FullPaymentRequest } from "@/types";
 import type { User as FirebaseUser } from 'firebase/auth';
 import { sendTokenSms, sendOtpSms as sendSmsForOtp } from "./sms";
 import { getDownlineIdsAndUsers } from "./hierarchy";
@@ -1997,4 +1997,127 @@ export async function rejectCommissionChange(requestId: string, approver: User):
         processedDate: new Date().toISOString(),
     });
 }
-    
+
+// --- Full Payment Requests ---
+
+export async function createFullPaymentRequest(data: Omit<FullPaymentRequest, 'id' | 'requestDate' | 'status'>): Promise<void> {
+    const requestRef = doc(collection(db, 'fullPaymentRequests'));
+    const newRequest: FullPaymentRequest = {
+        ...data,
+        id: requestRef.id,
+        requestDate: new Date().toISOString(),
+        status: 'pending',
+    };
+    await setDoc(requestRef, newRequest);
+}
+
+export async function getPendingFullPaymentRequests(): Promise<FullPaymentRequest[]> {
+    const q = query(collection(db, 'fullPaymentRequests'), where('status', '==', 'pending'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(d => d.data() as FullPaymentRequest).sort((a,b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime());
+}
+
+export async function rejectFullPaymentRequest(requestId: string, approver: User): Promise<void> {
+    const requestRef = doc(db, 'fullPaymentRequests', requestId);
+    await updateDoc(requestRef, {
+        status: 'rejected',
+        processedBy: approver.id,
+        processedByName: approver.name,
+        processedDate: new Date().toISOString(),
+    });
+}
+
+export async function approveFullPaymentRequest(requestId: string, approver: User): Promise<void> {
+    const requestRef = doc(db, 'fullPaymentRequests', requestId);
+
+    await runTransaction(db, async (transaction) => {
+        const requestSnap = await transaction.get(requestRef);
+        if (!requestSnap.exists() || requestSnap.data().status !== 'pending') {
+            throw new Error("Request not found or already processed.");
+        }
+        const requestData = requestSnap.data() as FullPaymentRequest;
+
+        const saleRef = doc(db, "productSales", requestData.productSaleId);
+        const saleSnap = await transaction.get(saleRef);
+        if (!saleSnap.exists()) {
+            throw new Error("Associated product sale not found.");
+        }
+        const saleData = saleSnap.data() as ProductSale;
+
+        const { installments, paidInstallments } = saleData;
+        const remainingInstallments = (installments ?? 0) - (paidInstallments ?? 0);
+        if (remainingInstallments <= 0) {
+            transaction.update(requestRef, { status: 'approved', processedBy: approver.id, processedByName: approver.name, processedDate: new Date().toISOString() });
+            return; // Already paid off, just approve the request
+        }
+        
+        // --- Get all data needed for commission distribution ---
+        const customerRef = doc(db, "customers", saleData.customerId);
+        const customerSnap = await transaction.get(customerRef);
+        if (!customerSnap.exists()) throw new Error("Could not find customer for this sale.");
+        const customer = customerSnap.data() as Customer;
+        
+        const allUsers = await getAllUsers();
+        const salesman = allUsers.find(u => u.id === customer.salesmanId);
+        if (!salesman) throw new Error("Could not find the salesman for this sale.");
+
+        const productSettings = await getProductCommissionSettings();
+        const applicableTier = productSettings.tiers.find(tier => 
+            saleData.price >= tier.minPrice && (tier.maxPrice === null || saleData.price <= tier.maxPrice)
+        );
+        
+        if (!applicableTier) throw new Error("Could not find an applicable commission tier for this product.");
+        
+        const paymentDate = new Date().toISOString();
+
+        // --- Distribute remaining commissions ---
+        for (let i = 0; i < remainingInstallments; i++) {
+            const currentInstallmentNumber = (paidInstallments ?? 0) + 1 + i;
+            let currentUser: User | undefined = salesman;
+            while(currentUser) {
+                const roleKey = currentUser.role.replace(/\s/g, '').charAt(0).toLowerCase() + currentUser.role.replace(/\s/g, '').slice(1) as keyof typeof applicableTier.commissions;
+                const tierCommissions = applicableTier.commissions[roleKey];
+                
+                if (tierCommissions && installments) {
+                    const perInstallmentCommission = tierCommissions.installments / installments;
+                    if (perInstallmentCommission > 0) {
+                        const userRef = doc(db, "users", currentUser.id);
+                        transaction.update(userRef, { totalIncome: increment(perInstallmentCommission) });
+                        
+                        const incomeRecordRef = doc(collection(db, "incomeRecords"));
+                        transaction.set(incomeRecordRef, {
+                            id: incomeRecordRef.id, userId: currentUser.id, amount: perInstallmentCommission, saleDate: paymentDate,
+                            grantedForRole: currentUser.role, salesmanId: salesman.id, salesmanName: salesman.name,
+                            shopManagerName: saleData.shopManagerName, sourceType: 'product_sale', productSaleId: saleData.id,
+                            customerId: saleData.customerId, customerName: saleData.customerName, tokenSerial: saleData.tokenSerial,
+                            productName: saleData.productName, productPrice: saleData.price, paymentMethod: saleData.paymentMethod,
+                            installmentNumber: currentInstallmentNumber,
+                        });
+                    }
+                }
+                currentUser = currentUser.referrerId ? allUsers.find(u => u.id === currentUser!.referrerId) : undefined;
+            }
+        }
+        
+        // --- Mark sale as fully paid ---
+        transaction.update(saleRef, { paidInstallments: installments });
+        
+        // --- Create one collection record for the discounted amount ---
+        const collectionRef = doc(collection(db, "collections"));
+        const newCollection: Collection = {
+            id: collectionRef.id, productSaleId: saleData.id, customerId: saleData.customerId,
+            customerName: saleData.customerName, tokenSerial: saleData.tokenSerial,
+            collectorId: requestData.recoveryOfficerId, collectorName: requestData.recoveryOfficerName,
+            amount: requestData.discountedAmount, collectedAt: paymentDate, type: 'full_payment',
+        };
+        transaction.set(collectionRef, newCollection);
+
+        // --- Mark the request as approved ---
+        transaction.update(requestRef, {
+            status: 'approved',
+            processedBy: approver.id,
+            processedByName: approver.name,
+            processedDate: paymentDate,
+        });
+    });
+}

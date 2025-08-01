@@ -134,7 +134,7 @@ export interface Collection {
     collectorName: string;
     amount: number;
     collectedAt: string;
-    type: 'installment' | 'arrear';
+    type: 'installment' | 'arrear' | 'full_payment';
     tokenSerial: string;
 }
 
@@ -384,5 +384,21 @@ export interface AdHocSalaryRequest {
   status: 'pending' | 'approved' | 'rejected';
   approverId?: string;
   approverName?: string;
+  processedDate?: string;
+}
+
+export interface FullPaymentRequest {
+  id: string;
+  productSaleId: string;
+  customerId: string;
+  customerName: string;
+  recoveryOfficerId: string;
+  recoveryOfficerName: string;
+  originalRemainingBalance: number;
+  discountedAmount: number;
+  status: 'pending' | 'approved' | 'rejected';
+  requestDate: string;
+  processedBy?: string;
+  processedByName?: string;
   processedDate?: string;
 }
