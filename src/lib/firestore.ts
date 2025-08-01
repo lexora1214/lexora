@@ -4,7 +4,7 @@ import { doc, getDoc, setDoc, collection, getDocs, query, where, writeBatch, inc
 import { getAuth, updatePassword } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { db, storage } from "./firebase";
-import { User, Role, Customer, CommissionSettings, IncomeRecord, ProductSale, ProductCommissionSettings, SignupRoleSettings, CommissionRequest, SalesmanStage, SalarySettings, MonthlySalaryPayout, StockItem, IncentiveSettings, Reminder, UserDocuments, SalaryChangeRequest, SalaryPayoutRequest, IncentiveChangeRequest, StockTransfer, StockTransferItem, CustomerNote, AdHocSalaryRequest, Collection } from "@/types";
+import { User, Role, Customer, CommissionSettings, IncomeRecord, ProductSale, ProductCommissionSettings, SignupRoleSettings, CommissionRequest, SalesmanStage, SalarySettings, MonthlySalaryPayout, StockItem, IncentiveSettings, Reminder, UserDocuments, SalaryChangeRequest, SalaryPayoutRequest, IncentiveChangeRequest, StockTransfer, StockTransferItem, CustomerNote, AdHocSalaryRequest, Collection, CommissionChangeRequest } from "@/types";
 import type { User as FirebaseUser } from 'firebase/auth';
 import { sendTokenSms, sendOtpSms as sendSmsForOtp } from "./sms";
 import { getDownlineIdsAndUsers } from "./hierarchy";
@@ -158,9 +158,27 @@ export async function getCommissionSettings(): Promise<CommissionSettings> {
   return DEFAULT_COMMISSIONS;
 }
 
-export async function updateCommissionSettings(data: CommissionSettings): Promise<void> {
+export async function updateCommissionSettings(newSettings: CommissionSettings, updatingUser: User): Promise<void> {
     const settingsDocRef = doc(db, "settings", "commissions");
-    await updateDoc(settingsDocRef, data);
+    if (updatingUser.role === 'Super Admin') {
+        await setDoc(settingsDocRef, newSettings, { merge: true });
+    } else if (updatingUser.role === 'Admin') {
+        const currentSettings = await getCommissionSettings();
+        const requestRef = doc(collection(db, 'commissionChangeRequests'));
+        const newRequest: CommissionChangeRequest = {
+            id: requestRef.id,
+            type: 'token',
+            requestedBy: updatingUser.id,
+            requestedByName: updatingUser.name,
+            requestDate: new Date().toISOString(),
+            status: 'pending',
+            newSettings: newSettings,
+            currentSettings: currentSettings,
+        };
+        await setDoc(requestRef, newRequest);
+    } else {
+        throw new Error("You do not have permission to change commission settings.");
+    }
 }
 
 export async function createCustomer(customerData: Omit<Customer, 'id' | 'saleDate' | 'commissionStatus' | 'salesmanId' | 'tokenIsAvailable'>, salesman: User): Promise<void> {
@@ -438,9 +456,27 @@ export async function getProductCommissionSettings(): Promise<ProductCommissionS
     return DEFAULT_PRODUCT_COMMISSIONS;
 }
 
-export async function updateProductCommissionSettings(data: ProductCommissionSettings): Promise<void> {
+export async function updateProductCommissionSettings(newSettings: ProductCommissionSettings, updatingUser: User): Promise<void> {
     const settingsDocRef = doc(db, "settings", "productCommissions");
-    await setDoc(settingsDocRef, data);
+    if (updatingUser.role === 'Super Admin') {
+        await setDoc(settingsDocRef, newSettings, { merge: true });
+    } else if (updatingUser.role === 'Admin') {
+        const currentSettings = await getProductCommissionSettings();
+        const requestRef = doc(collection(db, 'commissionChangeRequests'));
+        const newRequest: CommissionChangeRequest = {
+            id: requestRef.id,
+            type: 'product',
+            requestedBy: updatingUser.id,
+            requestedByName: updatingUser.name,
+            requestDate: new Date().toISOString(),
+            status: 'pending',
+            newSettings: newSettings,
+            currentSettings: currentSettings,
+        };
+        await setDoc(requestRef, newRequest);
+    } else {
+        throw new Error("You do not have permission to change commission settings.");
+    }
 }
 
 export async function createProductSaleAndDistributeCommissions(
@@ -698,6 +734,9 @@ const DEFAULT_SIGNUP_ROLE_SETTINGS: SignupRoleSettings = {
     "Delivery Boy": true,
     "Recovery Officer": true,
     "Store Keeper": true,
+    "HR": true,
+    "Recovery Admin": true,
+    "Super Admin": true,
   }
 };
 
@@ -1916,4 +1955,46 @@ export async function sendOtpSms(mobileNumber: string, otp: string): Promise<{su
     return sendSmsForOtp(mobileNumber, otp);
 }
 
+// --- Commission Settings Change Requests ---
+
+export async function getPendingCommissionChangeRequests(): Promise<CommissionChangeRequest[]> {
+    const q = query(collection(db, 'commissionChangeRequests'), where('status', '==', 'pending'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(d => d.data() as CommissionChangeRequest).sort((a,b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime());
+}
+
+export async function approveCommissionChange(requestId: string, approver: User): Promise<void> {
+    const requestRef = doc(db, 'commissionChangeRequests', requestId);
+    const requestSnap = await getDoc(requestRef);
+    if (!requestSnap.exists() || requestSnap.data().status !== 'pending') {
+        throw new Error("Request not found or already processed.");
+    }
+    const requestData = requestSnap.data() as CommissionChangeRequest;
+
+    const batch = writeBatch(db);
+
+    // Apply the new settings
+    const settingsDocRef = doc(db, "settings", requestData.type === 'token' ? "commissions" : "productCommissions");
+    batch.set(settingsDocRef, requestData.newSettings, { merge: true });
+
+    // Update the request status
+    batch.update(requestRef, {
+        status: 'approved',
+        processedBy: approver.id,
+        processedByName: approver.name,
+        processedDate: new Date().toISOString(),
+    });
+
+    await batch.commit();
+}
+
+export async function rejectCommissionChange(requestId: string, approver: User): Promise<void> {
+    const requestRef = doc(db, 'commissionChangeRequests', requestId);
+    await updateDoc(requestRef, {
+        status: 'rejected',
+        processedBy: approver.id,
+        processedByName: approver.name,
+        processedDate: new Date().toISOString(),
+    });
+}
     

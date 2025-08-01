@@ -135,6 +135,7 @@ export interface Collection {
     amount: number;
     collectedAt: string;
     type: 'installment' | 'arrear';
+    tokenSerial: string;
 }
 
 export interface CommissionSettings {
@@ -146,6 +147,35 @@ export interface CommissionSettings {
   regionalDirector: number;
   admin: number;
 }
+
+export type CommissionChangeRequestType = 'token' | 'product';
+
+export interface BaseCommissionChangeRequest {
+  id: string;
+  type: CommissionChangeRequestType;
+  requestedBy: string;
+  requestedByName: string;
+  requestDate: string;
+  status: 'pending' | 'approved' | 'rejected';
+  processedBy?: string;
+  processedByName?: string;
+  processedDate?: string;
+}
+
+export interface TokenCommissionChangeRequest extends BaseCommissionChangeRequest {
+  type: 'token';
+  newSettings: CommissionSettings;
+  currentSettings: CommissionSettings;
+}
+
+export interface ProductCommissionChangeRequest extends BaseCommissionChangeRequest {
+  type: 'product';
+  newSettings: ProductCommissionSettings;
+  currentSettings: ProductCommissionSettings;
+}
+
+export type CommissionChangeRequest = TokenCommissionChangeRequest | ProductCommissionChangeRequest;
+
 
 export interface IncomeRecord {
   id: string;
