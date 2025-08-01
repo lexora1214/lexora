@@ -178,10 +178,14 @@ export default function AdminRecoveryView({ user, allProductSales, allCustomers,
         const to = dateRange.to ? new Date(dateRange.to) : new Date(from);
         to.setHours(23, 59, 59, 999);
         
-        sales = sales.filter(s => s.nextDueDate && s.nextDueDate >= from && s.nextDueDate <= to);
+        sales = sales.filter(s => s.nextDueDate && new Date(s.nextDueDate) >= from && new Date(s.nextDueDate) <= to);
     }
       
-    return sales.sort((a, b) => new Date(b.saleDate).getTime() - new Date(a.saleDate).getTime());
+    return sales.sort((a, b) => {
+        const dateA = a.nextDueDate ? new Date(a.nextDueDate).getTime() : 0;
+        const dateB = b.nextDueDate ? new Date(b.nextDueDate).getTime() : 0;
+        return dateA - dateB;
+    });
 
   }, [allProductSales, allCustomers, dateRange]);
   
