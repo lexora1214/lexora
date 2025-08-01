@@ -1,8 +1,9 @@
 
+
 "use client";
 
 import * as React from "react";
-import { ArrowUpDown, Calendar as CalendarIcon, MoreHorizontal, TrendingUp, AlertTriangle } from "lucide-react";
+import { ArrowUpDown, Calendar as CalendarIcon, MoreHorizontal, TrendingUp, AlertTriangle, Edit } from "lucide-react";
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -64,8 +65,11 @@ interface ReassignOfficerDialogProps {
 }
 
 const ReassignOfficerDialog: React.FC<ReassignOfficerDialogProps> = ({ isOpen, onOpenChange, sale, officers }) => {
-    const [selectedOfficerId, setSelectedOfficerId] = React.useState<string>('');
+    const [selectedOfficerId, setSelectedOfficerId] = React.useState<string>(sale.recoveryOfficerId || '');
     const [isLoading, setIsLoading] = React.useState(false);
+    const [nextDueDate, setNextDueDate] = React.useState<Date | undefined>(
+        sale.nextDueDate ? new Date(sale.nextDueDate) : undefined
+    );
     const { toast } = useToast();
 
     const handleReassign = async () => {
@@ -73,11 +77,16 @@ const ReassignOfficerDialog: React.FC<ReassignOfficerDialogProps> = ({ isOpen, o
             toast({ variant: 'destructive', title: 'Error', description: 'Please select an officer.' });
             return;
         }
+        if (!nextDueDate) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Please select a next due date.' });
+            return;
+        }
+
         setIsLoading(true);
         try {
             const officer = officers.find(o => o.id === selectedOfficerId);
             if (!officer) throw new Error("Selected officer not found.");
-            await reassignRecoveryOfficer(sale.id, officer.id, officer.name);
+            await reassignRecoveryOfficer(sale.id, officer.id, officer.name, nextDueDate);
             toast({ title: 'Officer Re-assigned', description: `${sale.productName} has been assigned to ${officer.name}.`, className: 'bg-success text-success-foreground' });
             onOpenChange(false);
         } catch (error: any) {
@@ -98,7 +107,7 @@ const ReassignOfficerDialog: React.FC<ReassignOfficerDialogProps> = ({ isOpen, o
                     <p>Branch: <span className="font-semibold">{sale.customer?.branch}</span></p>
                     <div>
                         <Label htmlFor="officer-select">Select New Officer</Label>
-                        <Select onValueChange={setSelectedOfficerId}>
+                        <Select onValueChange={setSelectedOfficerId} defaultValue={selectedOfficerId}>
                             <SelectTrigger id="officer-select">
                                 <SelectValue placeholder="Select an officer..." />
                             </SelectTrigger>
@@ -109,10 +118,36 @@ const ReassignOfficerDialog: React.FC<ReassignOfficerDialogProps> = ({ isOpen, o
                             </SelectContent>
                         </Select>
                     </div>
+                     <div>
+                        <Label htmlFor="nextDueDate">Next Due Date</Label>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                            <Button
+                                id="nextDueDate"
+                                variant={"outline"}
+                                className={cn(
+                                "w-full justify-start text-left font-normal",
+                                !nextDueDate && "text-muted-foreground"
+                                )}
+                            >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {nextDueDate ? format(nextDueDate, "PPP") : <span>Pick a date</span>}
+                            </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0">
+                            <Calendar
+                                mode="single"
+                                selected={nextDueDate}
+                                onSelect={setNextDueDate}
+                                initialFocus
+                            />
+                            </PopoverContent>
+                        </Popover>
+                    </div>
                 </div>
                 <DialogFooter>
                     <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-                    <Button onClick={handleReassign} disabled={isLoading || !selectedOfficerId}>
+                    <Button onClick={handleReassign} disabled={isLoading || !selectedOfficerId || !nextDueDate}>
                         {isLoading && <LoaderCircle className="mr-2 h-4 w-4 animate-spin"/>}
                         Confirm Assignment
                     </Button>
@@ -152,10 +187,10 @@ export default function AdminRecoveryView({ user, allProductSales, allCustomers,
 
   const installmentSales = React.useMemo(() => {
     let sales = allProductSales
-      .filter(p => p.paymentMethod === 'installments' && p.paidInstallments !== undefined && p.paidInstallments < p.installments!)
+      .filter(p => p.paymentMethod === 'installments' && p.paidInstallments !== undefined && p.installments && p.paidInstallments < p.installments!)
       .map(p => {
         const customer = allCustomers.find(c => c.id === p.customerId);
-        let nextDueDate: Date | null = p.nextDueDateOverride ? new Date(p.nextDueDateOverride) : null;
+        let nextDueDate: Date | null = p.nextDueDateOverride ? new Date(p.nextDueDateOverride) : (p.installments && p.paidInstallments !== undefined ? addMonths(new Date(p.saleDate), p.paidInstallments + 1) : null);
         let isOverdue = false;
 
         if (nextDueDate && isPast(nextDueDate)) {
@@ -335,7 +370,7 @@ export default function AdminRecoveryView({ user, allProductSales, allCustomers,
                   View Details
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleReassignClick(sale)}>
-                  Re-assign Officer
+                  <Edit className="mr-2 h-4 w-4" /> Re-assign Officer
               </DropdownMenuItem>
               {sale.isOverdue && (
                   <>

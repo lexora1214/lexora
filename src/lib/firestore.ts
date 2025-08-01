@@ -1026,12 +1026,17 @@ export async function manuallyAddArrear(productSaleId: string): Promise<void> {
     });
 }
 
-export async function reassignRecoveryOfficer(saleId: string, officerId: string, officerName: string): Promise<void> {
+export async function reassignRecoveryOfficer(saleId: string, officerId: string, officerName: string, nextDueDate?: Date): Promise<void> {
     const saleRef = doc(db, "productSales", saleId);
-    await updateDoc(saleRef, {
+    const updateData: Partial<ProductSale> = {
         recoveryOfficerId: officerId,
         recoveryOfficerName: officerName,
-    });
+        recoveryStatus: 'assigned',
+    };
+    if (nextDueDate) {
+        updateData.nextDueDateOverride = nextDueDate.toISOString();
+    }
+    await updateDoc(saleRef, updateData);
 }
 
 
