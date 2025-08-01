@@ -141,7 +141,7 @@ const AdhocSalaryApprovalView: React.FC<AdhocSalaryApprovalViewProps> = ({ super
               ) : (
                 <TableRow>
                   <TableCell colSpan={5} className="h-24 text-center">
-                    There are no pending ad-hoc salary requests.
+                    There are no pending ad-hoc salary requests from HR.
                   </TableCell>
                 </TableRow>
               )}

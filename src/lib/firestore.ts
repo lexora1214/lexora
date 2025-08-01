@@ -1845,8 +1845,20 @@ export async function createAdHocSalaryRequest(data: Omit<AdHocSalaryRequest, 'i
 export async function getPendingAdHocSalaryRequests(): Promise<AdHocSalaryRequest[]> {
     const q = query(collection(db, 'adHocSalaryRequests'), where('status', '==', 'pending'));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(d => d.data() as AdHocSalaryRequest).sort((a,b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime());
+    const requests = snapshot.docs.map(d => d.data() as AdHocSalaryRequest);
+
+    // Get all user data to filter by role
+    const allUsers = await getAllUsers();
+    const userMap = new Map(allUsers.map(u => [u.id, u]));
+
+    const hrRequests = requests.filter(req => {
+        const requester = userMap.get(req.requesterId);
+        return requester?.role === 'HR';
+    });
+
+    return hrRequests.sort((a,b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime());
 }
+
 
 export async function approveAdHocSalaryRequest(requestId: string, approver: User): Promise<void> {
     const requestRef = doc(db, 'adHocSalaryRequests', requestId);
