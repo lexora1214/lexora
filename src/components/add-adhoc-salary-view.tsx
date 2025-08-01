@@ -44,9 +44,14 @@ export default function AddAdhocSalaryView({ hrUser, allUsers }: AddAdhocSalaryV
     handleSubmit,
     control,
     reset,
+    register,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
+    defaultValues: {
+        amount: 0,
+        reason: '',
+    }
   });
 
   const onSubmit = async (data: FormValues) => {
