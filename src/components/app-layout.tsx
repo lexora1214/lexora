@@ -123,6 +123,7 @@ import ArrearsReportView from "./arrears-report-view";
 import AddAdhocSalaryView from "./add-adhoc-salary-view";
 import AdhocSalaryApprovalView from "./adhoc-salary-approval-view";
 import RecoveryReportView from "./recovery-report-view";
+import SalaryPayoutApprovalView from "./salary-payout-approval-view";
 
 type NavItem = {
   href: string;
@@ -181,10 +182,10 @@ const navItems: NavItem[] = [
       { href: "#", icon: Building, label: "User Management", roles: ["Super Admin", "HR"] },
       { href: "#", icon: UserCheck, label: "New User Verification", roles: ["Super Admin", "HR"] },
       { href: "#", icon: Coins, label: "Add Ad-hoc Salary", roles: ["HR"] },
-      { href: "#", icon: ShieldQuestion, label: "Salary Approvals", roles: ["HR"] },
+      { href: "#", icon: ShieldQuestion, label: "Salary Setting Approvals", roles: ["HR"] },
+      { href: "#", icon: ShieldCheck, label: "Salary Payout Approvals", roles: ["HR", "Super Admin"] },
       { href: "#", icon: Award, label: "Incentive Approvals", roles: ["HR", "Super Admin"] },
       { href: "#", icon: Wallet, label: "Salary Management", roles: ["Admin", "Super Admin", "HR"] },
-      { href: "#", icon: ShieldCheck, label: "Payout Approvals", roles: ["HR", "Super Admin"] },
       { href: "#", icon: History, label: "Payout History", roles: ["HR", "Super Admin"] },
       { href: "#", icon: UserPlus, label: "Add HR User", roles: ["Super Admin"] },
       { href: "#", icon: Warehouse, label: "Add Store Keeper", roles: ["Super Admin"] },
@@ -601,12 +602,12 @@ const AppLayout = ({ user }: { user: User }) => {
         return <ProductCommissionSettings />;
       case "Salary Management":
         return <SalarySettingsForm user={user} allCustomers={allCustomers} />;
-      case "Salary Approvals":
+      case "Salary Setting Approvals":
         return <SalaryApprovalView user={user} />;
+      case "Salary Payout Approvals":
+        return <SalaryPayoutApprovalView user={user} allCustomers={allCustomers} />;
       case "Incentive Approvals":
         return <IncentiveApprovalView user={user} />;
-      case "Payout Approvals":
-        return <PayoutHistoryView />;
       case "Payout History":
         return <PayoutHistoryView />;
       case "Incentives":
@@ -711,3 +712,5 @@ const AppLayout = ({ user }: { user: User }) => {
 };
 
 export default AppLayout;
+
+    

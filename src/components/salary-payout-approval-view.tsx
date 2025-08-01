@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { User, SalaryPayoutRequest, Customer } from '@/types';
 import { getPendingSalaryPayoutRequests, approveSalaryPayout, rejectSalaryPayoutRequest } from '@/lib/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -146,3 +146,5 @@ const SalaryPayoutApprovalView: React.FC<SalaryPayoutApprovalViewProps> = ({ use
 };
 
 export default SalaryPayoutApprovalView;
+
+    
