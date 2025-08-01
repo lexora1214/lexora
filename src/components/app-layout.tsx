@@ -65,7 +65,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import type { User, Role, Customer, IncomeRecord, ProductSale, CommissionRequest, StockItem, Reminder, StockTransfer } from "@/types";
+import type { User, Role, Customer, IncomeRecord, ProductSale, CommissionRequest, StockItem, Reminder, StockTransfer, Collection } from "@/types";
 import { getDownlineIdsAndUsers } from "@/lib/hierarchy";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -99,7 +99,7 @@ import RecoveryOfficerDashboard from "./recovery-officer-dashboard";
 import CommissionApprovalView from "./commission-approval-view";
 import SalarySettingsForm from "./salary-settings";
 import { useOfflineSync } from "@/hooks/use-offline-sync";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
+import { Tooltip, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 import StockManagementView from "./stock-management-view";
 import AdminStockView from "./admin-stock-view";
 import IncentiveManagementView from "./incentive-management-view";
@@ -358,6 +358,7 @@ const AppLayout = ({ user }: { user: User }) => {
   const [allStockItems, setAllStockItems] = React.useState<StockItem[]>([]);
   const [allReminders, setAllReminders] = React.useState<Reminder[]>([]);
   const [stockTransfers, setStockTransfers] = React.useState<StockTransfer[]>([]);
+  const [allCollections, setAllCollections] = React.useState<Collection[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [isMobileSheetOpen, setIsMobileSheetOpen] = React.useState(false);
   const [isProfileSettingsOpen, setIsProfileSettingsOpen] = React.useState(false);
@@ -419,6 +420,11 @@ const AppLayout = ({ user }: { user: User }) => {
         const transferData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data()} as StockTransfer));
         setStockTransfers(transferData);
     });
+    
+    const collectionsUnsub = onSnapshot(collection(db, 'collections'), {includeMetadataChanges: true}, (snapshot) => {
+        const collectionsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data()} as Collection));
+        setAllCollections(collectionsData);
+    });
 
     return () => {
       usersUnsub();
@@ -429,6 +435,7 @@ const AppLayout = ({ user }: { user: User }) => {
       stockItemsUnsub();
       remindersUnsub();
       stockTransfersUnsub();
+      collectionsUnsub();
     };
   }, [user.id]);
 
@@ -458,7 +465,7 @@ const AppLayout = ({ user }: { user: User }) => {
           case "Store Keeper":
             return <StoreKeeperDashboard allStockItems={allStockItems} setActiveView={setActiveView} />;
           case "Recovery Admin":
-            return <RecoveryAdminDashboard allUsers={allUsers} allProductSales={allProductSales} />;
+            return <RecoveryAdminDashboard allUsers={allUsers} allProductSales={allProductSales} allCollections={allCollections} />;
           case "Salesman":
             return <SalesmanDashboard user={user} allCustomers={allCustomers} allIncomeRecords={allIncomeRecords} allCommissionRequests={allCommissionRequests} allStockItems={allStockItems} />;
           case "Team Operation Manager":

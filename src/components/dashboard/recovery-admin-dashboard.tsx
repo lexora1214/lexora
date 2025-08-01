@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import { User, ProductSale } from "@/types";
+import { User, ProductSale, Collection } from "@/types";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { TrendingUp, Repeat, Send, PackageSearch, Wallet, Calendar as CalendarIcon } from "lucide-react";
 import { DateRange } from "react-day-picker";
@@ -15,9 +15,10 @@ import { cn } from "@/lib/utils";
 interface RecoveryAdminDashboardProps {
   allUsers: User[];
   allProductSales: ProductSale[];
+  allCollections: Collection[];
 }
 
-const RecoveryAdminDashboard: React.FC<RecoveryAdminDashboardProps> = ({ allUsers, allProductSales }) => {
+const RecoveryAdminDashboard: React.FC<RecoveryAdminDashboardProps> = ({ allUsers, allProductSales, allCollections }) => {
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: startOfMonth(new Date()),
     to: endOfMonth(new Date()),
@@ -28,22 +29,21 @@ const RecoveryAdminDashboard: React.FC<RecoveryAdminDashboardProps> = ({ allUser
     const to = dateRange?.to ? new Date(dateRange.to) : from ? new Date(from) : null;
     if (to) to.setHours(23, 59, 59, 999);
 
-    const filteredSales = allProductSales.filter(sale => {
-        if (!from || !to) return true; // Show all if no date range
-        const saleDate = new Date(sale.saleDate);
-        return saleDate >= from && saleDate <= to;
-    });
+    const filteredCollections = from && to 
+        ? allCollections.filter(c => {
+            const collectedDate = new Date(c.collectedAt);
+            return collectedDate >= from && collectedDate <= to;
+        })
+        : allCollections;
 
-    const installmentSales = filteredSales.filter(sale => sale.paymentMethod === 'installments');
+    const installmentSales = allProductSales.filter(sale => sale.paymentMethod === 'installments');
 
     const totalArrears = installmentSales.reduce((sum, sale) => sum + (sale.arrears || 0), 0);
     const totalInstallments = installmentSales.length;
     const assignedInstallments = installmentSales.filter(sale => sale.recoveryStatus === 'assigned').length;
     const pendingAssignment = installmentSales.filter(sale => sale.recoveryStatus === 'pending').length;
-    const collectedAmount = installmentSales.reduce((sum, sale) => {
-        const collected = (sale.paidInstallments || 0) * (sale.monthlyInstallment || 0);
-        return sum + collected;
-    }, 0);
+    
+    const collectedAmount = filteredCollections.reduce((sum, c) => sum + c.amount, 0);
 
     return {
         totalArrears,
@@ -52,7 +52,7 @@ const RecoveryAdminDashboard: React.FC<RecoveryAdminDashboardProps> = ({ allUser
         pendingAssignment,
         collectedAmount,
     };
-  }, [allProductSales, dateRange]);
+  }, [allProductSales, allCollections, dateRange]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -98,6 +98,16 @@ const RecoveryAdminDashboard: React.FC<RecoveryAdminDashboardProps> = ({ allUser
             </Popover>
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+             <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Collected in Period</CardTitle>
+                    <Wallet className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold">LKR {recoveryStats.collectedAmount.toLocaleString()}</div>
+                    <p className="text-xs text-muted-foreground">Sum of all payments in the date range.</p>
+                </CardContent>
+            </Card>
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Total Arrears Count</CardTitle>
@@ -105,17 +115,7 @@ const RecoveryAdminDashboard: React.FC<RecoveryAdminDashboardProps> = ({ allUser
                 </CardHeader>
                 <CardContent>
                     <div className="text-2xl font-bold">{recoveryStats.totalArrears}</div>
-                    <p className="text-xs text-muted-foreground">Total missed installments in period.</p>
-                </CardContent>
-            </Card>
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Total Collected Value</CardTitle>
-                    <Wallet className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                    <div className="text-2xl font-bold">LKR {recoveryStats.collectedAmount.toLocaleString()}</div>
-                    <p className="text-xs text-muted-foreground">From installment plans created in period.</p>
+                    <p className="text-xs text-muted-foreground">Total current missed installments.</p>
                 </CardContent>
             </Card>
              <Card>
@@ -125,7 +125,7 @@ const RecoveryAdminDashboard: React.FC<RecoveryAdminDashboardProps> = ({ allUser
                 </CardHeader>
                 <CardContent>
                     <div className="text-2xl font-bold">{recoveryStats.totalInstallments}</div>
-                    <p className="text-xs text-muted-foreground">Installment sales made in period.</p>
+                    <p className="text-xs text-muted-foreground">Total active installment sales.</p>
                 </CardContent>
             </Card>
              <Card>
@@ -135,7 +135,7 @@ const RecoveryAdminDashboard: React.FC<RecoveryAdminDashboardProps> = ({ allUser
                 </CardHeader>
                 <CardContent>
                     <div className="text-2xl font-bold">{recoveryStats.assignedInstallments}</div>
-                    <p className="text-xs text-muted-foreground">Customers assigned to an officer in period.</p>
+                    <p className="text-xs text-muted-foreground">Customers currently assigned to an officer.</p>
                 </CardContent>
             </Card>
             <Card>
@@ -145,7 +145,7 @@ const RecoveryAdminDashboard: React.FC<RecoveryAdminDashboardProps> = ({ allUser
                 </CardHeader>
                 <CardContent>
                     <div className="text-2xl font-bold">{recoveryStats.pendingAssignment}</div>
-                    <p className="text-xs text-muted-foreground">Customers needing assignment in period.</p>
+                    <p className="text-xs text-muted-foreground">Customers needing officer assignment.</p>
                 </CardContent>
             </Card>
         </div>
