@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -211,7 +210,7 @@ const StockManagementView: React.FC<StockManagementViewProps> = ({ manager }) =>
                     onChange={(e) => setFilter(e.target.value)}
                     className="w-full md:w-auto"
                 />
-                {manager.role === 'Branch Admin' && (
+                {manager.role === 'Team Operation Manager' && (
                   <Button onClick={handleAdd} className="w-full md:w-auto">
                       <PlusCircle /> Add New Item
                   </Button>
@@ -244,36 +243,36 @@ const StockManagementView: React.FC<StockManagementViewProps> = ({ manager }) =>
                       <TableCell>LKR {item.priceInstallment.toLocaleString()}</TableCell>
                       <TableCell className="text-center">{item.imeis?.length ?? item.quantity}</TableCell>
                       <TableCell className="text-right">
-                        {manager.role === 'Branch Admin' ? (
-                            <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" className="h-8 w-8 p-0" onClick={(e) => e.stopPropagation()}><MoreHorizontal /></Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                                <DropdownMenuItem onClick={() => handleViewImeis(item)}>View IMEIs</DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleEdit(item)}><Edit className="mr-2" /> Edit</DropdownMenuItem>
-                                <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                        <button className="relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 w-full text-destructive">
-                                            <Trash2 className="mr-2"/> Delete
-                                        </button>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                            <AlertDialogDescription>This will permanently delete the item. This action cannot be undone.</AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                            <AlertDialogAction onClick={() => handleDelete(item.id)}>Continue</AlertDialogAction>
-                                        </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                </AlertDialog>
-                            </DropdownMenuContent>
-                            </DropdownMenu>
-                        ) : (
-                           <span className="text-xs text-muted-foreground">No actions</span>
-                        )}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" className="h-8 w-8 p-0" onClick={(e) => e.stopPropagation()}><MoreHorizontal /></Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                              <DropdownMenuItem onClick={() => handleViewImeis(item)}>View IMEIs</DropdownMenuItem>
+                              {manager.role === 'Team Operation Manager' && (
+                                <>
+                                  <DropdownMenuItem onClick={() => handleEdit(item)}><Edit className="mr-2" /> Edit</DropdownMenuItem>
+                                  <AlertDialog>
+                                      <AlertDialogTrigger asChild>
+                                          <button className="relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 w-full text-destructive">
+                                              <Trash2 className="mr-2"/> Delete
+                                          </button>
+                                      </AlertDialogTrigger>
+                                      <AlertDialogContent>
+                                          <AlertDialogHeader>
+                                              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                              <AlertDialogDescription>This will permanently delete the item. This action cannot be undone.</AlertDialogDescription>
+                                          </AlertDialogHeader>
+                                          <AlertDialogFooter>
+                                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                              <AlertDialogAction onClick={() => handleDelete(item.id)}>Continue</AlertDialogAction>
+                                          </AlertDialogFooter>
+                                      </AlertDialogContent>
+                                  </AlertDialog>
+                                </>
+                              )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   ))
