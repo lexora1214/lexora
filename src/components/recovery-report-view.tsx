@@ -1,8 +1,9 @@
 
-
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
+import jsPDF from "jspdf";
+import "jspdf-autotable";
 import { User, ProductSale, Collection } from "@/types";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -16,8 +17,9 @@ import { Calendar } from "./ui/calendar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { cn } from "@/lib/utils";
-import { Calendar as CalendarIcon, LoaderCircle, Wallet, Users } from "lucide-react";
+import { Calendar as CalendarIcon, LoaderCircle, Wallet, Users, FileDown, FileSpreadsheet, FileText, ChevronDown } from "lucide-react";
 import { Badge } from "./ui/badge";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
 
 interface RecoveryReportViewProps {
   allUsers: User[];
@@ -80,6 +82,80 @@ const RecoveryReportView: React.FC<RecoveryReportViewProps> = ({ allUsers, allPr
 
   const totalPages = Math.ceil(filteredCollections.length / rowsPerPage);
 
+  const handleGeneratePdf = () => {
+    const doc = new jsPDF();
+    const tableRows: any[] = [];
+    const tableColumns = ["Date", "Officer", "Customer", "Token", "Type", "Amount (LKR)"];
+
+    doc.setFontSize(18);
+    doc.setFont("helvetica", "bold");
+    doc.text("Recovery Collection Report", 14, 22);
+
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    const dateSuffix = dateRange?.from ? `Period: ${format(dateRange.from, "LLL dd, y")} - ${format(dateRange.to ?? dateRange.from, "LLL dd, y")}` : 'Period: All Time';
+    doc.text(dateSuffix, 14, 30);
+    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 36);
+
+    filteredCollections.forEach(item => {
+      const row = [
+        format(new Date(item.collectedAt), 'PPp'),
+        item.collectorName,
+        item.customerName,
+        item.tokenSerial,
+        item.type,
+        { content: item.amount.toLocaleString(), styles: { halign: 'right' } }
+      ];
+      tableRows.push(row);
+    });
+    
+    (doc as any).autoTable({
+        head: [tableColumns],
+        body: tableRows,
+        startY: 45,
+        columnStyles: {
+            4: { halign: 'center' },
+            5: { halign: 'right' },
+        },
+        foot: [
+            [{ content: 'Total Collected', colSpan: 5, styles: { halign: 'right', fontStyle: 'bold' } }, { content: `LKR ${totalCollected.toLocaleString()}`, styles: { halign: 'right', fontStyle: 'bold' } }]
+        ],
+        footStyles: { fillColor: [239, 241, 245] }
+    });
+
+    doc.save(`recovery_report_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+  };
+
+  const handleGenerateCsv = () => {
+    const headers = ["Date", "Officer", "Customer", "Token Serial", "Type", "Amount (LKR)"];
+    const csvRows = [headers.join(',')];
+
+    filteredCollections.forEach(item => {
+        const row = [
+            `"${format(new Date(item.collectedAt), 'PPp')}"`,
+            `"${item.collectorName.replace(/"/g, '""')}"`,
+            `"${item.customerName.replace(/"/g, '""')}"`,
+            item.tokenSerial,
+            item.type,
+            item.amount
+        ];
+        csvRows.push(row.join(','));
+    });
+    
+    csvRows.push(`\n,,,,Total,"${totalCollected}"`);
+
+    const csvContent = csvRows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `recovery_report_${format(new Date(), 'yyyy-MM-dd')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   if (loading) {
     return <div className="flex justify-center items-center h-48"><LoaderCircle className="h-8 w-8 animate-spin" /></div>
   }
@@ -141,6 +217,19 @@ const RecoveryReportView: React.FC<RecoveryReportViewProps> = ({ allUsers, allPr
                     {recoveryOfficers.map(o => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
                 </SelectContent>
             </Select>
+            <div className="ml-auto">
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="outline" disabled={filteredCollections.length === 0}>
+                            <FileDown className="mr-2 h-4 w-4" /> Generate Report <ChevronDown className="ml-2 h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                        <DropdownMenuItem onClick={handleGenerateCsv}><FileSpreadsheet className="mr-2 h-4 w-4"/> Export as CSV</DropdownMenuItem>
+                        <DropdownMenuItem onClick={handleGeneratePdf}><FileText className="mr-2 h-4 w-4"/> Export as PDF</DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -202,5 +291,3 @@ const RecoveryReportView: React.FC<RecoveryReportViewProps> = ({ allUsers, allPr
 }
 
 export default RecoveryReportView;
-
-    
