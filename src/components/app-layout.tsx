@@ -142,7 +142,7 @@ type NavItem = {
 };
 
 const navItems: NavItem[] = [
-  { href: "#", icon: LayoutDashboard, label: "Dashboard", roles: ["Admin", "Super Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Salesman", "Delivery Boy", "Recovery Officer", "HR", "Store Keeper", "Recovery Admin", "Call Centre Operator"] },
+  { href: "#", icon: LayoutDashboard, label: "Dashboard", roles: ["Admin", "Super Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Salesman", "Delivery Boy", "Recovery Officer", "HR", "Store Keeper", "Recovery Admin", "Call Centre Operator", "Technical Officer"] },
   { href: "#", icon: Briefcase, label: "Customer Management", roles: ["Admin", "Super Admin", "Recovery Admin"]},
   { href: "#", icon: MessageSquareWarning, label: "Report Technical Issue", roles: ["Call Centre Operator"] },
   { href: "#", icon: Wrench, label: "My Tasks", roles: ["Technical Officer"] },
@@ -501,6 +501,8 @@ const AppLayout = ({ user }: { user: User }) => {
             return <RecoveryAdminDashboard allUsers={allUsers} allProductSales={allProductSales} allCollections={allCollections} />;
           case "Call Centre Operator":
             return <CallCentreOperatorDashboard operator={user} allIssues={allTechnicalIssues} />;
+          case "Technical Officer":
+            return <TechnicalOfficerDashboard officer={user} allIssues={allTechnicalIssues} />;
           case "Salesman":
             return <SalesmanDashboard user={user} allCustomers={allCustomers} allIncomeRecords={allIncomeRecords} allCommissionRequests={allCommissionRequests} allStockItems={allStockItems} />;
           case "Team Operation Manager":
@@ -754,4 +756,5 @@ const AppLayout = ({ user }: { user: User }) => {
 export default AppLayout;
 
     
+
 
