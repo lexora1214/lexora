@@ -167,7 +167,7 @@ const navItems: NavItem[] = [
       { href: "#", icon: Boxes, label: "Stock Management", roles: ["Team Operation Manager", "Branch Admin"] },
       { href: "#", icon: Package, label: "Global Stock View", roles: ["Admin", "Super Admin", "Store Keeper"] },
       { href: "#", icon: PackagePlus, label: "Assign Stock", roles: ["Store Keeper"] },
-      { href: "#", icon: CheckSquare, label: "Confirm Stock", roles: ["Team Operation Manager"] },
+      { href: "#", icon: CheckSquare, label: "Confirm Stock", roles: ["Team Operation Manager", "Branch Admin"] },
     ]
   },
   { href: "#", icon: ShoppingCart, label: "Record Product Sale", roles: ["Team Operation Manager", "Branch Admin"] },
@@ -757,6 +757,7 @@ const AppLayout = ({ user }: { user: User }) => {
 export default AppLayout;
 
     
+
 
 
 
