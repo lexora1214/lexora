@@ -7,27 +7,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { LoaderCircle, UserPlus, CheckCircle, Warehouse } from "lucide-react";
+import { LoaderCircle, UserPlus } from "lucide-react";
 import { User, Role } from "@/types";
 import { createUserProfile } from "@/lib/firestore";
 import { firebaseConfig } from "@/lib/firebase";
 import { initializeApp, deleteApp } from "firebase/app";
 import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
-import { sendOtpSms } from "@/lib/sms";
-import { InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot } from "@/components/ui/input-otp";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 
 interface AddHrViewProps {
   adminUser: User;
 }
-
-type SignupData = {
-  name: string;
-  email: string;
-  mobileNumber: string;
-  password: string;
-  role: Extract<Role, 'HR' | 'Store Keeper' | 'Recovery Admin' | 'Call Centre Operator'>;
-};
 
 export default function AddHrView({ adminUser }: AddHrViewProps) {
   const { toast } = useToast();
@@ -41,14 +31,8 @@ export default function AddHrView({ adminUser }: AddHrViewProps) {
 
   // UI/Flow state
   const [isLoading, setIsLoading] = useState(false);
-  const [step, setStep] = useState<'details' | 'otp'>('details');
-
-  // OTP state
-  const [generatedOtp, setGeneratedOtp] = useState("");
-  const [enteredOtp, setEnteredOtp] = useState("");
-  const [signupData, setSignupData] = useState<SignupData | null>(null);
-
-  const handleSendOtp = async (e: React.FormEvent) => {
+  
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (password.length < 6) {
         toast({ variant: "destructive", title: "Registration Failed", description: "Password must be at least 6 characters long." });
@@ -61,58 +45,18 @@ export default function AddHrView({ adminUser }: AddHrViewProps) {
 
     setIsLoading(true);
 
-    try {
-      const otp = Math.floor(100000 + Math.random() * 900000).toString();
-      setGeneratedOtp(otp);
-
-      setSignupData({ name, email, mobileNumber, password, role });
-
-      await sendOtpSms(mobileNumber, otp);
-      
-      toast({
-        title: "OTP Sent",
-        description: `An OTP has been sent to the new user's mobile number (${mobileNumber}).`,
-      });
-      setStep('otp');
-
-    } catch (error: any) {
-      console.error("Error sending OTP:", error);
-      toast({ 
-          variant: "destructive", 
-          title: "OTP Send Failed", 
-          description: "Could not send OTP. Please check the number and try again. If the issue persists, check the server logs." 
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleVerifyAndCreateUser = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (enteredOtp.length !== 6 || enteredOtp !== generatedOtp) {
-      toast({ variant: "destructive", title: "Verification Failed", description: "The OTP you entered is incorrect." });
-      return;
-    }
-    if (!signupData) {
-      toast({ variant: "destructive", title: "Verification Failed", description: "Signup data was lost. Please restart the registration." });
-      setStep('details');
-      return;
-    }
-
-    setIsLoading(true);
-
     const tempAppName = `system-user-signup-${Date.now()}`;
     const tempApp = initializeApp(firebaseConfig, tempAppName);
     const tempAuth = getAuth(tempApp);
 
     try {
-      const userCredential = await createUserWithEmailAndPassword(tempAuth, signupData.email, signupData.password);
+      const userCredential = await createUserWithEmailAndPassword(tempAuth, email, password);
       
       await createUserProfile(
         userCredential.user,
-        signupData.name,
-        signupData.mobileNumber,
-        signupData.role,
+        name,
+        mobileNumber,
+        role,
         "", // No referral code needed
         undefined,
         undefined,
@@ -123,8 +67,8 @@ export default function AddHrView({ adminUser }: AddHrViewProps) {
       );
 
       toast({
-        title: `${signupData.role} Registered`,
-        description: `${signupData.name} has been successfully registered.`,
+        title: `${role} Registered`,
+        description: `${name} has been successfully registered.`,
         variant: "default",
         className: "bg-success text-success-foreground",
       });
@@ -133,8 +77,7 @@ export default function AddHrView({ adminUser }: AddHrViewProps) {
       setEmail("");
       setMobileNumber("");
       setPassword("");
-      setEnteredOtp("");
-      setStep('details');
+      setRole('HR');
       
     } catch (error: any) {
       let errorMessage = error.message;
@@ -147,44 +90,6 @@ export default function AddHrView({ adminUser }: AddHrViewProps) {
       await deleteApp(tempApp);
     }
   };
-  
-  if (step === 'otp') {
-    return (
-       <Card className="w-full max-w-lg mx-auto">
-          <CardHeader>
-              <CardTitle className="flex items-center gap-2"><CheckCircle /> Verify Mobile Number</CardTitle>
-              <CardDescription>Enter the 6-digit code sent to {mobileNumber}.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleVerifyAndCreateUser}>
-              <div className="grid gap-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="otp">Verification Code</Label>
-                     <InputOTP maxLength={6} value={enteredOtp} onChange={(value) => setEnteredOtp(value)}>
-                        <InputOTPGroup>
-                            <InputOTPSlot index={0} />
-                            <InputOTPSlot index={1} />
-                            <InputOTPSlot index={2} />
-                        </InputOTPGroup>
-                        <InputOTPSeparator />
-                        <InputOTPGroup>
-                            <InputOTPSlot index={3} />
-                            <InputOTPSlot index={4} />
-                            <InputOTPSlot index={5} />
-                        </InputOTPGroup>
-                    </InputOTP>
-                  </div>
-                  <Button type="submit" className="w-full" disabled={isLoading}>
-                      {isLoading && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
-                      Verify & Create Account
-                  </Button>
-                  <Button variant="link" onClick={() => setStep('details')}>Back to details</Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-    );
-  }
 
   return (
     <Card className="w-full max-w-lg mx-auto">
@@ -196,7 +101,7 @@ export default function AddHrView({ adminUser }: AddHrViewProps) {
         <CardDescription>Enter the new user's details. They will be able to log in immediately.</CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSendOtp}>
+        <form onSubmit={handleSignup}>
           <div className="grid gap-4">
              <div className="grid gap-2">
                 <Label htmlFor="role">Role</Label>
@@ -230,7 +135,7 @@ export default function AddHrView({ adminUser }: AddHrViewProps) {
             </div>
             <Button type="submit" className="w-full mt-2" disabled={isLoading}>
               {isLoading && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
-              Send OTP & Continue
+              Create Account
             </Button>
           </div>
         </form>
