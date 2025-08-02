@@ -16,6 +16,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from './ui/dropdown-menu';
 import CustomerDetailsDialog from './customer-details-dialog';
 import { getAllCustomers, getAllUsers } from '@/lib/firestore';
@@ -24,9 +25,6 @@ import { db } from '@/lib/firebase';
 
 interface FullPaymentApprovalViewProps {
   adminUser: User;
-  allCustomers: Customer[];
-  allProductSales: ProductSale[];
-  allUsers: User[];
 }
 
 const FullPaymentApprovalView: React.FC<FullPaymentApprovalViewProps> = ({ adminUser }) => {
@@ -70,7 +68,7 @@ const FullPaymentApprovalView: React.FC<FullPaymentApprovalViewProps> = ({ admin
     fetchRelatedData();
 
     return () => salesUnsub();
-  }, []);
+  }, [toast]);
 
   const handleApprove = async (requestId: string) => {
     setProcessingId(requestId);
@@ -214,4 +212,3 @@ const FullPaymentApprovalView: React.FC<FullPaymentApprovalViewProps> = ({ admin
 };
 
 export default FullPaymentApprovalView;
-
