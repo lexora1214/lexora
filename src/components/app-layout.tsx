@@ -100,7 +100,7 @@ import RecoveryOfficerDashboard from "./recovery-officer-dashboard";
 import CommissionApprovalView from "./commission-approval-view";
 import SalarySettingsForm from "./salary-settings";
 import { useOfflineSync } from "@/hooks/use-offline-sync";
-import { Tooltip, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
+import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "./ui/tooltip";
 import StockManagementView from "./stock-management-view";
 import AdminStockView from "./admin-stock-view";
 import IncentiveManagementView from "./incentive-management-view";
