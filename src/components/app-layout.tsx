@@ -55,7 +55,7 @@ import {
 } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
-import { collection, onSnapshot, query, where } from "firebase/firestore";
+import { collection, onSnapshot, query, where, documentId } from "firebase/firestore";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -382,94 +382,70 @@ const AppLayout = ({ user }: { user: User }) => {
   const [loading, setLoading] = React.useState(true);
   const [isMobileSheetOpen, setIsMobileSheetOpen] = React.useState(false);
   const [isProfileSettingsOpen, setIsProfileSettingsOpen] = React.useState(false);
-  const [insights, setInsights] = React.useState<string[]>([]);
-  const [isGeneratingInsights, setIsGeneratingInsights] = React.useState(false);
-  const [insightsError, setInsightsError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    // For Branch Admins, since they don't have a dashboard, set the default view to something they can see.
-    if (user.role === 'Branch Admin') {
-      setActiveView('Dashboard');
+    if (user.role === 'Branch Admin' || user.role === 'Store Keeper' || user.role === 'Recovery Admin' || user.role === 'Call Centre Operator') {
+        setActiveView('Dashboard');
     }
-    if (user.role === 'Store Keeper') {
-      setActiveView('Dashboard');
-    }
-     if (user.role === 'Recovery Admin') {
-      setActiveView('Dashboard');
-    }
-     if (user.role === 'Call Centre Operator') {
-      setActiveView('Dashboard');
-    }
-     if (user.role === 'Technical Officer') {
-      setActiveView('My Tasks');
+    if (user.role === 'Technical Officer') {
+        setActiveView('My Tasks');
     }
   }, [user.role]);
 
   React.useEffect(() => {
-    const usersUnsub = onSnapshot(collection(db, "users"), { includeMetadataChanges: true }, (snapshot) => {
-      const usersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
-      setAllUsers(usersData);
-      setLoading(false);
-    });
+    setLoading(true);
+    const options = { includeMetadataChanges: true };
+    const unsubs: (() => void)[] = [];
 
-    const customersUnsub = onSnapshot(collection(db, "customers"), { includeMetadataChanges: true }, (snapshot) => {
-      const customersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
-      setAllCustomers(customersData);
-    });
+    if (user.role === 'Salesman') {
+        // Salesman: Fetch only relevant data
+        const myCustomersQuery = query(collection(db, "customers"), where("salesmanId", "==", user.id));
+        unsubs.push(onSnapshot(myCustomersQuery, options, snapshot => setAllCustomers(snapshot.docs.map(d => ({...d.data(), id: d.id} as Customer)))));
 
-    const incomeRecordsUnsub = onSnapshot(collection(db, "incomeRecords"), { includeMetadataChanges: true }, (snapshot) => {
-        const incomeRecordsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as IncomeRecord));
-        setAllIncomeRecords(incomeRecordsData);
-    });
+        const myIncomeQuery = query(collection(db, "incomeRecords"), where("userId", "==", user.id));
+        unsubs.push(onSnapshot(myIncomeQuery, options, snapshot => setAllIncomeRecords(snapshot.docs.map(d => ({...d.data(), id: d.id} as IncomeRecord)))));
 
-    const productSalesUnsub = onSnapshot(collection(db, "productSales"), { includeMetadataChanges: true }, (snapshot) => {
-        const salesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProductSale));
-        setAllProductSales(salesData);
-    });
+        const myRequestsQuery = query(collection(db, "commissionRequests"), where("salesmanId", "==", user.id));
+        unsubs.push(onSnapshot(myRequestsQuery, options, snapshot => setAllCommissionRequests(snapshot.docs.map(d => ({...d.data(), id: d.id} as CommissionRequest)))));
+        
+        if (user.branch) {
+            const myStockQuery = query(collection(db, "stock"), where("branch", "==", user.branch));
+            unsubs.push(onSnapshot(myStockQuery, options, snapshot => setAllStockItems(snapshot.docs.map(d => ({...d.data(), id: d.id} as StockItem)))));
+        }
 
-    const commissionRequestsUnsub = onSnapshot(collection(db, "commissionRequests"), { includeMetadataChanges: true }, (snapshot) => {
-      const requestsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as CommissionRequest));
-      setAllCommissionRequests(requestsData);
-    });
+        const myRemindersQuery = query(collection(db, 'reminders'), where('salesmanId', '==', user.id));
+        unsubs.push(onSnapshot(myRemindersQuery, options, snapshot => setAllReminders(snapshot.docs.map(d => ({...d.data(), id: d.id} as Reminder)))));
 
-    const stockItemsUnsub = onSnapshot(collection(db, "stock"), { includeMetadataChanges: true }, (snapshot) => {
-        const stockData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StockItem));
-        setAllStockItems(stockData);
-    });
-    
-    const remindersUnsub = onSnapshot(query(collection(db, 'reminders'), where('salesmanId', '==', user.id)), { includeMetadataChanges: true }, (snapshot) => {
-        const remindersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Reminder));
-        setAllReminders(remindersData);
-    });
-    
-    const stockTransfersUnsub = onSnapshot(collection(db, 'stockTransfers'), {includeMetadataChanges: true}, (snapshot) => {
-        const transferData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data()} as StockTransfer));
-        setStockTransfers(transferData);
-    });
-    
-    const collectionsUnsub = onSnapshot(collection(db, 'collections'), {includeMetadataChanges: true}, (snapshot) => {
-        const collectionsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data()} as Collection));
-        setAllCollections(collectionsData);
-    });
-    
-    const technicalIssuesUnsub = onSnapshot(collection(db, 'technicalIssues'), {includeMetadataChanges: true}, (snapshot) => {
-        const issuesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data()} as TechnicalIssue));
-        setAllTechnicalIssues(issuesData);
-    });
+        // Fetch own user doc and manager's doc if referrerId exists
+        const userIdsToFetch = [user.id];
+        if (user.referrerId) userIdsToFetch.push(user.referrerId);
+        const usersQuery = query(collection(db, "users"), where(documentId(), 'in', userIdsToFetch));
+        unsubs.push(onSnapshot(usersQuery, options, snapshot => {
+            setAllUsers(snapshot.docs.map(d => ({...d.data(), id: d.id} as User)));
+            setLoading(false);
+        }));
+
+    } else {
+        // Other roles: Fetch all data as before
+        unsubs.push(onSnapshot(collection(db, "users"), options, s => setAllUsers(s.docs.map(d => ({...d.data(), id: d.id} as User)))));
+        unsubs.push(onSnapshot(collection(db, "customers"), options, s => setAllCustomers(s.docs.map(d => ({...d.data(), id: d.id} as Customer)))));
+        unsubs.push(onSnapshot(collection(db, "incomeRecords"), options, s => setAllIncomeRecords(s.docs.map(d => ({...d.data(), id: d.id} as IncomeRecord)))));
+        unsubs.push(onSnapshot(collection(db, "productSales"), options, s => setAllProductSales(s.docs.map(d => ({...d.data(), id: d.id} as ProductSale)))));
+        unsubs.push(onSnapshot(collection(db, "commissionRequests"), options, s => setAllCommissionRequests(s.docs.map(d => ({...d.data(), id: d.id} as CommissionRequest)))));
+        unsubs.push(onSnapshot(collection(db, "stock"), options, s => setAllStockItems(s.docs.map(d => ({...d.data(), id: d.id} as StockItem)))));
+        unsubs.push(onSnapshot(collection(db, 'reminders'), options, s => setAllReminders(s.docs.map(d => ({...d.data(), id: d.id} as Reminder)))));
+        unsubs.push(onSnapshot(collection(db, 'stockTransfers'), options, s => setStockTransfers(s.docs.map(d => ({...d.data(), id: d.id} as StockTransfer)))));
+        unsubs.push(onSnapshot(collection(db, 'collections'), options, s => setAllCollections(s.docs.map(d => ({...d.data(), id: d.id} as Collection)))));
+        unsubs.push(onSnapshot(collection(db, 'technicalIssues'), options, s => {
+            setAllTechnicalIssues(s.docs.map(d => ({...d.data(), id: d.id} as TechnicalIssue)));
+            setLoading(false); // Set loading to false on the last listener
+        }));
+    }
 
     return () => {
-      usersUnsub();
-      customersUnsub();
-      incomeRecordsUnsub();
-      productSalesUnsub();
-      commissionRequestsUnsub();
-      stockItemsUnsub();
-      remindersUnsub();
-      stockTransfersUnsub();
-      collectionsUnsub();
-      technicalIssuesUnsub();
+      unsubs.forEach(unsub => unsub());
     };
-  }, [user.id]);
+  }, [user.id, user.role, user.branch, user.referrerId]);
 
 
   const handleLogout = async () => {
@@ -580,8 +556,6 @@ const AppLayout = ({ user }: { user: User }) => {
         return <AddRecoveryAdminView hrUser={user} />;
       case "Manage Deliveries":
         return <ManageDeliveriesView manager={user} allUsers={allUsers} />;
-      case "Manage Recovery":
-        return <ManageRecoveryView manager={user} allUsers={allUsers} />;
       case "User Management":
         return (
           <Card>
@@ -756,6 +730,7 @@ const AppLayout = ({ user }: { user: User }) => {
 export default AppLayout;
 
     
+
 
 
 
