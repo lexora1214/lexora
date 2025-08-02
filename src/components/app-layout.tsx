@@ -48,7 +48,10 @@ import {
   Repeat1,
   FileBarChart,
   Coins,
-  FileSignature
+  FileSignature,
+  Wrench,
+  MessageSquareWarning,
+  PhoneCall
 } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
@@ -66,7 +69,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import type { User, Role, Customer, IncomeRecord, ProductSale, CommissionRequest, StockItem, Reminder, StockTransfer, Collection } from "@/types";
+import type { User, Role, Customer, IncomeRecord, ProductSale, CommissionRequest, StockItem, Reminder, StockTransfer, Collection, TechnicalIssue } from "@/types";
 import { getDownlineIdsAndUsers } from "@/lib/hierarchy";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -77,6 +80,8 @@ import ShopManagerDashboard from "@/components/dashboard/shop-manager-dashboard"
 import HrDashboard from "@/components/dashboard/hr-dashboard";
 import StoreKeeperDashboard from "@/components/dashboard/store-keeper-dashboard";
 import RecoveryAdminDashboard from "./dashboard/recovery-admin-dashboard";
+import CallCentreOperatorDashboard from "./dashboard/call-centre-operator-dashboard";
+import TechnicalOfficerDashboard from "./dashboard/technical-officer-dashboard";
 import AdminRecoveryView from "./admin-recovery-view";
 import UserManagementTable from "@/components/user-management-table";
 import CustomerManagementTable from "@/components/customer-management-table";
@@ -90,7 +95,7 @@ import ProductCommissionSettings from "./product-commission-settings";
 import SignupRoleSettingsForm from "./signup-role-settings";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import ProfileSettingsDialog from "./profile-settings-dialog";
-import AddSalesmanView from "./add-salesman-view";
+import AddTeamMemberView from "./add-salesman-view";
 import AddDeliveryBoyView from "./add-delivery-boy-view";
 import ManageDeliveriesView from "./manage-deliveries-view";
 import DeliveryBoyDashboard from "./delivery-boy-dashboard";
@@ -126,6 +131,7 @@ import AdhocSalaryApprovalView from "./adhoc-salary-approval-view";
 import RecoveryReportView from "./recovery-report-view";
 import SalaryPayoutApprovalView from "./salary-payout-approval-view";
 import FullPaymentApprovalView from "./full-payment-approval-view";
+import ReportTechnicalIssueView from "./report-technical-issue-view";
 
 type NavItem = {
   href: string;
@@ -136,8 +142,10 @@ type NavItem = {
 };
 
 const navItems: NavItem[] = [
-  { href: "#", icon: LayoutDashboard, label: "Dashboard", roles: ["Admin", "Super Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Salesman", "Delivery Boy", "Recovery Officer", "HR", "Store Keeper", "Recovery Admin"] },
+  { href: "#", icon: LayoutDashboard, label: "Dashboard", roles: ["Admin", "Super Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Salesman", "Delivery Boy", "Recovery Officer", "HR", "Store Keeper", "Recovery Admin", "Call Centre Operator", "Technical Officer"] },
   { href: "#", icon: Briefcase, label: "Customer Management", roles: ["Admin", "Super Admin", "Recovery Admin"]},
+  { href: "#", icon: MessageSquareWarning, label: "Report Technical Issue", roles: ["Call Centre Operator"] },
+  { href: "#", icon: Wrench, label: "My Tasks", roles: ["Technical Officer"] },
   { 
     href: "#", 
     icon: Repeat1, 
@@ -175,7 +183,7 @@ const navItems: NavItem[] = [
     label: "Add Members", 
     roles: ["Team Operation Manager"],
     children: [
-      { href: "#", icon: UserPlus, label: "Add Salesman", roles: ["Team Operation Manager"] },
+      { href: "#", icon: UserPlus, label: "Add Team Member", roles: ["Team Operation Manager"] },
       { href: "#", icon: UserPlus, label: "Add Branch Admin", roles: ["Team Operation Manager"] },
       { href: "#", icon: UserPlus, label: "Add Delivery Boy", roles: ["Team Operation Manager"] },
       { href: "#", icon: UserPlus, label: "Add Recovery Officer", roles: ["Team Operation Manager"] },
@@ -371,6 +379,7 @@ const AppLayout = ({ user }: { user: User }) => {
   const [allReminders, setAllReminders] = React.useState<Reminder[]>([]);
   const [stockTransfers, setStockTransfers] = React.useState<StockTransfer[]>([]);
   const [allCollections, setAllCollections] = React.useState<Collection[]>([]);
+  const [allTechnicalIssues, setAllTechnicalIssues] = React.useState<TechnicalIssue[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [isMobileSheetOpen, setIsMobileSheetOpen] = React.useState(false);
   const [isProfileSettingsOpen, setIsProfileSettingsOpen] = React.useState(false);
@@ -388,6 +397,12 @@ const AppLayout = ({ user }: { user: User }) => {
     }
      if (user.role === 'Recovery Admin') {
       setActiveView('Dashboard');
+    }
+     if (user.role === 'Call Centre Operator') {
+      setActiveView('Dashboard');
+    }
+     if (user.role === 'Technical Officer') {
+      setActiveView('My Tasks');
     }
   }, [user.role]);
 
@@ -437,6 +452,11 @@ const AppLayout = ({ user }: { user: User }) => {
         const collectionsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data()} as Collection));
         setAllCollections(collectionsData);
     });
+    
+    const technicalIssuesUnsub = onSnapshot(collection(db, 'technicalIssues'), {includeMetadataChanges: true}, (snapshot) => {
+        const issuesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data()} as TechnicalIssue));
+        setAllTechnicalIssues(issuesData);
+    });
 
     return () => {
       usersUnsub();
@@ -448,6 +468,7 @@ const AppLayout = ({ user }: { user: User }) => {
       remindersUnsub();
       stockTransfersUnsub();
       collectionsUnsub();
+      technicalIssuesUnsub();
     };
   }, [user.id]);
 
@@ -478,6 +499,8 @@ const AppLayout = ({ user }: { user: User }) => {
             return <StoreKeeperDashboard allStockItems={allStockItems} setActiveView={setActiveView} />;
           case "Recovery Admin":
             return <RecoveryAdminDashboard allUsers={allUsers} allProductSales={allProductSales} allCollections={allCollections} />;
+          case "Call Centre Operator":
+            return <CallCentreOperatorDashboard operator={user} allIssues={allTechnicalIssues} />;
           case "Salesman":
             return <SalesmanDashboard user={user} allCustomers={allCustomers} allIncomeRecords={allIncomeRecords} allCommissionRequests={allCommissionRequests} allStockItems={allStockItems} />;
           case "Team Operation Manager":
@@ -489,6 +512,10 @@ const AppLayout = ({ user }: { user: User }) => {
           default:
             return <ManagerDashboard user={user} allUsers={allUsers} allIncomeRecords={allIncomeRecords} allCustomers={allCustomers} />;
         }
+      case "Report Technical Issue":
+        return <ReportTechnicalIssueView operator={user} allCustomers={allCustomers} allUsers={allUsers} />;
+      case "My Tasks":
+        return <TechnicalOfficerDashboard officer={user} allIssues={allTechnicalIssues} />;
       case "Recovery Management":
         return <AdminRecoveryView user={user} allProductSales={allProductSales} allCustomers={allCustomers} allUsers={allUsers} />;
       case "Full Payment Approvals":
@@ -531,8 +558,8 @@ const AppLayout = ({ user }: { user: User }) => {
           </Card>
         );
       }
-      case "Add Salesman":
-        return <AddSalesmanView manager={user} />;
+      case "Add Team Member":
+        return <AddTeamMemberView manager={user} />;
       case "Add Branch Admin":
         return <AddBranchAdminView manager={user} />;
       case "Add Delivery Boy":

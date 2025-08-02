@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState } from "react";
@@ -8,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { LoaderCircle, UserPlus, FileUp, CheckCircle2, CheckCircle } from "lucide-react";
-import { User, SalesmanStage, SalesmanDocuments } from "@/types";
+import { User, SalesmanStage, UserDocuments, Role } from "@/types";
 import { createUserProfile } from "@/lib/firestore";
 import { firebaseConfig } from "@/lib/firebase";
 import { initializeApp, deleteApp } from "firebase/app";
@@ -24,7 +25,7 @@ import { cn } from "@/lib/utils";
 import { sendOtpSms } from "@/lib/sms";
 import { InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot } from "@/components/ui/input-otp";
 
-interface AddSalesmanViewProps {
+interface AddTeamMemberViewProps {
   manager: User;
 }
 
@@ -57,11 +58,12 @@ type SignupData = {
   email: string;
   mobileNumber: string;
   password: string;
-  salesmanStage: SalesmanStage;
-  documents: SalesmanDocuments;
+  role: Role;
+  salesmanStage?: SalesmanStage;
+  documents?: UserDocuments;
 };
 
-export default function AddSalesmanView({ manager }: AddSalesmanViewProps) {
+export default function AddTeamMemberView({ manager }: AddTeamMemberViewProps) {
   const { toast } = useToast();
   
   // Form state
@@ -69,8 +71,9 @@ export default function AddSalesmanView({ manager }: AddSalesmanViewProps) {
   const [email, setEmail] = useState("");
   const [mobileNumber, setMobileNumber] = useState("");
   const [password, setPassword] = useState("");
+  const [role, setRole] = useState<Role>('Salesman');
   const [salesmanStage, setSalesmanStage] = useState<SalesmanStage>("BUSINESS PROMOTER (stage 01)");
-  const [documents, setDocuments] = useState<Partial<SalesmanDocuments>>({});
+  const [documents, setDocuments] = useState<Partial<UserDocuments>>({});
 
   // UI/Flow state
   const [isLoading, setIsLoading] = useState(false);
@@ -81,7 +84,7 @@ export default function AddSalesmanView({ manager }: AddSalesmanViewProps) {
   const [enteredOtp, setEnteredOtp] = useState("");
   const [signupData, setSignupData] = useState<SignupData | null>(null);
 
-  const handleFileSelect = (docType: keyof SalesmanDocuments, file: File) => {
+  const handleFileSelect = (docType: keyof UserDocuments, file: File) => {
     setDocuments(prev => ({ ...prev, [docType]: file }));
   };
 
@@ -90,6 +93,7 @@ export default function AddSalesmanView({ manager }: AddSalesmanViewProps) {
       setEmail("");
       setMobileNumber("");
       setPassword("");
+      setRole("Salesman");
       setSalesmanStage("BUSINESS PROMOTER (stage 01)");
       setDocuments({});
       setEnteredOtp("");
@@ -108,8 +112,8 @@ export default function AddSalesmanView({ manager }: AddSalesmanViewProps) {
         toast({ variant: "destructive", title: "Registration Failed", description: "Please enter a valid 10-digit mobile number." });
         return;
     }
-    if (!documents.nicFront || !documents.nicBack || !documents.gsCertificate || !documents.policeReport) {
-        toast({ variant: "destructive", title: "Registration Failed", description: "All four verification documents are required." });
+    if (role === 'Salesman' && (!documents.nicFront || !documents.nicBack)) {
+        toast({ variant: "destructive", title: "Registration Failed", description: "NIC front and back documents are required for Salesmen." });
         return;
     }
 
@@ -120,15 +124,16 @@ export default function AddSalesmanView({ manager }: AddSalesmanViewProps) {
       setGeneratedOtp(otp);
 
       setSignupData({
-          name, email, mobileNumber, password, salesmanStage,
-          documents: documents as SalesmanDocuments
+          name, email, mobileNumber, password, role,
+          salesmanStage: role === 'Salesman' ? salesmanStage : undefined,
+          documents: role === 'Salesman' ? (documents as UserDocuments) : undefined,
       });
 
       await sendOtpSms(mobileNumber, otp);
       
       toast({
         title: "OTP Sent",
-        description: `An OTP has been sent to the new salesman's mobile number (${mobileNumber}).`,
+        description: `An OTP has been sent to the new member's mobile number (${mobileNumber}).`,
       });
       setStep('otp');
 
@@ -137,7 +142,7 @@ export default function AddSalesmanView({ manager }: AddSalesmanViewProps) {
       toast({ 
           variant: "destructive", 
           title: "OTP Send Failed", 
-          description: "Could not send OTP. Please check the number and try again. If the issue persists, check the server logs." 
+          description: "Could not send OTP. Please check the number and try again." 
       });
     } finally {
       setIsLoading(false);
@@ -157,7 +162,7 @@ export default function AddSalesmanView({ manager }: AddSalesmanViewProps) {
     }
 
     setIsLoading(true);
-    const tempAppName = `salesman-signup-${Date.now()}`;
+    const tempAppName = `team-member-signup-${Date.now()}`;
     const tempApp = initializeApp(firebaseConfig, tempAppName);
     const tempAuth = getAuth(tempApp);
 
@@ -167,15 +172,15 @@ export default function AddSalesmanView({ manager }: AddSalesmanViewProps) {
         userCredential.user,
         signupData.name,
         signupData.mobileNumber,
-        "Salesman",
+        signupData.role,
         manager.referralCode,
         manager.branch,
         signupData.salesmanStage,
         signupData.documents
       );
       toast({
-        title: "Salesman Registered",
-        description: `${signupData.name} has been successfully registered. Their account must be enabled by an admin before they can log in.`,
+        title: `${signupData.role} Registered`,
+        description: `${signupData.name} has been successfully registered.`,
         variant: "default",
         className: "bg-success text-success-foreground",
       });
@@ -236,20 +241,32 @@ export default function AddSalesmanView({ manager }: AddSalesmanViewProps) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <UserPlus />
-          Register New Salesman
+          Register New Team Member
         </CardTitle>
-        <CardDescription>Enter the new salesman's details. Their account will be disabled until an admin verifies their documents.</CardDescription>
+        <CardDescription>Enter the new member's details. They will be added to your team and branch.</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSendOtp}>
           <div className="grid gap-4">
+             <div className="grid gap-2">
+              <Label htmlFor="role">Role to Register</Label>
+              <Select value={role} onValueChange={(value) => setRole(value as Role)}>
+                <SelectTrigger id="role">
+                  <SelectValue placeholder="Select Role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Salesman">Salesman</SelectItem>
+                  <SelectItem value="Technical Officer">Technical Officer</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="grid gap-2">
               <Label htmlFor="name">Full Name</Label>
               <Input id="name" placeholder="John Doe" required value={name} onChange={(e) => setName(e.target.value)} />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="email">Email Address</Label>
-              <Input id="email" type="email" placeholder="salesman@example.com" required value={email} onChange={(e) => setEmail(e.target.value)} />
+              <Input id="email" type="email" placeholder="member@example.com" required value={email} onChange={(e) => setEmail(e.target.value)} />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="mobileNumber">Mobile Number</Label>
@@ -259,28 +276,30 @@ export default function AddSalesmanView({ manager }: AddSalesmanViewProps) {
               <Label htmlFor="password">Password</Label>
               <Input id="password" type="password" placeholder="Create a password" required value={password} onChange={(e) => setPassword(e.target.value)} />
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="salesman-stage">Salesman Stage</Label>
-              <Select value={salesmanStage} onValueChange={(value) => setSalesmanStage(value as SalesmanStage)}>
-                <SelectTrigger id="salesman-stage">
-                  <SelectValue placeholder="Select Stage" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="BUSINESS PROMOTER (stage 01)">BUSINESS PROMOTER (stage 01)</SelectItem>
-                  <SelectItem value="MARKETING EXECUTIVE (stage 02)">MARKETING EXECUTIVE (stage 02)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
             
-            <div className="border-t pt-4 mt-2">
-                <h3 className="font-medium text-center mb-4">Verification Documents</h3>
-                <div className="grid grid-cols-2 gap-4">
-                    <FileInput label="NIC Front" onFileSelect={(file) => handleFileSelect('nicFront', file)} acceptedFileTypes=".png,.jpg,.jpeg,.pdf" selectedFile={documents.nicFront || null}/>
-                    <FileInput label="NIC Back" onFileSelect={(file) => handleFileSelect('nicBack', file)} acceptedFileTypes=".png,.jpg,.jpeg,.pdf" selectedFile={documents.nicBack || null} />
-                    <FileInput label="GS Certificate" onFileSelect={(file) => handleFileSelect('gsCertificate', file)} acceptedFileTypes=".png,.jpg,.jpeg,.pdf" selectedFile={documents.gsCertificate || null} />
-                    <FileInput label="Police Report" onFileSelect={(file) => handleFileSelect('policeReport', file)} acceptedFileTypes=".png,.jpg,.jpeg,.pdf" selectedFile={documents.policeReport || null} />
+            {role === 'Salesman' && (
+              <>
+                 <div className="grid gap-2">
+                  <Label htmlFor="salesman-stage">Salesman Stage</Label>
+                  <Select value={salesmanStage} onValueChange={(value) => setSalesmanStage(value as SalesmanStage)}>
+                    <SelectTrigger id="salesman-stage">
+                      <SelectValue placeholder="Select Stage" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="BUSINESS PROMOTER (stage 01)">BUSINESS PROMOTER (stage 01)</SelectItem>
+                      <SelectItem value="MARKETING EXECUTIVE (stage 02)">MARKETING EXECUTIVE (stage 02)</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-            </div>
+                <div className="border-t pt-4 mt-2">
+                    <h3 className="font-medium text-center mb-4">Verification Documents</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                        <FileInput label="NIC Front" onFileSelect={(file) => handleFileSelect('nicFront', file)} acceptedFileTypes=".png,.jpg,.jpeg,.pdf" selectedFile={documents.nicFront || null}/>
+                        <FileInput label="NIC Back" onFileSelect={(file) => handleFileSelect('nicBack', file)} acceptedFileTypes=".png,.jpg,.jpeg,.pdf" selectedFile={documents.nicBack || null} />
+                    </div>
+                </div>
+              </>
+            )}
 
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">

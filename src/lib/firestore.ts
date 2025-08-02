@@ -4,7 +4,7 @@ import { doc, getDoc, setDoc, collection, getDocs, query, where, writeBatch, inc
 import { getAuth, updatePassword } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { db, storage } from "./firebase";
-import { User, Role, Customer, CommissionSettings, IncomeRecord, ProductSale, ProductCommissionSettings, SignupRoleSettings, CommissionRequest, SalesmanStage, SalarySettings, MonthlySalaryPayout, StockItem, IncentiveSettings, Reminder, UserDocuments, SalaryChangeRequest, SalaryPayoutRequest, IncentiveChangeRequest, StockTransfer, StockTransferItem, CustomerNote, AdHocSalaryRequest, Collection, CommissionChangeRequest, FullPaymentRequest } from "@/types";
+import { User, Role, Customer, CommissionSettings, IncomeRecord, ProductSale, ProductCommissionSettings, SignupRoleSettings, CommissionRequest, SalesmanStage, SalarySettings, MonthlySalaryPayout, StockItem, IncentiveSettings, Reminder, UserDocuments, SalaryChangeRequest, SalaryPayoutRequest, IncentiveChangeRequest, StockTransfer, StockTransferItem, CustomerNote, AdHocSalaryRequest, Collection, CommissionChangeRequest, FullPaymentRequest, TechnicalIssue } from "@/types";
 import type { User as FirebaseUser } from 'firebase/auth';
 import { sendTokenSms, sendOtpSms as sendSmsForOtp } from "./sms";
 import { getDownlineIdsAndUsers } from "./hierarchy";
@@ -39,7 +39,7 @@ export async function createUserProfile(
 ): Promise<User> {
   const batch = writeBatch(db);
   let referrerId: string | null = null;
-  const systemRoles = ['Regional Director', 'Admin', 'Super Admin', 'HR', 'Store Keeper', 'Recovery Admin', 'Call Centre Operator'];
+  const systemRoles = ['Regional Director', 'Admin', 'Super Admin', 'HR', 'Store Keeper', 'Recovery Admin', 'Call Centre Operator', 'Technical Officer'];
   const isReferralNeeded = role && !systemRoles.includes(role);
 
   if (isReferralNeeded) {
@@ -59,7 +59,7 @@ export async function createUserProfile(
   }
   
   let newReferralCode = '';
-  const isReferralCodeNeeded = role && !['Salesman', 'Delivery Boy', 'Recovery Officer', 'Branch Admin', 'HR', 'Store Keeper', 'Recovery Admin', 'Call Centre Operator'].includes(role);
+  const isReferralCodeNeeded = role && !['Salesman', 'Delivery Boy', 'Recovery Officer', 'Branch Admin', 'HR', 'Store Keeper', 'Recovery Admin', 'Call Centre Operator', 'Technical Officer'].includes(role);
   
   if (isReferralCodeNeeded) {
     let isCodeUnique = false;
@@ -93,7 +93,7 @@ export async function createUserProfile(
     totalIncome: 0,
     avatar: ``,
     createdAt: new Date().toISOString(),
-    isDisabled: !['HR', 'Store Keeper', 'Recovery Admin', 'Call Centre Operator'].includes(role), 
+    isDisabled: !['HR', 'Store Keeper', 'Recovery Admin', 'Call Centre Operator', 'Technical Officer'].includes(role), 
     ...(branch && { branch }),
     ...(role === 'Salesman' && { salesmanStage }),
     ...documentUrls,
@@ -908,26 +908,14 @@ export async function markInstallmentPaid(productSaleId: string, officer: User):
           batch.update(userRef, { totalIncome: increment(perInstallmentAdminCommission) });
 
           const incomeRecordRef = doc(collection(db, "incomeRecords"));
-          const newIncomeRecord: IncomeRecord = {
-            id: incomeRecordRef.id,
-            userId: adminUser.id,
-            amount: perInstallmentAdminCommission,
-            saleDate: paymentDate,
-            grantedForRole: adminUser.role,
-            salesmanId: salesman.id,
-            salesmanName: salesman.name,
-            shopManagerName: saleData.shopManagerName,
-            sourceType: 'product_sale',
-            productSaleId: saleData.id, // Link to the product sale
-            customerId: saleData.customerId,
-            customerName: saleData.customerName,
-            tokenSerial: saleData.tokenSerial,
-            productName: saleData.productName,
-            productPrice: saleData.price,
-            paymentMethod: saleData.paymentMethod,
+          batch.set(incomeRecordRef, {
+            id: incomeRecordRef.id, userId: adminUser.id, amount: perInstallmentAdminCommission, saleDate: paymentDate,
+            grantedForRole: adminUser.role, salesmanId: salesman.id, salesmanName: salesman.name,
+            shopManagerName: saleData.shopManagerName, sourceType: 'product_sale', productSaleId: saleData.id,
+            customerId: saleData.customerId, customerName: saleData.customerName, tokenSerial: saleData.tokenSerial,
+            productName: saleData.productName, productPrice: saleData.price, paymentMethod: saleData.paymentMethod,
             installmentNumber: nextInstallmentNumber,
-          };
-          batch.set(incomeRecordRef, newIncomeRecord);
+          });
         }
       }
     }
@@ -2128,5 +2116,25 @@ export async function approveFullPaymentRequest(requestId: string, approver: Use
         });
     });
 }
+
+// --- Technical Issue Management ---
+
+export async function createTechnicalIssue(data: Omit<TechnicalIssue, 'id' | 'createdAt' | 'status'>): Promise<void> {
+    const issueRef = doc(collection(db, 'technicalIssues'));
+    const newIssue: TechnicalIssue = {
+        ...data,
+        id: issueRef.id,
+        createdAt: new Date().toISOString(),
+        status: 'pending',
+    };
+    await setDoc(issueRef, newIssue);
+}
+
+export async function updateTechnicalIssue(issueId: string, updates: Partial<TechnicalIssue>): Promise<void> {
+    const issueRef = doc(db, 'technicalIssues', issueId);
+    await updateDoc(issueRef, updates);
+}
+
+    
 
     
