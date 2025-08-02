@@ -181,17 +181,16 @@ const navItems: NavItem[] = [
     href: "#", 
     icon: UserPlus, 
     label: "Add Members", 
-    roles: ["Team Operation Manager", "Branch Admin"],
+    roles: ["Team Operation Manager"],
     children: [
-      { href: "#", icon: UserPlus, label: "Add Team Member", roles: ["Team Operation Manager", "Branch Admin"] },
+      { href: "#", icon: UserPlus, label: "Add Team Member", roles: ["Team Operation Manager"] },
       { href: "#", icon: UserPlus, label: "Add Branch Admin", roles: ["Team Operation Manager"] },
-      { href: "#", icon: UserPlus, label: "Add Delivery Boy", roles: ["Team Operation Manager", "Branch Admin"] },
-      { href: "#", icon: UserPlus, label: "Add Recovery Officer", roles: ["Team Operation Manager", "Branch Admin"] },
-      { href: "#", icon: MinusCircle, label: "Add Expense", roles: ["Team Operation Manager", "Branch Admin"] },
+      { href: "#", icon: UserPlus, label: "Add Delivery Boy", roles: ["Team Operation Manager"] },
+      { href: "#", icon: UserPlus, label: "Add Recovery Officer", roles: ["Team Operation Manager"] },
+      { href: "#", icon: MinusCircle, label: "Add Expense", roles: ["Team Operation Manager"] },
     ]
   },
   { href: "#", icon: Truck, label: "Manage Deliveries", roles: ["Team Operation Manager", "Branch Admin"] },
-  { href: "#", icon: Repeat, label: "Manage Recovery", roles: ["Branch Admin"] },
   { 
     href: "#", 
     icon: HeartHandshake, 
@@ -757,6 +756,7 @@ const AppLayout = ({ user }: { user: User }) => {
 export default AppLayout;
 
     
+
 
 
 
