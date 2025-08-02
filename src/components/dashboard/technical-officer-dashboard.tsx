@@ -70,7 +70,7 @@ const TechnicalOfficerDashboard: React.FC<TechnicalOfficerDashboardProps> = ({ o
         myTasks.map(issue => (
           <Card key={issue.id}>
             <CardHeader>
-              <div className="flex justify-between items-start">
+              <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
                 <div>
                   <CardTitle className="flex items-center gap-2">
                     <UserIcon className="h-5 w-5" /> {issue.customerName}
@@ -81,7 +81,7 @@ const TechnicalOfficerDashboard: React.FC<TechnicalOfficerDashboardProps> = ({ o
                 </div>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button size="sm" disabled={!!processingId}>
+                    <Button size="sm" disabled={!!processingId} className="w-full md:w-auto">
                       {processingId === issue.id ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
                       Mark as Complete
                     </Button>
