@@ -79,6 +79,10 @@ const roleOrderMap: Record<Role, number> = {
   'Delivery Boy': 8,
   'Recovery Officer': 9,
   'Branch Admin': 10,
+  'Store Keeper': 11,
+  'Recovery Admin': 12,
+  'Call Centre Operator': 13,
+  'Technical Officer': 14,
 };
 
 export default function UserManagementTable({ user: loggedInUser, data, allIncomeRecords }: UserManagementTableProps) {
@@ -378,7 +382,7 @@ export default function UserManagementTable({ user: loggedInUser, data, allIncom
   });
 
   const handleGenerateCsv = () => {
-    const reportData = table.getRowModel().rows.map(row => row.original);
+    const reportData = table.getFilteredRowModel().rows.map(row => row.original);
     
     const sortedReportData = [...reportData].sort((a, b) => {
       const roleA = roleOrderMap[a.role] || 99;
@@ -416,10 +420,7 @@ export default function UserManagementTable({ user: loggedInUser, data, allIncom
   
   const handleGeneratePdf = () => {
     const doc = new jsPDF();
-    const tableRows: any[] = [];
-    const tableColumns = ["Name", "Email", "Role", "Income (LKR)"];
-    
-    const reportData = table.getRowModel().rows.map(row => row.original);
+    const reportData = table.getFilteredRowModel().rows.map(row => row.original);
     
     const sortedReportData = [...reportData].sort((a, b) => {
       const roleA = roleOrderMap[a.role] || 99;
@@ -429,17 +430,15 @@ export default function UserManagementTable({ user: loggedInUser, data, allIncom
 
     const totalIncome = sortedReportData.reduce((sum, user) => sum + user.periodIncome, 0);
 
-    sortedReportData.forEach(user => {
-      const userData = [
-        user.name,
-        user.email,
-        user.role,
-        `LKR ${user.periodIncome.toLocaleString()}`,
-      ];
-      tableRows.push(userData);
-    });
+    const tableRows: (string | number)[][] = sortedReportData.map(user => [
+      user.name,
+      user.email,
+      user.role,
+      `LKR ${user.periodIncome.toLocaleString()}`,
+    ]);
     
-    // Header
+    const tableColumns = ["Name", "Email", "Role", "Income (LKR)"];
+
     doc.setFontSize(18);
     doc.setFont("helvetica", "bold");
     doc.text("Lexora", 14, 22);
