@@ -256,7 +256,7 @@ export default function AddTeamMemberView({ manager }: AddTeamMemberViewProps) {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Salesman">Salesman</SelectItem>
-                  <SelectItem value="Technical Officer">Technical Officer</SelectItem>
+                  {manager.role !== 'Branch Admin' && <SelectItem value="Technical Officer">Technical Officer</SelectItem>}
                 </SelectContent>
               </Select>
             </div>

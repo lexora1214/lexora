@@ -104,12 +104,14 @@ export default function AddRecoveryOfficerView({ manager }: AddRecoveryOfficerVi
 
     try {
       const userCredential = await createUserWithEmailAndPassword(tempAuth, signupData.email, signupData.password);
+      const referralCode = manager.role === 'Branch Admin' ? '' : manager.referralCode;
+
       await createUserProfile(
         userCredential.user,
         signupData.name,
         signupData.mobileNumber,
         "Recovery Officer",
-        manager.referralCode,
+        referralCode,
         manager.branch
       );
       toast({
@@ -205,7 +207,7 @@ export default function AddRecoveryOfficerView({ manager }: AddRecoveryOfficerVi
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="referral-code">Your Referral Code</Label>
-                <Input id="referral-code" value={manager.referralCode} disabled />
+                <Input id="referral-code" value={manager.role === 'Branch Admin' ? 'N/A' : manager.referralCode} disabled />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="branch">Your Branch</Label>

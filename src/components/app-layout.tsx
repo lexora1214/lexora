@@ -142,7 +142,7 @@ type NavItem = {
 };
 
 const navItems: NavItem[] = [
-  { href: "#", icon: LayoutDashboard, label: "Dashboard", roles: ["Admin", "Super Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Salesman", "Delivery Boy", "Recovery Officer", "HR", "Store Keeper", "Recovery Admin", "Call Centre Operator", "Technical Officer"] },
+  { href: "#", icon: LayoutDashboard, label: "Dashboard", roles: ["Admin", "Super Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Salesman", "Delivery Boy", "Recovery Officer", "HR", "Store Keeper", "Recovery Admin", "Call Centre Operator", "Technical Officer", "Branch Admin"] },
   { href: "#", icon: Briefcase, label: "Customer Management", roles: ["Admin", "Super Admin", "Recovery Admin"]},
   { href: "#", icon: MessageSquareWarning, label: "Report Technical Issue", roles: ["Call Centre Operator"] },
   { href: "#", icon: Wrench, label: "My Tasks", roles: ["Technical Officer"] },
@@ -171,23 +171,23 @@ const navItems: NavItem[] = [
     ]
   },
   { href: "#", icon: ShoppingCart, label: "Record Product Sale", roles: ["Team Operation Manager", "Branch Admin"] },
-  { href: "#", icon: Wallet, label: "Income Records", roles: ["Admin", "Super Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Salesman"] },
+  { href: "#", icon: Wallet, label: "Income Records", roles: ["Admin", "Super Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Salesman", "Branch Admin"] },
   { href: "#", icon: Users, label: "My Customers", roles: ["Salesman"] },
   { href: "#", icon: Map, label: "Reminders", roles: ["Salesman"] },
   { href: "#", icon: Truck, label: "My Deliveries", roles: ["Delivery Boy"] },
   { href: "#", icon: HandCoins, label: "My Collections", roles: ["Recovery Officer"] },
-  { href: "#", icon: Network, label: "Team Performance", roles: ["Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager"] },
+  { href: "#", icon: Network, label: "Team Performance", roles: ["Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Branch Admin"] },
   { 
     href: "#", 
     icon: UserPlus, 
     label: "Add Members", 
-    roles: ["Team Operation Manager"],
+    roles: ["Team Operation Manager", "Branch Admin"],
     children: [
-      { href: "#", icon: UserPlus, label: "Add Team Member", roles: ["Team Operation Manager"] },
+      { href: "#", icon: UserPlus, label: "Add Team Member", roles: ["Team Operation Manager", "Branch Admin"] },
       { href: "#", icon: UserPlus, label: "Add Branch Admin", roles: ["Team Operation Manager"] },
-      { href: "#", icon: UserPlus, label: "Add Delivery Boy", roles: ["Team Operation Manager"] },
-      { href: "#", icon: UserPlus, label: "Add Recovery Officer", roles: ["Team Operation Manager"] },
-      { href: "#", icon: MinusCircle, label: "Add Expense", roles: ["Team Operation Manager"] },
+      { href: "#", icon: UserPlus, label: "Add Delivery Boy", roles: ["Team Operation Manager", "Branch Admin"] },
+      { href: "#", icon: UserPlus, label: "Add Recovery Officer", roles: ["Team Operation Manager", "Branch Admin"] },
+      { href: "#", icon: MinusCircle, label: "Add Expense", roles: ["Team Operation Manager", "Branch Admin"] },
     ]
   },
   { href: "#", icon: Truck, label: "Manage Deliveries", roles: ["Team Operation Manager", "Branch Admin"] },
@@ -245,7 +245,7 @@ const navItems: NavItem[] = [
       { href: "#", icon: Award, label: "Incentives", roles: ["Admin", "Super Admin"] },
     ]
   },
-  { href: "#", icon: Lightbulb, label: "Insights", roles: ["Admin", "Super Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager"] },
+  { href: "#", icon: Lightbulb, label: "Insights", roles: ["Admin", "Super Admin", "Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Branch Admin"] },
 ];
 
 const SidebarNav = ({ user, activeView, setActiveView, onLinkClick }: { user: User, activeView: string, setActiveView: (view: string) => void, onLinkClick?: () => void }) => (
@@ -390,7 +390,7 @@ const AppLayout = ({ user }: { user: User }) => {
   React.useEffect(() => {
     // For Branch Admins, since they don't have a dashboard, set the default view to something they can see.
     if (user.role === 'Branch Admin') {
-      setActiveView('Stock Management');
+      setActiveView('Dashboard');
     }
     if (user.role === 'Store Keeper') {
       setActiveView('Dashboard');
@@ -506,6 +506,7 @@ const AppLayout = ({ user }: { user: User }) => {
           case "Salesman":
             return <SalesmanDashboard user={user} allCustomers={allCustomers} allIncomeRecords={allIncomeRecords} allCommissionRequests={allCommissionRequests} allStockItems={allStockItems} />;
           case "Team Operation Manager":
+          case "Branch Admin":
             return <ManagerDashboard user={user} allUsers={allUsers} allIncomeRecords={allIncomeRecords} allCustomers={allCustomers} />;
           case "Delivery Boy":
             return <DeliveryBoyDashboard user={user} />;
@@ -756,5 +757,6 @@ const AppLayout = ({ user }: { user: User }) => {
 export default AppLayout;
 
     
+
 
 

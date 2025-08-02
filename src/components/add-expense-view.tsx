@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { LoaderCircle, UserPlus, MinusCircle, Check, ChevronsUpDown } from "lucide-react";
 import { User } from "@/types";
-import { addExpenseForSalesman } from "@/lib/firestore";
+import { addExpenseForSalesman, getAllUsers } from "@/lib/firestore";
 import { getDownlineIdsAndUsers } from "@/lib/hierarchy";
 import {
   Select,
@@ -44,9 +44,13 @@ export default function AddExpenseView({ manager, allUsers }: AddExpenseViewProp
   const [isSalesmanPopoverOpen, setIsSalesmanPopoverOpen] = useState(false);
 
   const downlineSalesmen = useMemo(() => {
+    if (manager.role === 'Branch Admin') {
+      const branchUsers = allUsers.filter(u => u.branch === manager.branch && u.role === 'Salesman');
+      return branchUsers;
+    }
     const { users } = getDownlineIdsAndUsers(manager.id, allUsers);
     return users.filter(u => u.role === 'Salesman');
-  }, [manager.id, allUsers]);
+  }, [manager, allUsers]);
 
   const {
     register,
