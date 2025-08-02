@@ -39,7 +39,8 @@ export async function createUserProfile(
 ): Promise<User> {
   const batch = writeBatch(db);
   let referrerId: string | null = null;
-  const isReferralNeeded = role && !['Regional Director', 'Admin', 'Super Admin', 'HR', 'Store Keeper', 'Recovery Admin'].includes(role);
+  const systemRoles = ['Regional Director', 'Admin', 'Super Admin', 'HR', 'Store Keeper', 'Recovery Admin', 'Call Centre Operator'];
+  const isReferralNeeded = role && !systemRoles.includes(role);
 
   if (isReferralNeeded) {
     if (!referralCodeInput || referralCodeInput.length !== 6) {
@@ -55,12 +56,10 @@ export async function createUserProfile(
     
     const referrerDoc = querySnapshot.docs[0];
     referrerId = referrerDoc.id;
-  } else if (['HR', 'Store Keeper', 'Recovery Admin'].includes(role)) {
-    referrerId = null; // Explicitly set to null for HR/Store Keeper/Recovery Admin role creation by Admin/HR
   }
   
   let newReferralCode = '';
-  const isReferralCodeNeeded = role && !['Salesman', 'Delivery Boy', 'Recovery Officer', 'Branch Admin', 'HR', 'Store Keeper', 'Recovery Admin'].includes(role);
+  const isReferralCodeNeeded = role && !['Salesman', 'Delivery Boy', 'Recovery Officer', 'Branch Admin', 'HR', 'Store Keeper', 'Recovery Admin', 'Call Centre Operator'].includes(role);
   
   if (isReferralCodeNeeded) {
     let isCodeUnique = false;
@@ -94,7 +93,7 @@ export async function createUserProfile(
     totalIncome: 0,
     avatar: ``,
     createdAt: new Date().toISOString(),
-    isDisabled: !['HR', 'Store Keeper', 'Recovery Admin'].includes(role), // HR, Store Keeper, and Recovery Admin are enabled by default
+    isDisabled: !['HR', 'Store Keeper', 'Recovery Admin', 'Call Centre Operator'].includes(role), 
     ...(branch && { branch }),
     ...(role === 'Salesman' && { salesmanStage }),
     ...documentUrls,
@@ -2000,7 +1999,7 @@ export async function rejectCommissionChange(requestId: string, approver: User):
 
 // --- Full Payment Requests ---
 
-export async function createFullPaymentRequest(data: Omit<FullPaymentRequest, 'id' | 'requestDate' | 'status'>): Promise<void> {
+export async function createFullPaymentRequest(data: Omit<FullPaymentRequest, 'id' | 'requestDate' | 'status' | 'tokenSerial'>): Promise<void> {
     const saleDocRef = doc(db, "productSales", data.productSaleId);
     const saleDocSnap = await getDoc(saleDocRef);
     if (!saleDocSnap.exists()) {
@@ -2129,3 +2128,5 @@ export async function approveFullPaymentRequest(requestId: string, approver: Use
         });
     });
 }
+
+    
