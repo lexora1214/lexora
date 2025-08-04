@@ -22,8 +22,9 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "./ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 // New component for viewing the slip with zoom
 const ViewSlipDialog: React.FC<{ slipUrl: string; isOpen: boolean; onOpenChange: (open: boolean) => void; }> = ({ slipUrl, isOpen, onOpenChange }) => {
@@ -158,6 +159,8 @@ const CommissionApprovalView: React.FC<{ user: User }> = ({ user }) => {
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [slipToView, setSlipToView] = useState<string | null>(null);
   const [changesToView, setChangesToView] = useState<CommissionChangeRequest | null>(null);
+  
+  const isSuperAdmin = user.role === 'Super Admin';
 
 
   useEffect(() => {
@@ -169,13 +172,15 @@ const CommissionApprovalView: React.FC<{ user: User }> = ({ user }) => {
       setLoading(false);
     });
     
-    const settingsUnsubscribe = getPendingCommissionChangeRequests().then(setPendingSettingRequests);
+    if (isSuperAdmin) {
+        const settingsUnsubscribe = getPendingCommissionChangeRequests().then(setPendingSettingRequests);
+    }
 
 
     return () => {
         tokenUnsubscribe();
     };
-  }, []);
+  }, [isSuperAdmin]);
 
   const handleApprove = async (requestId: string) => {
     setProcessingId(requestId);
@@ -329,13 +334,15 @@ const CommissionApprovalView: React.FC<{ user: User }> = ({ user }) => {
         </CardHeader>
         <CardContent>
            <Tabs defaultValue="token-sales">
-              <TabsList className="grid w-full grid-cols-2">
+              <TabsList className={cn("grid w-full", isSuperAdmin ? "grid-cols-2" : "grid-cols-1")}>
                 <TabsTrigger value="token-sales">
                     <Users className="mr-2 h-4 w-4" /> Token Sales ({pendingTokenRequests.length})
                 </TabsTrigger>
-                <TabsTrigger value="setting-changes">
-                    <Settings className="mr-2 h-4 w-4" /> Setting Changes ({pendingSettingRequests.length})
-                </TabsTrigger>
+                {isSuperAdmin && (
+                    <TabsTrigger value="setting-changes">
+                        <Settings className="mr-2 h-4 w-4" /> Setting Changes ({pendingSettingRequests.length})
+                    </TabsTrigger>
+                )}
               </TabsList>
               <TabsContent value="token-sales" className="mt-4">
                  {pendingTokenRequests.length > 0 ? (
@@ -420,46 +427,48 @@ const CommissionApprovalView: React.FC<{ user: User }> = ({ user }) => {
                     </div>
                 )}
               </TabsContent>
-               <TabsContent value="setting-changes" className="mt-4">
-                  <div className="rounded-md border">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Date</TableHead>
-                                <TableHead>Requested By</TableHead>
-                                <TableHead>Change Type</TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {pendingSettingRequests.length > 0 ? (
-                                pendingSettingRequests.map(req => (
-                                    <TableRow key={req.id}>
-                                        <TableCell>{format(new Date(req.requestDate), 'PPp')}</TableCell>
-                                        <TableCell>{req.requestedByName}</TableCell>
-                                        <TableCell><Badge variant="outline" className="capitalize">{req.type} Commissions</Badge></TableCell>
-                                        <TableCell className="text-right">
-                                            {processingId === req.id ? (
-                                                <LoaderCircle className="h-5 w-5 animate-spin ml-auto"/>
-                                            ) : (
-                                                <div className="flex gap-2 justify-end">
-                                                    <Button variant="outline" size="sm" onClick={() => setChangesToView(req)}><FileText className="mr-2 h-4 w-4"/> View Changes</Button>
-                                                    <Button size="sm" variant="outline" className="text-destructive hover:bg-destructive hover:text-destructive-foreground" onClick={() => handleRejectSettings(req.id)}><X className="mr-2 h-4 w-4"/>Reject</Button>
-                                                    <Button size="sm" className="bg-success hover:bg-success/90 text-success-foreground" onClick={() => handleApproveSettings(req.id)}><Check className="mr-2 h-4 w-4"/>Approve</Button>
-                                                </div>
-                                            )}
-                                        </TableCell>
-                                    </TableRow>
-                                ))
-                            ) : (
+               {isSuperAdmin && (
+                <TabsContent value="setting-changes" className="mt-4">
+                    <div className="rounded-md border">
+                        <Table>
+                            <TableHeader>
                                 <TableRow>
-                                    <TableCell colSpan={4} className="h-24 text-center">No pending setting changes.</TableCell>
+                                    <TableHead>Date</TableHead>
+                                    <TableHead>Requested By</TableHead>
+                                    <TableHead>Change Type</TableHead>
+                                    <TableHead className="text-right">Actions</TableHead>
                                 </TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
-                  </div>
-               </TabsContent>
+                            </TableHeader>
+                            <TableBody>
+                                {pendingSettingRequests.length > 0 ? (
+                                    pendingSettingRequests.map(req => (
+                                        <TableRow key={req.id}>
+                                            <TableCell>{format(new Date(req.requestDate), 'PPp')}</TableCell>
+                                            <TableCell>{req.requestedByName}</TableCell>
+                                            <TableCell><Badge variant="outline" className="capitalize">{req.type} Commissions</Badge></TableCell>
+                                            <TableCell className="text-right">
+                                                {processingId === req.id ? (
+                                                    <LoaderCircle className="h-5 w-5 animate-spin ml-auto"/>
+                                                ) : (
+                                                    <div className="flex gap-2 justify-end">
+                                                        <Button variant="outline" size="sm" onClick={() => setChangesToView(req)}><FileText className="mr-2 h-4 w-4"/> View Changes</Button>
+                                                        <Button size="sm" variant="outline" className="text-destructive hover:bg-destructive hover:text-destructive-foreground" onClick={() => handleRejectSettings(req.id)}><X className="mr-2 h-4 w-4"/>Reject</Button>
+                                                        <Button size="sm" className="bg-success hover:bg-success/90 text-success-foreground" onClick={() => handleApproveSettings(req.id)}><Check className="mr-2 h-4 w-4"/>Approve</Button>
+                                                    </div>
+                                                )}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                ) : (
+                                    <TableRow>
+                                        <TableCell colSpan={4} className="h-24 text-center">No pending setting changes.</TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
+                </TabsContent>
+               )}
            </Tabs>
         </CardContent>
       </Card>
@@ -482,3 +491,5 @@ const CommissionApprovalView: React.FC<{ user: User }> = ({ user }) => {
 };
 
 export default CommissionApprovalView;
+
+    
