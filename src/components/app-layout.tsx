@@ -716,6 +716,9 @@ const AppLayout = ({ user }: { user: User }) => {
           <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 overflow-y-auto">
             {renderContent()}
           </main>
+           <footer className="flex items-center justify-center p-4 border-t bg-card text-xs text-muted-foreground">
+              Powered by CosmoSL
+           </footer>
         </div>
       </div>
       <ProfileSettingsDialog 
@@ -728,11 +731,3 @@ const AppLayout = ({ user }: { user: User }) => {
 };
 
 export default AppLayout;
-
-    
-
-
-
-
-
-
