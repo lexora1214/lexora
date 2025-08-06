@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import { User, IncentiveChangeRequest, IncentiveSettings, Role, SalesmanStage } from '@/types';
+import { User, IncentiveChangeRequest, IncentiveSettings, Role, SalesmanStage, IncentiveTier } from '@/types';
 import { getPendingIncentiveChangeRequests, approveIncentiveChangeRequest, rejectIncentiveChangeRequest } from '@/lib/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { ScrollArea } from './ui/scroll-area';
+import { cn } from '@/lib/utils';
+import { Badge } from './ui/badge';
+
 
 const INCENTIVE_ROLES: (Role | SalesmanStage)[] = [
     "BUSINESS PROMOTER (stage 01)",
@@ -34,51 +38,100 @@ const ViewIncentiveChangesDialog: React.FC<{
 }> = ({ isOpen, onOpenChange, request }) => {
   if (!request) return null;
 
+  const compareTiers = (current: IncentiveTier[] = [], proposed: IncentiveTier[] = []) => {
+    const allTiers: { current?: IncentiveTier, proposed?: IncentiveTier, changed: boolean }[] = [];
+    const proposedMap = new Map(proposed.map(p => [p.id, p]));
+
+    // Check current tiers against proposed
+    for (const c of current) {
+      const p = proposedMap.get(c.id);
+      if (p) {
+        // Tier exists in both
+        const changed = c.target !== p.target || c.incentive !== p.incentive;
+        allTiers.push({ current: c, proposed: p, changed });
+        proposedMap.delete(c.id);
+      } else {
+        // Tier was removed
+        allTiers.push({ current: c, proposed: undefined, changed: true });
+      }
+    }
+
+    // Add new tiers
+    for (const p of proposedMap.values()) {
+      allTiers.push({ current: undefined, proposed: p, changed: true });
+    }
+
+    return allTiers;
+  };
+
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl">
+      <DialogContent className="max-w-4xl h-[80vh]">
         <DialogHeader>
           <DialogTitle>Incentive Change Details</DialogTitle>
           <DialogDescription>
             Requested by {request.requestedByName} on {format(new Date(request.requestDate), 'PPP')}.
           </DialogDescription>
         </DialogHeader>
-        <div className="mt-4">
-            <Table>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead>Role / Stage</TableHead>
-                        <TableHead className="text-right">Current Target</TableHead>
-                        <TableHead className="text-right">Proposed Target</TableHead>
-                        <TableHead className="text-right">Current Incentive</TableHead>
-                        <TableHead className="text-right">Proposed Incentive</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {INCENTIVE_ROLES.map(role => {
-                        const current = request.currentSettings[role];
-                        const proposed = request.newSettings[role];
-                        const targetChanged = current?.target !== proposed?.target;
-                        const incentiveChanged = current?.incentive !== proposed?.incentive;
-                        const hasChanged = targetChanged || incentiveChanged;
+        <ScrollArea className="mt-4">
+            <div className="space-y-6 pr-4">
+                {INCENTIVE_ROLES.map(role => {
+                    const comparison = compareTiers(request.currentSettings[role], request.newSettings[role]);
+                    const hasAnyChanges = comparison.some(c => c.changed);
 
-                        return (
-                            <TableRow key={role} className={hasChanged ? "bg-muted/50" : ""}>
-                                <TableCell className="font-medium">{role}</TableCell>
-                                <TableCell className="text-right">{current?.target?.toLocaleString() ?? 'N/A'}</TableCell>
-                                <TableCell className={`text-right font-bold ${targetChanged ? 'text-primary' : ''}`}>
-                                    {proposed?.target?.toLocaleString() ?? 'N/A'}
-                                </TableCell>
-                                <TableCell className="text-right">LKR {current?.incentive?.toLocaleString() ?? 'N/A'}</TableCell>
-                                <TableCell className={`text-right font-bold ${incentiveChanged ? (proposed?.incentive ?? 0) > (current?.incentive ?? 0) ? 'text-success' : 'text-destructive' : ''}`}>
-                                    LKR {proposed?.incentive?.toLocaleString() ?? 'N/A'}
-                                </TableCell>
-                            </TableRow>
-                        )
-                    })}
-                </TableBody>
-            </Table>
-        </div>
+                    if (!hasAnyChanges) return null;
+
+                    return (
+                        <Card key={role} className="bg-muted/30">
+                            <CardHeader>
+                                <CardTitle>{role}</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                     <div>
+                                        <h4 className="font-semibold mb-2">Current Tiers</h4>
+                                        <div className="space-y-2">
+                                        {(request.currentSettings[role] || []).map(tier => {
+                                            const isRemoved = !request.newSettings[role]?.some(p => p.id === tier.id);
+                                            return (
+                                                <div key={tier.id} className={cn("p-2 rounded-md border", isRemoved && "bg-destructive/10 border-destructive/20")}>
+                                                    <div className="flex justify-between">
+                                                        <span>Target: {tier.target.toLocaleString()}</span>
+                                                        <span className="font-semibold">LKR {tier.incentive.toLocaleString()}</span>
+                                                    </div>
+                                                </div>
+                                            )
+                                        })}
+                                        {(request.currentSettings[role] || []).length === 0 && <p className="text-sm text-muted-foreground">No tiers defined.</p>}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <h4 className="font-semibold mb-2">Proposed Tiers</h4>
+                                        <div className="space-y-2">
+                                        {(request.newSettings[role] || []).map(tier => {
+                                            const original = request.currentSettings[role]?.find(c => c.id === tier.id);
+                                            const isNew = !original;
+                                            const isModified = original && (original.target !== tier.target || original.incentive !== tier.incentive);
+                                            return (
+                                                <div key={tier.id} className={cn("p-2 rounded-md border", isNew && "bg-success/10 border-success/20", isModified && "bg-blue-500/10 border-blue-500/20")}>
+                                                     <div className="flex justify-between">
+                                                        <span>Target: <span className={cn(isModified && original?.target !== tier.target && "font-bold")}>{tier.target.toLocaleString()}</span></span>
+                                                        <span className={cn("font-semibold", isModified && original?.incentive !== tier.incentive && "font-bold")}>LKR {tier.incentive.toLocaleString()}</span>
+                                                    </div>
+                                                </div>
+                                            )
+                                        })}
+                                        {(request.newSettings[role] || []).length === 0 && <p className="text-sm text-muted-foreground">No tiers defined.</p>}
+                                        </div>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )
+                })}
+            </div>
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   );
