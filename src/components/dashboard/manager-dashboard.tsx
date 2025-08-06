@@ -2,7 +2,7 @@
 "use client";
 
 import React from "react";
-import { User, IncomeRecord, Customer, IncentiveSettings } from "@/types";
+import { User, IncomeRecord, Customer, IncentiveTier } from "@/types";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { DollarSign, Users, Activity, Calendar as CalendarIcon, Target } from "lucide-react";
 import { getDownlineIdsAndUsers } from "@/lib/hierarchy";
@@ -31,7 +31,7 @@ const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ user, allUsers, all
     from: startOfMonth(new Date()),
     to: endOfMonth(new Date()),
   });
-  const [incentiveTarget, setIncentiveTarget] = React.useState(0);
+  const [incentiveTiers, setIncentiveTiers] = React.useState<IncentiveTier[]>([]);
   const [monthlyTeamSales, setMonthlyTeamSales] = React.useState(0);
 
 
@@ -42,7 +42,7 @@ const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ user, allUsers, all
           const incentiveSettings = await getIncentiveSettings();
           const roleSettings = incentiveSettings[user.role];
           if (roleSettings) {
-              setIncentiveTarget(roleSettings.target);
+              setIncentiveTiers(roleSettings.sort((a,b) => a.target - b.target));
           }
       };
 
@@ -106,7 +106,8 @@ const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ user, allUsers, all
     },
   };
   
-  const targetProgress = incentiveTarget > 0 ? (monthlyTeamSales / incentiveTarget) * 100 : 0;
+  const nextTarget = incentiveTiers.find(tier => tier.target > monthlyTeamSales);
+  const currentTargetProgress = nextTarget ? (monthlyTeamSales / nextTarget.target) * 100 : 100;
 
   return (
     <div className="flex flex-col gap-6">
@@ -185,7 +186,7 @@ const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ user, allUsers, all
         </Card>
       </div>
 
-      {incentiveTarget > 0 && (
+      {incentiveTiers.length > 0 && (
           <Card>
             <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -198,14 +199,18 @@ const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ user, allUsers, all
             </CardHeader>
             <CardContent>
                 <div className="flex justify-between text-sm text-muted-foreground mb-2">
-                    <span>Progress</span>
-                    <span>{monthlyTeamSales} / {incentiveTarget} Tokens</span>
+                    <span>Progress to next target</span>
+                    {nextTarget ? (
+                        <span>{monthlyTeamSales} / {nextTarget.target} Tokens</span>
+                    ) : (
+                         <span>All targets achieved!</span>
+                    )}
                 </div>
-                <Progress value={targetProgress} className="h-3" />
+                <Progress value={currentTargetProgress} className="h-3" />
                  <p className="text-xs text-muted-foreground mt-2">
-                    {incentiveTarget - monthlyTeamSales > 0 
-                        ? `${incentiveTarget - monthlyTeamSales} more approved sales to go!`
-                        : `Congratulations! Your team has reached the monthly target.`
+                    {nextTarget 
+                        ? `${nextTarget.target - monthlyTeamSales} more approved sales to go for LKR ${nextTarget.incentive.toLocaleString()}!`
+                        : `Congratulations! Your team has achieved all available targets for this month.`
                     }
                 </p>
             </CardContent>

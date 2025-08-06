@@ -319,13 +319,13 @@ export interface StockTransfer {
   confirmedAt?: string;
 }
 
-export type IncentiveSetting = {
+export type IncentiveTier = {
   target: number;
   incentive: number;
 };
 
 export type IncentiveSettings = {
-    [key in Role | SalesmanStage]?: IncentiveSetting;
+    [key in Role | SalesmanStage]?: IncentiveTier[];
 };
 
 export interface IncentiveChangeRequest {

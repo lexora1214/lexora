@@ -3,7 +3,7 @@
 "use client";
 
 import React from "react";
-import { User, Customer as CustomerType, IncomeRecord, CommissionRequest, StockItem } from "@/types";
+import { User, Customer as CustomerType, IncomeRecord, CommissionRequest, StockItem, IncentiveTier } from "@/types";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter, CardDescription } from "@/components/ui/card";
 import { DollarSign, Users, UserPlus, Calendar as CalendarIcon, Hourglass, LoaderCircle, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -35,7 +35,7 @@ const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ user, allCustomer
   });
   const [pendingIncome, setPendingIncome] = React.useState(0);
   const [loadingPending, setLoadingPending] = React.useState(true);
-  const [incentiveTarget, setIncentiveTarget] = React.useState(0);
+  const [incentiveTiers, setIncentiveTiers] = React.useState<IncentiveTier[]>([]);
   const [monthlySales, setMonthlySales] = React.useState(0);
 
   const pendingRequests = allCommissionRequests.filter(
@@ -72,7 +72,7 @@ const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ user, allCustomer
         const incentiveSettings = await getIncentiveSettings();
         const stageSettings = incentiveSettings[user.salesmanStage!];
         if (stageSettings) {
-            setIncentiveTarget(stageSettings.target);
+            setIncentiveTiers(stageSettings.sort((a,b) => a.target - b.target));
         }
     }
     
@@ -140,7 +140,8 @@ const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ user, allCustomer
     { status: 'Available' as const, count: availableTokens, fill: 'var(--color-Available)' },
   ].filter(item => item.count > 0);
   
-  const targetProgress = incentiveTarget > 0 ? (monthlySales / incentiveTarget) * 100 : 0;
+  const nextTarget = incentiveTiers.find(tier => tier.target > monthlySales);
+  const currentTargetProgress = nextTarget ? (monthlySales / nextTarget.target) * 100 : 100;
 
 
   return (
@@ -233,7 +234,7 @@ const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ user, allCustomer
           </Card>
           <TokenUsagePieChart data={tokenUsageData} totalTokens={totalTokens} />
         </div>
-        {user.role === 'Salesman' && incentiveTarget > 0 && (
+        {user.role === 'Salesman' && incentiveTiers.length > 0 && (
           <Card>
             <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -246,14 +247,18 @@ const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ user, allCustomer
             </CardHeader>
             <CardContent>
                 <div className="flex justify-between text-sm text-muted-foreground mb-2">
-                    <span>Progress</span>
-                    <span>{monthlySales} / {incentiveTarget} Tokens</span>
+                    <span>Progress to next target</span>
+                    {nextTarget ? (
+                        <span>{monthlySales} / {nextTarget.target} Tokens</span>
+                    ) : (
+                        <span>All targets achieved!</span>
+                    )}
                 </div>
-                <Progress value={targetProgress} className="h-3" />
+                <Progress value={currentTargetProgress} className="h-3" />
                  <p className="text-xs text-muted-foreground mt-2">
-                    {incentiveTarget - monthlySales > 0 
-                        ? `${incentiveTarget - monthlySales} more approved sales to go!`
-                        : `Congratulations! You've reached your monthly target.`
+                    {nextTarget
+                        ? `${nextTarget.target - monthlySales} more approved sales to go for LKR ${nextTarget.incentive.toLocaleString()}!`
+                        : `Congratulations! You've achieved all available targets for this month.`
                     }
                 </p>
             </CardContent>
@@ -277,7 +282,3 @@ const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ user, allCustomer
 };
 
 export default SalesmanDashboard;
-
-
-
-    
