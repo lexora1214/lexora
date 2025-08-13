@@ -1626,11 +1626,7 @@ export async function confirmStockTransfer(transferId: string, confirmer: User):
 
 // --- Incentive Settings ---
 
-const DEFAULT_INCENTIVE_SETTINGS: IncentiveSettings = {
-    "BUSINESS PROMOTER (stage 01)": { target: 40, incentive: 10000 },
-    "MARKETING EXECUTIVE (stage 02)": { target: 60, incentive: 15000 },
-    "Team Operation Manager": { target: 500, incentive: 25000 },
-};
+const DEFAULT_INCENTIVE_SETTINGS: IncentiveSettings = {};
 
 export async function getIncentiveSettings(): Promise<IncentiveSettings> {
     const settingsDocRef = doc(db, "settings", "incentives");

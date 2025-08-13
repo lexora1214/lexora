@@ -60,7 +60,7 @@ type SignupData = {
   branch?: string;
   referralCode: string;
   salesmanStage?: SalesmanStage;
-  documents: Pick<UserDocuments, 'nicFront' | 'nicBack'>;
+  documents: UserDocuments;
 };
 
 export default function SignupPage() {
@@ -77,7 +77,7 @@ export default function SignupPage() {
   const [branch, setBranch] = useState("");
   const [referralCode, setReferralCode] = useState("");
   const [salesmanStage, setSalesmanStage] = useState<SalesmanStage>("BUSINESS PROMOTER (stage 01)");
-  const [documents, setDocuments] = useState<Partial<Pick<UserDocuments, 'nicFront' | 'nicBack'>>>({});
+  const [documents, setDocuments] = useState<Partial<UserDocuments>>({});
 
   // State for UI and flow control
   const [visibleRoles, setVisibleRoles] = useState<Record<string, boolean> | null>(null);
@@ -112,7 +112,7 @@ export default function SignupPage() {
     fetchRoles();
   }, []);
 
-  const handleFileSelect = (docType: keyof Pick<UserDocuments, 'nicFront' | 'nicBack'>, file: File) => {
+  const handleFileSelect = (docType: keyof UserDocuments, file: File) => {
     setDocuments(prev => ({ ...prev, [docType]: file }));
   };
 
@@ -158,6 +158,11 @@ export default function SignupPage() {
         setIsLoading(false);
         return;
     }
+    if (isSalesman && (!documents.policeReport || !documents.gsCertificate)) {
+      toast({ variant: "destructive", title: "Sign Up Failed", description: "Police Report and GS Report are required for salesmen." });
+      setIsLoading(false);
+      return;
+    }
 
 
     try {
@@ -170,7 +175,7 @@ export default function SignupPage() {
         branch: isBranchRequired ? branch : undefined,
         referralCode,
         salesmanStage: isSalesman ? salesmanStage : undefined,
-        documents: documents as Pick<UserDocuments, 'nicFront' | 'nicBack'>,
+        documents: documents as UserDocuments,
       });
 
       await sendOtpSms(mobileNumber, otp);
@@ -398,6 +403,12 @@ export default function SignupPage() {
                     <div className="grid grid-cols-2 gap-4">
                         <FileInput label="NIC Front" onFileSelect={(file) => handleFileSelect('nicFront', file)} acceptedFileTypes=".png,.jpg,.jpeg,.pdf" selectedFile={documents.nicFront || null}/>
                         <FileInput label="NIC Back" onFileSelect={(file) => handleFileSelect('nicBack', file)} acceptedFileTypes=".png,.jpg,.jpeg,.pdf" selectedFile={documents.nicBack || null} />
+                        {isSalesman && (
+                          <>
+                            <FileInput label="Police Report" onFileSelect={(file) => handleFileSelect('policeReport', file)} acceptedFileTypes=".png,.jpg,.jpeg,.pdf" selectedFile={documents.policeReport || null} />
+                            <FileInput label="GS Report" onFileSelect={(file) => handleFileSelect('gsCertificate', file)} acceptedFileTypes=".png,.jpg,.jpeg,.pdf" selectedFile={documents.gsCertificate || null} />
+                          </>
+                        )}
                     </div>
                 </div>
                 <Button type="submit" className="w-full" disabled={isLoading}>
