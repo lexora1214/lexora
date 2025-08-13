@@ -197,7 +197,7 @@ const navItems: NavItem[] = [
     label: "HR Management", 
     roles: ["Admin", "Super Admin", "HR"],
     children: [
-      { href: "#", icon: Building, label: "User Management", roles: ["Super Admin", "HR"] },
+      { href: "#", icon: Building, label: "User Management", roles: ["Super Admin", "HR", "Admin"] },
       { href: "#", icon: UserCheck, label: "New User Verification", roles: ["Super Admin", "HR"] },
       { href: "#", icon: Coins, label: "Add Ad-hoc Salary", roles: ["HR"] },
       { href: "#", icon: ShieldQuestion, label: "Salary Setting Approvals", roles: ["HR"] },
