@@ -4,7 +4,7 @@ import { doc, getDoc, setDoc, collection, getDocs, query, where, writeBatch, inc
 import { getAuth, updatePassword } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { db, storage } from "./firebase";
-import { User, Role, Customer, CommissionSettings, IncomeRecord, ProductSale, ProductCommissionSettings, SignupRoleSettings, CommissionRequest, SalesmanStage, SalarySettings, MonthlySalaryPayout, StockItem, IncentiveSettings, Reminder, UserDocuments, SalaryChangeRequest, SalaryPayoutRequest, IncentiveChangeRequest, StockTransfer, StockTransferItem, CustomerNote, AdHocSalaryRequest, Collection, CommissionChangeRequest, FullPaymentRequest, TechnicalIssue } from "@/types";
+import { User, Role, Customer, CommissionSettings, IncomeRecord, ProductSale, ProductCommissionSettings, SignupRoleSettings, CommissionRequest, SalesmanStage, SalarySettings, MonthlySalaryPayout, StockItem, IncentiveSettings, Reminder, UserDocuments, SalaryChangeRequest, SalaryPayoutRequest, IncentiveChangeRequest, StockTransfer, StockTransferItem, CustomerNote, AdHocSalaryRequest, Collection, CommissionChangeRequest, FullPaymentRequest, TechnicalIssue, SignupRoleChangeRequest } from "@/types";
 import type { User as FirebaseUser } from 'firebase/auth';
 import { sendTokenSms, sendOtpSms as sendSmsForOtp } from "./sms";
 import { getDownlineIdsAndUsers } from "./hierarchy";
@@ -116,6 +116,14 @@ export async function getUser(uid: string): Promise<User | null> {
     }
     return null;
 }
+
+export async function getLoggedInUser(): Promise<User | null> {
+    const auth = getAuth();
+    const firebaseUser = auth.currentUser;
+    if (!firebaseUser) return null;
+    return getUser(firebaseUser.uid);
+}
+
 
 export async function getAllUsers(): Promise<User[]> {
     const usersCol = collection(db, "users");
@@ -736,6 +744,8 @@ const DEFAULT_SIGNUP_ROLE_SETTINGS: SignupRoleSettings = {
     "HR": true,
     "Recovery Admin": true,
     "Super Admin": true,
+    "Call Centre Operator": true,
+    "Technical Officer": true,
   }
 };
 
@@ -756,10 +766,66 @@ export async function getSignupRoleSettings(): Promise<SignupRoleSettings> {
   return DEFAULT_SIGNUP_ROLE_SETTINGS;
 }
 
-export async function updateSignupRoleSettings(data: SignupRoleSettings): Promise<void> {
+export async function updateSignupRoleSettings(data: SignupRoleSettings, currentUser: User): Promise<void> {
   const settingsDocRef = doc(db, "settings", "signupRoles");
-  await setDoc(settingsDocRef, data);
+  
+  if (currentUser.role === 'Super Admin') {
+      await setDoc(settingsDocRef, data, { merge: true });
+  } else {
+      const currentSettings = await getSignupRoleSettings();
+      const requestRef = doc(collection(db, 'signupRoleChangeRequests'));
+      const newRequest: SignupRoleChangeRequest = {
+        id: requestRef.id,
+        requestedBy: currentUser.id,
+        requestedByName: currentUser.name,
+        requestDate: new Date().toISOString(),
+        status: 'pending',
+        newSettings: data,
+        currentSettings: currentSettings,
+      };
+      await setDoc(requestRef, newRequest);
+  }
 }
+
+export async function getPendingSignupRoleRequests(): Promise<SignupRoleChangeRequest[]> {
+    const q = query(collection(db, 'signupRoleChangeRequests'), where('status', '==', 'pending'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(d => d.data() as SignupRoleChangeRequest).sort((a,b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime());
+}
+
+export async function approveSignupRoleChange(requestId: string, approver: User): Promise<void> {
+    const requestRef = doc(db, 'signupRoleChangeRequests', requestId);
+    const requestSnap = await getDoc(requestRef);
+    if (!requestSnap.exists() || requestSnap.data().status !== 'pending') {
+        throw new Error("Request not found or already processed.");
+    }
+    const requestData = requestSnap.data() as SignupRoleChangeRequest;
+
+    const batch = writeBatch(db);
+
+    const settingsDocRef = doc(db, "settings", "signupRoles");
+    batch.set(settingsDocRef, requestData.newSettings, { merge: true });
+
+    batch.update(requestRef, {
+        status: 'approved',
+        processedBy: approver.id,
+        processedByName: approver.name,
+        processedDate: new Date().toISOString(),
+    });
+
+    await batch.commit();
+}
+
+export async function rejectSignupRoleChange(requestId: string, approver: User): Promise<void> {
+    const requestRef = doc(db, 'signupRoleChangeRequests', requestId);
+    await updateDoc(requestRef, {
+        status: 'rejected',
+        processedBy: approver.id,
+        processedByName: approver.name,
+        processedDate: new Date().toISOString(),
+    });
+}
+
 
 // --- Delivery Management ---
 
@@ -1240,9 +1306,9 @@ export async function createSalaryPayoutRequest(requester: User, allCustomers: C
         }
         
         const incentiveRoleKey = (user.salesmanStage || user.role) as Role | SalesmanStage;
-        const incentiveConfig = incentiveSettings[incentiveRoleKey];
+        const incentiveTiers = incentiveSettings[incentiveRoleKey];
 
-        if (incentiveConfig && incentiveConfig.target > 0) {
+        if (incentiveTiers && incentiveTiers.length > 0) {
             let salesCount = 0;
             if (user.role === 'Salesman') {
                 salesCount = allCustomers.filter(c => 
@@ -1256,9 +1322,13 @@ export async function createSalaryPayoutRequest(requester: User, allCustomers: C
                     new Date(c.saleDate) >= startOfMonth && new Date(c.saleDate) <= endOfMonth
                 ).length;
             }
+            
+            const highestAchievedTier = incentiveTiers
+                .filter(tier => salesCount >= tier.target)
+                .sort((a,b) => b.target - a.target)[0];
 
-            if (salesCount >= incentiveConfig.target) {
-                userTotalPayout += incentiveConfig.incentive;
+            if (highestAchievedTier) {
+                userTotalPayout += highestAchievedTier.incentive;
             }
         }
         
@@ -1314,7 +1384,6 @@ export async function approveSalaryPayout(requestId: string, approver: User, all
     const endOfMonth = new Date(startOfMonth.getFullYear(), startOfMonth.getMonth() + 1, 0, 23, 59, 59);
 
     for (const user of enabledUsers) {
-        let userTotalPayout = 0;
         let salaryAmount = 0;
         let incentiveAmount = 0;
         
@@ -1329,9 +1398,9 @@ export async function approveSalaryPayout(requestId: string, approver: User, all
         }
 
         const incentiveRoleKey = (user.salesmanStage || user.role) as Role | SalesmanStage;
-        const incentiveConfig = incentiveSettings[incentiveRoleKey];
+        const incentiveTiers = incentiveSettings[incentiveRoleKey];
 
-        if (incentiveConfig && incentiveConfig.target > 0) {
+        if (incentiveTiers && incentiveTiers.length > 0) {
             let salesCount = 0;
             if (user.role === 'Salesman') {
                 salesCount = allCustomers.filter(c => 
@@ -1345,13 +1414,17 @@ export async function approveSalaryPayout(requestId: string, approver: User, all
                     new Date(c.saleDate) >= startOfMonth && new Date(c.saleDate) <= endOfMonth
                 ).length;
             }
+            
+            const highestAchievedTier = incentiveTiers
+                .filter(tier => salesCount >= tier.target)
+                .sort((a,b) => b.target - a.target)[0];
 
-            if (salesCount >= incentiveConfig.target) {
-                incentiveAmount = incentiveConfig.incentive;
+            if (highestAchievedTier) {
+                incentiveAmount = highestAchievedTier.incentive;
             }
         }
         
-        userTotalPayout = salaryAmount + incentiveAmount;
+        const userTotalPayout = salaryAmount + incentiveAmount;
 
         if (userTotalPayout > 0) {
             usersPaid++;
@@ -2134,3 +2207,4 @@ export async function updateTechnicalIssue(issueId: string, updates: Partial<Tec
     
 
     
+

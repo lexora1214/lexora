@@ -93,6 +93,7 @@ import MyCustomersView from "./my-customers-view";
 import IncomeRecordsView from "./income-records-view";
 import ProductCommissionSettings from "./product-commission-settings";
 import SignupRoleSettingsForm from "./signup-role-settings";
+import SignupRoleApprovalView from "./signup-role-approval-view";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import ProfileSettingsDialog from "./profile-settings-dialog";
 import AddTeamMemberView from "./add-salesman-view";
@@ -176,7 +177,7 @@ const navItems: NavItem[] = [
   { href: "#", icon: Map, label: "Reminders", roles: ["Salesman"] },
   { href: "#", icon: Truck, label: "My Deliveries", roles: ["Delivery Boy"] },
   { href: "#", icon: HandCoins, label: "My Collections", roles: ["Recovery Officer"] },
-  { href: "#", icon: Network, label: "Team Performance", roles: ["Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager", "Branch Admin"] },
+  { href: "#", icon: Network, label: "Team Performance", roles: ["Regional Director", "Head Group Manager", "Group Operation Manager", "Team Operation Manager"] },
   { 
     href: "#", 
     icon: UserPlus, 
@@ -209,15 +210,16 @@ const navItems: NavItem[] = [
       { href: "#", icon: Warehouse, label: "Add Store Keeper", roles: ["Super Admin"] },
       { href: "#", icon: ShieldCheck, label: "Add Recovery Admin", roles: ["Super Admin", "HR"] },
       { href: "#", icon: SlidersHorizontal, label: "Signup Roles", roles: ["Super Admin", "HR", "Admin"] },
+      { href: "#", icon: SlidersHorizontal, label: "Signup Role Approvals", roles: ["Super Admin"] },
     ]
   },
   { 
     href: "#", 
     icon: ShieldCheck, 
     label: "Approvals", 
-    roles: ["Admin", "Super Admin"],
+    roles: ["Super Admin"],
     children: [
-        { href: "#", icon: DollarSign, label: "Commission Approvals", roles: ["Admin", "Super Admin"] },
+        { href: "#", icon: DollarSign, label: "Commission Approvals", roles: ["Super Admin"] },
         { href: "#", icon: Coins, label: "Ad-hoc Salary Approvals", roles: ["Super Admin"] },
     ]
   },
@@ -630,6 +632,8 @@ const AppLayout = ({ user }: { user: User }) => {
         return <IncentiveManagementView />;
       case "Signup Roles":
         return <SignupRoleSettingsForm />;
+      case "Signup Role Approvals":
+        return <SignupRoleApprovalView user={user} />;
       case "Insights":
         return <ActionableInsights user={user} allUsers={allUsers} allCustomers={allCustomers} />;
       default:

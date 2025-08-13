@@ -234,6 +234,20 @@ export interface SignupRoleSettings {
   };
 }
 
+export interface SignupRoleChangeRequest {
+  id: string;
+  requestedBy: string;
+  requestedByName: string;
+  requestDate: string;
+  status: 'pending' | 'approved' | 'rejected';
+  newSettings: SignupRoleSettings;
+  currentSettings: SignupRoleSettings;
+  processedBy?: string;
+  processedByName?: string;
+  processedDate?: string;
+}
+
+
 export interface SalarySettings {
   'BUSINESS PROMOTER (stage 01)': number;
   'MARKETING EXECUTIVE (stage 02)': number;
@@ -319,12 +333,13 @@ export interface StockTransfer {
   confirmedAt?: string;
 }
 
-export type IncentiveTier = {
+export interface IncentiveTier {
+  id: string;
   target: number;
   incentive: number;
-};
+}
 
-export type IncentiveSettings = {
+export interface IncentiveSettings {
     [key in Role | SalesmanStage]?: IncentiveTier[];
 };
 
