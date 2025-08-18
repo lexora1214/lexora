@@ -26,12 +26,12 @@ const ViewDocumentsDialog: React.FC<{ user: User | null, isOpen: boolean, onOpen
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="sm:max-w-xl">
                 <DialogHeader>
                     <DialogTitle>Verification Documents</DialogTitle>
                     <DialogDescription>For: {user.name} ({user.nic})</DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4 py-4">
+                <div className="space-y-4 py-4 max-h-[70vh] overflow-y-auto pr-2">
                     {user.nicFrontUrl ? (
                         <div>
                             <h4 className="font-semibold mb-2">NIC Front</h4>
@@ -48,6 +48,22 @@ const ViewDocumentsDialog: React.FC<{ user: User | null, isOpen: boolean, onOpen
                             </div>
                         </div>
                     ) : <p className="text-muted-foreground text-sm">NIC Back not available.</p>}
+                    {user.gsCertificateUrl && (
+                         <div>
+                            <h4 className="font-semibold mb-2">GS Certificate</h4>
+                             <div className="relative aspect-video w-full rounded-lg overflow-hidden border">
+                                <Image src={user.gsCertificateUrl} layout="fill" objectFit="contain" alt="GS Certificate" data-ai-hint="document official" />
+                            </div>
+                        </div>
+                    )}
+                     {user.policeReportUrl && (
+                         <div>
+                            <h4 className="font-semibold mb-2">Police Report</h4>
+                             <div className="relative aspect-video w-full rounded-lg overflow-hidden border">
+                                <Image src={user.policeReportUrl} layout="fill" objectFit="contain" alt="Police Report" data-ai-hint="document police report" />
+                            </div>
+                        </div>
+                    )}
                 </div>
             </DialogContent>
         </Dialog>
@@ -179,3 +195,4 @@ const NewUserVerificationView: React.FC<NewUserVerificationViewProps> = ({ allUs
 };
 
 export default NewUserVerificationView;
+
