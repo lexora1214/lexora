@@ -201,7 +201,7 @@ const StockManagementView: React.FC<StockManagementViewProps> = ({ manager }) =>
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
               <CardTitle>Stock Management</CardTitle>
-              <CardDescription>Add, edit, or delete products for your branch: {manager.branch}.</CardDescription>
+              <CardDescription>View and manage products for your branch: {manager.branch}.</CardDescription>
             </div>
             <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
                 <Input 
@@ -210,11 +210,6 @@ const StockManagementView: React.FC<StockManagementViewProps> = ({ manager }) =>
                     onChange={(e) => setFilter(e.target.value)}
                     className="w-full md:w-auto"
                 />
-                {manager.role === 'Team Operation Manager' && (
-                  <Button onClick={handleAdd} className="w-full md:w-auto">
-                      <PlusCircle /> Add New Item
-                  </Button>
-                )}
             </div>
           </div>
         </CardHeader>
@@ -249,7 +244,7 @@ const StockManagementView: React.FC<StockManagementViewProps> = ({ manager }) =>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
                               <DropdownMenuItem onClick={() => handleViewImeis(item)}>View IMEIs</DropdownMenuItem>
-                              {manager.role === 'Team Operation Manager' && (
+                              {manager.role === 'Branch Manager' && (
                                 <>
                                   <DropdownMenuItem onClick={() => handleEdit(item)}><Edit className="mr-2" /> Edit</DropdownMenuItem>
                                   <AlertDialog>
