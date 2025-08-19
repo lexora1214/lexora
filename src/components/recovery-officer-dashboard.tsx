@@ -185,15 +185,7 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
         }
     });
 
-    const today = new Date();
-    const monthStart = startOfMonth(today);
-    const monthEnd = endOfMonth(today);
-
-    const collectionsInCurrentMonth = upcomingInstallments.filter(inst => 
-        inst.dueDate >= monthStart && inst.dueDate <= monthEnd
-    );
-    
-    const groupedByDay = collectionsInCurrentMonth.reduce((acc, curr) => {
+    const groupedByDay = upcomingInstallments.reduce((acc, curr) => {
         const dayString = curr.dueDate.toISOString().split('T')[0];
         if (!acc[dayString]) {
             acc[dayString] = [];
@@ -298,7 +290,7 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><HandCoins /> My Collection Tasks</CardTitle>
-            <CardDescription>Installment collections for the current month. Mark them as paid once collected.</CardDescription>
+            <CardDescription>All your assigned installment collections, sorted by due date.</CardDescription>
           </CardHeader>
            <CardContent>
                 <div className="text-sm font-medium">This Month's Collections ({format(new Date(), 'MMMM')})</div>
@@ -308,7 +300,7 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
 
         <Card>
             <CardHeader>
-                <CardTitle>Collection History</CardTitle>
+                <CardTitle>Collection History (This Month)</CardTitle>
             </CardHeader>
             <CardContent>
                  <Table>
@@ -323,7 +315,7 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
                     <TableBody>
                         {monthlyCollections.length > 0 ? monthlyCollections.map(c => (
                             <TableRow key={c.id}>
-                                <TableCell>{format(new Date(c.collectedAt), 'PPP')}</TableCell>
+                                <TableCell>{format(new Date(c.collectedAt), 'PP')}</TableCell>
                                 <TableCell>{c.customerName}</TableCell>
                                 <TableCell><Badge variant={c.type === 'arrear' ? 'destructive' : 'secondary'} className="capitalize">{c.type}</Badge></TableCell>
                                 <TableCell className="text-right font-medium">LKR {c.amount.toLocaleString()}</TableCell>
@@ -498,7 +490,7 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
         ) : (
             <Card>
               <CardContent className="p-10 text-center text-muted-foreground">
-                  You have no collections due in the current month.
+                  You have no collections assigned.
               </CardContent>
             </Card>
         )}
