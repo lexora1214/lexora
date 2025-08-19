@@ -351,35 +351,39 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
             </CardContent>
         </Card>
 
-        <Card>
-            <CardHeader>
-                <CardTitle>Collection History (This Month)</CardTitle>
-            </CardHeader>
-            <CardContent>
-                 <div className="rounded-md border">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Customer</TableHead>
-                                <TableHead className="text-right">Amount</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {monthlyCollections.length > 0 ? monthlyCollections.map(c => (
-                                <TableRow key={c.id} onClick={() => setSelectedCollection(c)} className="cursor-pointer">
-                                    <TableCell>{c.customerName}</TableCell>
-                                    <TableCell className="text-right font-medium">LKR {c.amount.toLocaleString()}</TableCell>
-                                </TableRow>
-                            )) : (
+        <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="collection-history">
+                <AccordionTrigger>
+                    <div className="text-lg font-semibold flex items-center gap-2 p-2 rounded-md bg-muted hover:bg-muted/80 w-full">
+                      Collection History (This Month)
+                    </div>
+                </AccordionTrigger>
+                <AccordionContent>
+                    <div className="rounded-md border mt-2">
+                        <Table>
+                            <TableHeader>
                                 <TableRow>
-                                    <TableCell colSpan={2} className="text-center h-24">No collections this month yet.</TableCell>
+                                    <TableHead>Customer</TableHead>
+                                    <TableHead className="text-right">Amount</TableHead>
                                 </TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
-                 </div>
-            </CardContent>
-        </Card>
+                            </TableHeader>
+                            <TableBody>
+                                {monthlyCollections.length > 0 ? monthlyCollections.map(c => (
+                                    <TableRow key={c.id} onClick={() => setSelectedCollection(c)} className="cursor-pointer">
+                                        <TableCell>{c.customerName}</TableCell>
+                                        <TableCell className="text-right font-medium">LKR {c.amount.toLocaleString()}</TableCell>
+                                    </TableRow>
+                                )) : (
+                                    <TableRow>
+                                        <TableCell colSpan={2} className="text-center h-24">No collections this month yet.</TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
+                </AccordionContent>
+            </AccordionItem>
+        </Accordion>
 
         {upcomingCollectionsByDay.length > 0 ? (
           <Accordion type="multiple" defaultValue={upcomingCollectionsByDay.length > 0 ? [upcomingCollectionsByDay[0][0]] : []} className="w-full space-y-4">
