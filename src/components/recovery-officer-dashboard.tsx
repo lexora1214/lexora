@@ -163,6 +163,9 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
   }, [user.id, loading]);
   
   const upcomingCollectionsByDay = useMemo(() => {
+    const startOfCurrentMonth = startOfMonth(new Date());
+    const endOfCurrentMonth = endOfMonth(new Date());
+
     const upcomingInstallments: UpcomingInstallment[] = [];
     assignedSales.forEach(sale => {
         if (sale.installments && sale.paidInstallments !== undefined && sale.paidInstallments < sale.installments) {
@@ -171,16 +174,18 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
             const baseDate = new Date(sale.saleDate);
             const dueDate = sale.nextDueDateOverride ? new Date(sale.nextDueDateOverride) : addMonths(baseDate, sale.paidInstallments + 1);
             
-            const customer = customers.find(c => c.id === sale.customerId);
+            if (dueDate >= startOfCurrentMonth && dueDate <= endOfCurrentMonth) {
+              const customer = customers.find(c => c.id === sale.customerId);
 
-            if (customer && sale.monthlyInstallment) {
-                 upcomingInstallments.push({
-                    sale,
-                    customer,
-                    dueDate,
-                    installmentNumber: nextInstallmentNumber,
-                    amount: sale.monthlyInstallment,
-                });
+              if (customer && sale.monthlyInstallment) {
+                   upcomingInstallments.push({
+                      sale,
+                      customer,
+                      dueDate,
+                      installmentNumber: nextInstallmentNumber,
+                      amount: sale.monthlyInstallment,
+                  });
+              }
             }
         }
     });
@@ -290,7 +295,7 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><HandCoins /> My Collection Tasks</CardTitle>
-            <CardDescription>All your assigned installment collections, sorted by due date.</CardDescription>
+            <CardDescription>All your assigned installment collections for the current month, sorted by due date.</CardDescription>
           </CardHeader>
            <CardContent>
                 <div className="text-sm font-medium">This Month's Collections ({format(new Date(), 'MMMM')})</div>
@@ -490,7 +495,7 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
         ) : (
             <Card>
               <CardContent className="p-10 text-center text-muted-foreground">
-                  You have no collections assigned.
+                  You have no collections assigned for this month.
               </CardContent>
             </Card>
         )}
@@ -517,4 +522,3 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
 };
 
 export default RecoveryOfficerDashboard;
-
