@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
@@ -187,13 +186,14 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
     });
 
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const threeMonthsLater = new Date(today);
-    threeMonthsLater.setMonth(today.getMonth() + 3);
+    const monthStart = startOfMonth(today);
+    const monthEnd = endOfMonth(today);
 
-    const collectionsInNext3Months = upcomingInstallments.filter(inst => inst.dueDate >= today && inst.dueDate < threeMonthsLater);
+    const collectionsInCurrentMonth = upcomingInstallments.filter(inst => 
+        inst.dueDate >= monthStart && inst.dueDate <= monthEnd
+    );
     
-    const groupedByDay = collectionsInNext3Months.reduce((acc, curr) => {
+    const groupedByDay = collectionsInCurrentMonth.reduce((acc, curr) => {
         const dayString = curr.dueDate.toISOString().split('T')[0];
         if (!acc[dayString]) {
             acc[dayString] = [];
@@ -298,7 +298,7 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><HandCoins /> My Collection Tasks</CardTitle>
-            <CardDescription>Installment collections for the next three months. Mark them as paid once collected.</CardDescription>
+            <CardDescription>Installment collections for the current month. Mark them as paid once collected.</CardDescription>
           </CardHeader>
            <CardContent>
                 <div className="text-sm font-medium">This Month's Collections ({format(new Date(), 'MMMM')})</div>
@@ -498,7 +498,7 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
         ) : (
             <Card>
               <CardContent className="p-10 text-center text-muted-foreground">
-                  You have no collections due in the next three months.
+                  You have no collections due in the current month.
               </CardContent>
             </Card>
         )}
