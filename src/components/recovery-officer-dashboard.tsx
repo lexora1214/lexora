@@ -25,6 +25,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription as DialogDescriptionDetails,
+  DialogHeader as DialogHeaderDetails,
+  DialogTitle as DialogTitleDetails,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import AddNoteDialog from "./add-note-dialog";
 import { Badge } from "./ui/badge";
@@ -120,6 +127,46 @@ const RequestFullPaymentDialog: React.FC<{
   );
 };
 
+const CollectionDetailsDialog: React.FC<{
+    collection: Collection | null;
+    isOpen: boolean;
+    onOpenChange: (isOpen: boolean) => void;
+}> = ({ collection, isOpen, onOpenChange }) => {
+    if (!collection) return null;
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+            <DialogContent>
+                <DialogHeaderDetails>
+                    <DialogTitleDetails>Collection Details</DialogTitleDetails>
+                </DialogHeaderDetails>
+                <div className="space-y-3 py-4">
+                    <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground">Customer:</span>
+                        <span className="font-semibold">{collection.customerName}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground">Date:</span>
+                        <span className="font-semibold">{format(new Date(collection.collectedAt), 'PPp')}</span>
+                    </div>
+                     <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground">Token Serial:</span>
+                        <Badge variant="outline">{collection.tokenSerial}</Badge>
+                    </div>
+                    <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground">Payment Type:</span>
+                         <Badge variant={collection.type === 'arrear' ? 'destructive' : 'secondary'} className="capitalize">{collection.type}</Badge>
+                    </div>
+                     <div className="flex justify-between items-center text-lg">
+                        <span className="text-muted-foreground">Amount:</span>
+                        <span className="font-bold text-primary">LKR {collection.amount.toLocaleString()}</span>
+                    </div>
+                </div>
+            </DialogContent>
+        </Dialog>
+    )
+}
+
 
 const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ user }) => {
   const [assignedSales, setAssignedSales] = useState<ProductSale[]>([]);
@@ -131,6 +178,7 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
   const [isNoteDialogOpen, setIsNoteDialogOpen] = useState(false);
   const [noteCustomer, setNoteCustomer] = useState<Customer | null>(null);
   const [requestingFullPaymentSale, setRequestingFullPaymentSale] = useState<ProductSale | null>(null);
+  const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null);
 
 
   useEffect(() => {
@@ -151,7 +199,7 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
 
     const collectionsQuery = query(collection(db, "collections"), where("collectorId", "==", user.id));
     const collectionsUnsub = onSnapshot(collectionsQuery, (snapshot) => {
-        const collectionsData = snapshot.docs.map(doc => doc.data() as Collection);
+        const collectionsData = snapshot.docs.map(doc => ({id: doc.id, ...doc.data()} as Collection));
         setCollections(collectionsData);
     });
 
@@ -308,30 +356,28 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
                 <CardTitle>Collection History (This Month)</CardTitle>
             </CardHeader>
             <CardContent>
-                 <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Date</TableHead>
-                            <TableHead>Customer</TableHead>
-                            <TableHead>Type</TableHead>
-                            <TableHead className="text-right">Amount</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {monthlyCollections.length > 0 ? monthlyCollections.map(c => (
-                            <TableRow key={c.id}>
-                                <TableCell>{format(new Date(c.collectedAt), 'PP')}</TableCell>
-                                <TableCell>{c.customerName}</TableCell>
-                                <TableCell><Badge variant={c.type === 'arrear' ? 'destructive' : 'secondary'} className="capitalize">{c.type}</Badge></TableCell>
-                                <TableCell className="text-right font-medium">LKR {c.amount.toLocaleString()}</TableCell>
-                            </TableRow>
-                        )) : (
+                 <div className="rounded-md border">
+                    <Table>
+                        <TableHeader>
                             <TableRow>
-                                <TableCell colSpan={4} className="text-center h-24">No collections this month yet.</TableCell>
+                                <TableHead>Customer</TableHead>
+                                <TableHead className="text-right">Amount</TableHead>
                             </TableRow>
-                        )}
-                    </TableBody>
-                </Table>
+                        </TableHeader>
+                        <TableBody>
+                            {monthlyCollections.length > 0 ? monthlyCollections.map(c => (
+                                <TableRow key={c.id} onClick={() => setSelectedCollection(c)} className="cursor-pointer">
+                                    <TableCell>{c.customerName}</TableCell>
+                                    <TableCell className="text-right font-medium">LKR {c.amount.toLocaleString()}</TableCell>
+                                </TableRow>
+                            )) : (
+                                <TableRow>
+                                    <TableCell colSpan={2} className="text-center h-24">No collections this month yet.</TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                 </div>
             </CardContent>
         </Card>
 
@@ -517,6 +563,11 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
           remainingBalance={(requestingFullPaymentSale.installments! - requestingFullPaymentSale.paidInstallments!) * requestingFullPaymentSale.monthlyInstallment!}
         />
       )}
+      <CollectionDetailsDialog
+        isOpen={!!selectedCollection}
+        onOpenChange={(isOpen) => { if (!isOpen) setSelectedCollection(null); }}
+        collection={selectedCollection}
+      />
     </>
   );
 };
