@@ -2,9 +2,7 @@
 "use server";
 
 import { generateActionableInsights, ActionableInsightsInput, ActionableInsightsOutput } from "@/ai/flows/actionable-insights";
-import { updateUserPassword, sendOtpSms } from "@/lib/firestore";
-import { getAuth } from "firebase/auth";
-import { app } from "@/lib/firebase";
+import { updateUserPassword, sendOtpSms, getLoggedInUser } from "@/lib/firestore";
 
 export async function getActionableInsights(
   input: ActionableInsightsInput
@@ -22,17 +20,15 @@ export async function getActionableInsights(
 }
 
 export async function changePassword(
-  newPassword: string
+  mobileNumber: string
 ): Promise<{ success: true; otp: string } | { success: false; error: string }> {
   try {
-    const auth = getAuth(app);
-    const user = auth.currentUser;
-    if (!user || !user.phoneNumber) {
-        return { success: false, error: "User not authenticated or has no phone number."};
+    if (!mobileNumber) {
+        return { success: false, error: "User has no phone number."};
     }
     
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const smsSent = await sendOtpSms(user.phoneNumber, otp);
+    const smsSent = await sendOtpSms(mobileNumber, otp);
 
     if (!smsSent.success) {
         return { success: false, error: smsSent.error || "Failed to send OTP." };

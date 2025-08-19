@@ -97,7 +97,7 @@ const ProfileSettingsDialog: React.FC<ProfileSettingsDialogProps> = ({
         mobileNumber: data.mobileNumber,
       };
 
-      if (user.role === 'Team Operation Manager') {
+      if (user.role === 'Branch Manager') {
         updateData.branch = data.branch;
       }
 
@@ -123,7 +123,7 @@ const ProfileSettingsDialog: React.FC<ProfileSettingsDialogProps> = ({
   const onPasswordSubmit: SubmitHandler<PasswordFormValues> = async (data) => {
     setIsLoading(true);
     try {
-        const result = await changePassword(data.newPassword);
+        const result = await changePassword(user.mobileNumber);
         if (result.success) {
             setGeneratedOtp(result.otp);
             setNewPassword(data.newPassword);
@@ -209,7 +209,7 @@ const ProfileSettingsDialog: React.FC<ProfileSettingsDialogProps> = ({
                             {profileForm.formState.errors.mobileNumber && <p className="text-xs text-destructive mt-1">{profileForm.formState.errors.mobileNumber.message}</p>}
                         </div>
                     </div>
-                    {user.role === 'Team Operation Manager' && (
+                    {user.role === 'Branch Manager' && (
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="branch" className="text-right">Branch</Label>
                         <div className="col-span-3">
