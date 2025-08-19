@@ -350,44 +350,44 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
                               return (
                                   <Card key={sale.id}>
                                       <CardHeader>
-                                          <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
-                                              <div>
-                                                  <CardTitle className="flex items-center gap-2"><Package /> {sale.productName}</CardTitle>
-                                                  <CardDescription>For: {customer.name} (Installment {installmentNumber}/{sale.installments})</CardDescription>
-                                              </div>
-                                              <div className="text-left md:text-right w-full md:w-auto">
-                                                   <p className="font-bold text-lg text-primary">LKR {amount.toLocaleString()}</p>
-                                                      <AlertDialog>
-                                                          <AlertDialogTrigger asChild>
-                                                               <Button size="sm" className="mt-1 w-full md:w-auto" disabled={!!processingId}>
-                                                                  {processingId === sale.id ? (
-                                                                      <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
-                                                                  ) : (
-                                                                      <CheckCircle2 className="mr-2 h-4 w-4" />
-                                                                  )}
-                                                                   Mark as Paid
-                                                              </Button>
-                                                          </AlertDialogTrigger>
-                                                          <AlertDialogContent>
-                                                              <AlertDialogHeader>
-                                                                  <AlertDialogTitle>Confirm Payment Collection</AlertDialogTitle>
-                                                                  <AlertDialogDescription>
-                                                                      Are you sure you want to mark this installment as paid? This will distribute commissions and cannot be easily undone.
-                                                                  </AlertDialogDescription>
-                                                              </AlertDialogHeader>
-                                                              <AlertDialogFooter>
-                                                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                                  <AlertDialogAction
-                                                                      onClick={() => handleMarkPaid(sale.id)}
-                                                                      className={cn("bg-success text-success-foreground hover:bg-success/90")}
-                                                                  >
-                                                                      Yes, Mark as Paid
-                                                                  </AlertDialogAction>
-                                                              </AlertDialogFooter>
-                                                          </AlertDialogContent>
-                                                      </AlertDialog>
-                                              </div>
-                                          </div>
+                                        <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
+                                            <div>
+                                                <CardTitle className="flex items-center gap-2"><Package /> {sale.productName}</CardTitle>
+                                                <CardDescription>For: {customer.name} (Installment {installmentNumber}/{sale.installments})</CardDescription>
+                                            </div>
+                                            <div className="text-left md:text-right w-full md:w-auto flex-shrink-0">
+                                                <p className="font-bold text-lg text-primary">LKR {amount.toLocaleString()}</p>
+                                                    <AlertDialog>
+                                                        <AlertDialogTrigger asChild>
+                                                            <Button size="sm" className="mt-1 w-full md:w-auto" disabled={!!processingId}>
+                                                            {processingId === sale.id ? (
+                                                                <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+                                                            ) : (
+                                                                <CheckCircle2 className="mr-2 h-4 w-4" />
+                                                            )}
+                                                                Mark as Paid
+                                                            </Button>
+                                                        </AlertDialogTrigger>
+                                                        <AlertDialogContent>
+                                                            <AlertDialogHeader>
+                                                                <AlertDialogTitle>Confirm Payment Collection</AlertDialogTitle>
+                                                                <AlertDialogDescription>
+                                                                    Are you sure you want to mark this installment as paid? This will distribute commissions and cannot be easily undone.
+                                                                </AlertDialogDescription>
+                                                            </AlertDialogHeader>
+                                                            <AlertDialogFooter>
+                                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                <AlertDialogAction
+                                                                    onClick={() => handleMarkPaid(sale.id)}
+                                                                    className={cn("bg-success text-success-foreground hover:bg-success/90")}
+                                                                >
+                                                                    Yes, Mark as Paid
+                                                                </AlertDialogAction>
+                                                            </AlertDialogFooter>
+                                                        </AlertDialogContent>
+                                                    </AlertDialog>
+                                            </div>
+                                        </div>
                                       </CardHeader>
                                       <CardContent className="space-y-4">
                                           <div className="grid md:grid-cols-2 gap-4">
