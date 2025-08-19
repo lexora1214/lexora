@@ -350,16 +350,16 @@ const RecoveryOfficerDashboard: React.FC<RecoveryOfficerDashboardProps> = ({ use
                               return (
                                   <Card key={sale.id}>
                                       <CardHeader>
-                                          <div className="flex justify-between items-start">
+                                          <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
                                               <div>
                                                   <CardTitle className="flex items-center gap-2"><Package /> {sale.productName}</CardTitle>
                                                   <CardDescription>For: {customer.name} (Installment {installmentNumber}/{sale.installments})</CardDescription>
                                               </div>
-                                              <div className="text-right">
+                                              <div className="text-left md:text-right w-full md:w-auto">
                                                    <p className="font-bold text-lg text-primary">LKR {amount.toLocaleString()}</p>
                                                       <AlertDialog>
                                                           <AlertDialogTrigger asChild>
-                                                               <Button size="sm" className="mt-1" disabled={!!processingId}>
+                                                               <Button size="sm" className="mt-1 w-full md:w-auto" disabled={!!processingId}>
                                                                   {processingId === sale.id ? (
                                                                       <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
                                                                   ) : (
