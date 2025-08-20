@@ -73,19 +73,25 @@ const ProfileSettingsDialog: React.FC<ProfileSettingsDialogProps> = ({
   });
 
   useEffect(() => {
-    if (user) {
-      profileForm.reset({
-        name: user.name,
-        mobileNumber: user.mobileNumber || "",
-        branch: user.branch || "",
-      });
+    if (isOpen) {
+      if (user) {
+        profileForm.reset({
+          name: user.name,
+          mobileNumber: user.mobileNumber || "",
+          branch: user.branch || "",
+        });
+      }
+      passwordForm.reset();
+    } else {
+      // Reset step to details only when dialog is closed
+      const timer = setTimeout(() => {
+          setStep("details");
+          setEnteredOtp("");
+          setNewPassword("");
+          setGeneratedOtp("");
+      }, 200); // Delay to allow closing animation
+      return () => clearTimeout(timer);
     }
-    // Reset state when dialog is opened/closed or user changes
-    setStep("details");
-    passwordForm.reset();
-    setEnteredOtp("");
-    setNewPassword("");
-    setGeneratedOtp("");
   }, [user, isOpen, profileForm, passwordForm]);
 
   const onProfileSubmit: SubmitHandler<ProfileFormValues> = async (data) => {
